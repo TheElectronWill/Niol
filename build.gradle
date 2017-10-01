@@ -1,0 +1,11 @@
+version = '0.1'
+description = 'NIO Library for lightweight networking'
+
+apply plugin: 'scala'
+
+repositories {
+	mavenCentral()
+}
+dependencies {
+	compile 'org.scala-lang:scala-library:2.12.3'
+}
