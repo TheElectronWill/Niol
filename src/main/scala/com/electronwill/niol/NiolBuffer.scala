@@ -17,6 +17,7 @@ trait NiolBuffer extends NiolInput with NiolOutput {
 	def resetWritePos(): Unit
 	/** @return the available space between writePos and writeLimit */
 	def writeAvail: Int = writeLimit - writePos
+	def skipWrite(n: Int): Unit = writePos(writePos + n)
 
 	def readPos: Int
 	def readPos(pos: Int): Unit
@@ -26,6 +27,7 @@ trait NiolBuffer extends NiolInput with NiolOutput {
 	def resetReadPos(): Unit
 	/** @return the available space between readPos and readLimit */
 	def readAvail: Int = readLimit - readPos
+	def skipRead(n: Int): Unit = readPos(readPos + n)
 
 	// buffer operations
 	/**
@@ -53,7 +55,7 @@ trait NiolBuffer extends NiolInput with NiolOutput {
 
 	/** Concatenates two buffers without copying their content. */
 	def concat(buffer: NiolBuffer): NiolBuffer = {
-		if (this.capacity == 0) buffer.duplicate
+		if (this.capacity == 0) { if(buffer.capacity == 0) EmptyBuffer else buffer.duplicate }
 		else if (buffer.capacity == 0) this.duplicate
 		else new CompositeBuffer(this, buffer)
 	}
@@ -62,7 +64,7 @@ trait NiolBuffer extends NiolInput with NiolOutput {
 	def concatCopy(buffer: NiolBuffer): NiolBuffer = {
 		val availableThis = this.readAvail
 		val availableBuff = buffer.readAvail
-		if (availableThis == 0) buffer.copyRead
+		if (availableThis == 0) { if(availableBuff == 0) EmptyBuffer else buffer.copyRead }
 		else if (availableBuff == 0) this.copyRead
 		else {
 			val copy = NiolBuffer.allocateHeap(availableThis + availableBuff)
