@@ -1,6 +1,7 @@
 package com.electronwill.niol
 
 import java.nio.ByteBuffer
+import java.nio.channels.SocketChannel
 
 /**
  * @author TheElectronWill
@@ -165,16 +166,176 @@ final class CircularBuffer(private[this] val buff: NiolBuffer) extends NiolBuffe
 	override def getDouble(): Double = java.lang.Double.longBitsToDouble(getLong())
 
 	override def getBytes(array: Array[Byte], offset: Int, length: Int): Unit = {
-		if (writePos > readPos || readPos + length < capacity) {
+		if (writePos > readPos || readPos + length <= capacity) {
 			buff.getBytes(array, offset, length)
+			if (readPos == capacity) {
+				circleReadPos()
+			}
 		} else {
+			val lengthA = capacity - readPos
+			val lengthB = length - lengthA
+			buff.getBytes(array, offset, lengthA)
+			circleReadPos()
+			buff.getBytes(array, offset + lengthA, lengthB)
+		}
+		updateWriteLimit()
+	}
+	override def getBytes(bb: ByteBuffer): Unit = {
+		if (writePos > readPos || readPos + bb.remaining() <= capacity) {
+			buff.getBytes(bb)
+			if (readPos == capacity) {
+				circleReadPos()
+			}
+		} else {
+			buff.getBytes(bb)
+			circleReadPos()
+			buff.getBytes(bb)
+		}
+		updateWriteLimit()
+	}
+	override def getShorts(array: Array[Short], offset: Int, length: Int): Unit = {
+		val bytes = getBytes(length * 2)
+		ByteBuffer.wrap(bytes).asShortBuffer().get(array, offset, length)
+	}
+	override def getInts(array: Array[Int], offset: Int, length: Int): Unit = {
+		val bytes = getBytes(length * 4)
+		ByteBuffer.wrap(bytes).asIntBuffer().get(array, offset, length)
+	}
+	override def getLongs(array: Array[Long], offset: Int, length: Int): Unit = {
+		val bytes = getBytes(length * 8)
+		ByteBuffer.wrap(bytes).asLongBuffer().get(array, offset, length)
+	}
+	override def getFloats(array: Array[Float], offset: Int, length: Int): Unit = {
+		val bytes = getBytes(length * 4)
+		ByteBuffer.wrap(bytes).asFloatBuffer().get(array, offset, length)
+	}
+	override def getDoubles(array: Array[Double], offset: Int, length: Int): Unit = {
+		val bytes = getBytes(length * 8)
+		ByteBuffer.wrap(bytes).asDoubleBuffer().get(array, offset, length)
+	}
 
+	// put methods
+	override def putByte(b: Byte): Unit = {
+		buff.putByte(b)
+		if (writePos == capacity) {
+			circleWritePos()
+		} else {
+			updateReadLimit()
 		}
 	}
-	override def getBytes(bb: ByteBuffer): Unit = ???
-	override def getShorts(array: Array[Short], offset: Int, length: Int): Unit = ???
-	override def getInts(array: Array[Int], offset: Int, length: Int): Unit = ???
-	override def getLongs(array: Array[Long], offset: Int, length: Int): Unit = ???
-	override def getFloats(array: Array[Float], offset: Int, length: Int): Unit = ???
-	override def getDoubles(array: Array[Double], offset: Int, length: Int): Unit = ???
+	override def putShort(s: Short): Unit = {
+		val newPos = readPos + 2
+		if (newPos <= capacity) {
+			buff.putShort(s)
+			if (newPos == capacity) {
+				circleReadPos()
+			} else {
+				updateReadLimit()
+			}
+		} else {
+			putByte(s >> 8)
+			putByte(s)
+		}
+	}
+	override def putInt(i: Int): Unit = {
+		val newPos = readPos + 4
+		if (newPos <= capacity) {
+			buff.putInt(i)
+			if (newPos == capacity) {
+				circleReadPos()
+			} else {
+				updateReadLimit()
+			}
+		} else {
+			putByte(i >> 24)
+			putByte(i >> 16)
+			putByte(i >> 8)
+			putByte(i)
+		}
+	}
+	override def putLong(l: Long): Unit = {
+		val newPos = readPos + 8
+		if (newPos <= capacity) {
+			buff.putLong(l)
+			if (newPos == capacity) {
+				circleReadPos()
+			} else {
+				updateReadLimit()
+			}
+		} else {
+			putByte(l >> 56)
+			putByte(l >> 48)
+			putByte(l >> 40)
+			putByte(l >> 32)
+			putByte(l >> 24)
+			putByte(l >> 24)
+			putByte(l >> 16)
+			putByte(l >> 8)
+			putByte(l)
+		}
+	}
+	override def putFloat(f: Float): Unit = putInt(java.lang.Float.floatToIntBits(f))
+	override def putDouble(d: Double): Unit = putLong(java.lang.Double.doubleToLongBits(d))
+
+	override def putBytes(array: Array[Byte], offset: Int, length: Int): Unit = {
+		if (writePos < readPos || writePos + length <= capacity) {
+			buff.putBytes(array, offset, length)
+			if (writePos == capacity) {
+				circleReadPos()
+			}
+		} else {
+			val lengthA = capacity - writePos
+			val lengthB = length - lengthA // must be less than readPos
+			buff.putBytes(array, offset, lengthA)
+			circleWritePos()
+			buff.putBytes(array, offset + lengthA, lengthB)
+		}
+		updateReadLimit()
+	}
+	override def putBytes(source: ByteBuffer): Unit = {
+		if (writePos < readPos || writePos + source.remaining() <= capacity) {
+			buff.putBytes(source)
+			if (writePos == capacity) {
+				circleReadPos()
+			}
+		} else {
+			buff.putBytes(source)
+			circleWritePos()
+			buff.putBytes(source)
+		}
+		updateReadLimit()
+	}
+	override def putShorts(array: Array[Short], offset: Int, length: Int): Unit = {
+		val bytes = ByteBuffer.allocate(length * 2)
+		bytes.asShortBuffer().put(array, offset, length)
+		putBytes(bytes)
+	}
+	override def putInts(array: Array[Int], offset: Int, length: Int): Unit = {
+		val bytes = ByteBuffer.allocate(length * 4)
+		bytes.asIntBuffer().put(array, offset, length)
+		putBytes(bytes)
+	}
+	override def putLongs(array: Array[Long], offset: Int, length: Int): Unit = {
+		val bytes = ByteBuffer.allocate(length * 8)
+		bytes.asLongBuffer().put(array, offset, length)
+		putBytes(bytes)
+	}
+	override def putFloats(array: Array[Float], offset: Int, length: Int): Unit = {
+		val bytes = ByteBuffer.allocate(length * 4)
+		bytes.asFloatBuffer().put(array, offset, length)
+		putBytes(bytes)
+	}
+	override def putDoubles(array: Array[Double], offset: Int, length: Int): Unit = {
+		val bytes = ByteBuffer.allocate(length * 8)
+		bytes.asDoubleBuffer().put(array, offset, length)
+		putBytes(bytes)
+	}
+	override def putBytes(source: NiolInput): Unit = {
+		source.inputType match {
+			case InputType.NIO_BUFFER =>
+				putBytes(source.asInstanceOf[NioBasedBuffer].readBuffer)
+			case _ => ??? //TODO
+		}
+	}
+	override def putBytes(source: SocketChannel): Int = ??? //TODO
 }
