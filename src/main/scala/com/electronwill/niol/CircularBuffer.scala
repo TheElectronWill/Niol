@@ -6,7 +6,7 @@ import java.nio.channels.SocketChannel
 /**
  * @author TheElectronWill
  */
-final class CircularBuffer(private[this] val buff: NiolBuffer) extends NiolBuffer {
+final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffer {
 	require(buff.capacity > 0)
 
 	// buffer state
@@ -334,8 +334,30 @@ final class CircularBuffer(private[this] val buff: NiolBuffer) extends NiolBuffe
 		source.inputType match {
 			case InputType.NIO_BUFFER =>
 				putBytes(source.asInstanceOf[NioBasedBuffer].readBuffer)
+			case InputType.COMPOSITE_BUFFER =>
+				val composite = source.asInstanceOf[CompositeBuffer]
+				putBytes(composite.first)
+				putBytes(composite.second)
+			case InputType.CIRCULAR_BUFFER =>
+				val circular = source.asInstanceOf[CircularBuffer]
+				putBytes(circular.buff)
+				if (readPos == capacity) {
+					circleReadPos()
+					putBytes(circular.buff) // put the remaining bytes
+				} else {
+					updateWriteLimit()
+				}
 			case _ => ??? //TODO
 		}
 	}
-	override def putBytes(source: SocketChannel): Int = ??? //TODO
+	override def putBytes(source: SocketChannel): Int = {
+		var count = buff.putBytes(source)
+		if (writePos == capacity) {
+			circleWritePos()
+			count += buff.putBytes(source)
+		} else {
+			updateReadLimit()
+		}
+		count
+	}
 }
