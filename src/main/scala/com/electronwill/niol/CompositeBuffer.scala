@@ -1,6 +1,6 @@
 package com.electronwill.niol
 
-import java.nio.channels.SocketChannel
+import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 import java.nio.{ByteBuffer, InvalidMarkException}
 
 /**
@@ -9,13 +9,13 @@ import java.nio.{ByteBuffer, InvalidMarkException}
  *
  * @author TheElectronWill
  */
-final class CompositeBuffer(private[niol] val first: NiolBuffer,
-							private[niol] val second: NiolBuffer) extends NiolBuffer {
+final class CompositeBuffer(private[this] val first: NiolBuffer,
+							private[this] val second: NiolBuffer) extends NiolBuffer {
 	require(first.capacity > 0)
 	require(second.capacity > 0)
 
 	// buffer state
-	override protected[niol] val inputType: InputType = InputType.COMPOSITE_BUFFER
+	override protected[niol] val inputType: InputType = InputType.SPECIAL_BUFFER
 
 	private[this] var currentWrite: NiolBuffer = first
 	private[this] var currentRead: NiolBuffer = first
@@ -183,6 +183,24 @@ final class CompositeBuffer(private[niol] val first: NiolBuffer,
 			currentRead = second
 		}
 	}
+	override def getBytes(dest: NiolBuffer): Unit = {
+		dest.putBytes(first)
+		dest.putBytes(second)
+	}
+	override def getBytes(dest: GatheringByteChannel): Int = {
+		if (currentRead.eq(second)) {
+			second.getBytes(dest)
+		} else {
+			if (first.inputType == InputType.NIO_BUFFER &&
+				second.inputType == InputType.NIO_BUFFER) {
+				dest.write(Array(first.asInstanceOf[NioBasedBuffer].readBuffer,
+					second.asInstanceOf[NioBasedBuffer].readBuffer)).toInt
+			} else {
+				first.getBytes(dest) + second.getBytes(dest)
+			}
+		}
+	}
+
 	override def getShorts(array: Array[Short], offset: Int, length: Int): Unit = {
 		val bytes = getBytes(length * 2)
 		ByteBuffer.wrap(bytes).asShortBuffer().get(array, offset, length)
@@ -302,20 +320,6 @@ final class CompositeBuffer(private[niol] val first: NiolBuffer,
 		bytes.asDoubleBuffer().put(array, offset, length)
 		putBytes(bytes)
 	}
-	override def putBytes(source: NiolInput): Unit = {
-		source.inputType match {
-			case InputType.NIO_BUFFER =>
-				putBytes(source.asInstanceOf[NioBasedBuffer].readBuffer)
-			case InputType.COMPOSITE_BUFFER =>
-				val composite = source.asInstanceOf[CompositeBuffer]
-				putBytes(composite.first)
-				putBytes(composite.second)
-			case InputType.FILE_CHANNEL =>
-				// TODO NIO transfer
-			case InputType.SOCKET_CHANNEL =>
-				// TODO socketChannel.read
-		}
-	}
 	override def putBytes(source: ByteBuffer): Unit = {
 		val length = Math.min(writeLimit - writePos, source.remaining)
 		if (length == 0) return
@@ -327,7 +331,7 @@ final class CompositeBuffer(private[niol] val first: NiolBuffer,
 			currentWrite = second
 		}
 	}
-	override def putBytes(source: SocketChannel): Int = {
+	override def putBytes(source: ScatteringByteChannel): Int = {
 		if (currentWrite eq second) {
 			second.putBytes(source)
 		} else {

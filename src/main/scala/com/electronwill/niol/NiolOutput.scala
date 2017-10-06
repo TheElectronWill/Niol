@@ -1,7 +1,7 @@
 package com.electronwill.niol
 
 import java.nio.ByteBuffer
-import java.nio.channels.{FileChannel, SocketChannel}
+import java.nio.channels.ScatteringByteChannel
 import java.nio.charset.Charset
 
 /**
@@ -47,6 +47,9 @@ trait NiolOutput {
 	// bulk put methods
 	def putBytes(array: Array[Byte]): Unit = putBytes(array, 0, array.length)
 	def putBytes(array: Array[Byte], offset: Int, length: Int): Unit
+	def putBytes(source: NiolInput): Unit
+	def putBytes(source: ByteBuffer): Unit
+	def putBytes(source: ScatteringByteChannel): Int
 
 	def putShorts(array: Array[Short]): Unit = putShorts(array, 0, array.length)
 	def putShorts(array: Array[Short], offset: Int, length: Int): Unit
@@ -63,10 +66,6 @@ trait NiolOutput {
 	def putDoubles(array: Array[Double]): Unit = putDoubles(array, 0, array.length)
 	def putDoubles(array: Array[Double], offset: Int, length: Int): Unit
 
-	def putBytes(source: NiolInput): Unit
-	def putBytes(source: ByteBuffer): Unit
-	def putBytes(source: SocketChannel): Int
-
 	// shortcuts
 	@inline final def >>:(bool: Boolean): Unit = putBool(bool)
 	@inline final def >>:(b: Byte): Unit = putByte(b)
@@ -80,4 +79,5 @@ trait NiolOutput {
 	@inline final def >>:(array: Array[Byte], offset: Int, length: Int): Unit = putBytes(array, offset, length)
 	@inline final def >>:(input: NiolInput): Unit = putBytes(input)
 	@inline final def >>:(bb: ByteBuffer): Unit = putBytes(bb)
+	@inline final def >>:(chan: ScatteringByteChannel): Int = putBytes(chan)
 }

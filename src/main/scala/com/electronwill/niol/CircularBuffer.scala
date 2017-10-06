@@ -1,7 +1,7 @@
 package com.electronwill.niol
 
 import java.nio.ByteBuffer
-import java.nio.channels.SocketChannel
+import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
 /**
  * @author TheElectronWill
@@ -10,7 +10,7 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 	require(buff.capacity > 0)
 
 	// buffer state
-	override protected[niol] val inputType: InputType = InputType.CIRCULAR_BUFFER
+	override protected[niol] val inputType: InputType = InputType.SPECIAL_BUFFER
 	override def capacity: Int = buff.capacity
 	override def writePos: Int = buff.writePos
 	override def writePos(pos: Int): Unit = buff.writePos(pos)
@@ -159,7 +159,7 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 		} else {
 			val bytes = getBytes(8)
 			bytes(0) << 56 | bytes(1) << 48 | bytes(2) << 40 | bytes(3) << 32 |
-			bytes(4) << 24 | bytes(5) << 16 | bytes(6) << 8 | bytes(7)
+				bytes(4) << 24 | bytes(5) << 16 | bytes(6) << 8 | bytes(7)
 		}
 	}
 	override def getFloat(): Float = java.lang.Float.intBitsToFloat(getInt())
@@ -193,6 +193,31 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 		}
 		updateWriteLimit()
 	}
+	override def getBytes(dest: NiolBuffer): Unit = {
+		dest.putBytes(buff)
+		if (readPos == capacity) {
+			circleReadPos()
+			dest.putBytes(buff)
+		} else {
+			updateWriteLimit()
+		}
+	}
+	override def getBytes(dest: GatheringByteChannel): Int = {
+		var count = 0
+		if (writePos > readPos) {
+			count = buff.getBytes(dest)
+			if (readPos == capacity) {
+				circleReadPos()
+			}
+		} else {
+			count = buff.getBytes(dest)
+			circleReadPos()
+			count += buff.getBytes(dest)
+		}
+		updateWriteLimit()
+		count
+	}
+
 	override def getShorts(array: Array[Short], offset: Int, length: Int): Unit = {
 		val bytes = getBytes(length * 2)
 		ByteBuffer.wrap(bytes).asShortBuffer().get(array, offset, length)
@@ -305,6 +330,17 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 		}
 		updateReadLimit()
 	}
+	override def putBytes(source: ScatteringByteChannel): Int = {
+		var count = buff.putBytes(source)
+		if (writePos == capacity) {
+			circleWritePos()
+			count += buff.putBytes(source)
+		} else {
+			updateReadLimit()
+		}
+		count
+	}
+
 	override def putShorts(array: Array[Short], offset: Int, length: Int): Unit = {
 		val bytes = ByteBuffer.allocate(length * 2)
 		bytes.asShortBuffer().put(array, offset, length)
@@ -329,35 +365,5 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 		val bytes = ByteBuffer.allocate(length * 8)
 		bytes.asDoubleBuffer().put(array, offset, length)
 		putBytes(bytes)
-	}
-	override def putBytes(source: NiolInput): Unit = {
-		source.inputType match {
-			case InputType.NIO_BUFFER =>
-				putBytes(source.asInstanceOf[NioBasedBuffer].readBuffer)
-			case InputType.COMPOSITE_BUFFER =>
-				val composite = source.asInstanceOf[CompositeBuffer]
-				putBytes(composite.first)
-				putBytes(composite.second)
-			case InputType.CIRCULAR_BUFFER =>
-				val circular = source.asInstanceOf[CircularBuffer]
-				putBytes(circular.buff)
-				if (readPos == capacity) {
-					circleReadPos()
-					putBytes(circular.buff) // put the remaining bytes
-				} else {
-					updateWriteLimit()
-				}
-			case _ => ??? //TODO
-		}
-	}
-	override def putBytes(source: SocketChannel): Int = {
-		var count = buff.putBytes(source)
-		if (writePos == capacity) {
-			circleWritePos()
-			count += buff.putBytes(source)
-		} else {
-			updateReadLimit()
-		}
-		count
 	}
 }

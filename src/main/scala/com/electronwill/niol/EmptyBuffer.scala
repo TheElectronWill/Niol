@@ -1,13 +1,13 @@
 package com.electronwill.niol
 import java.nio.ByteBuffer
-import java.nio.channels.SocketChannel
+import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
 /**
  * @author TheElectronWill
  */
 object EmptyBuffer extends NiolBuffer {
 	// buffer state
-	override protected[niol] val inputType: InputType = InputType.EMPTY
+	override protected[niol] val inputType: InputType = InputType.SPECIAL_BUFFER
 	override val capacity: Int = 0
 
 	override val writePos: Int = 0
@@ -38,8 +38,12 @@ object EmptyBuffer extends NiolBuffer {
 	override def getLong(): Long = ???
 	override def getFloat(): Float = ???
 	override def getDouble(): Double = ???
+
 	override def getBytes(array: Array[Byte], offset: Int, length: Int): Unit = ???
 	override def getBytes(bb: ByteBuffer): Unit = {}
+	override def getBytes(dest: NiolBuffer): Unit = {}
+	override def getBytes(dest: GatheringByteChannel) = 0
+
 	override def getShorts(array: Array[Short], offset: Int, length: Int): Unit = ???
 	override def getInts(array: Array[Int], offset: Int, length: Int): Unit = ???
 	override def getLongs(array: Array[Long], offset: Int, length: Int): Unit = ???
@@ -53,13 +57,15 @@ object EmptyBuffer extends NiolBuffer {
 	override def putLong(l: Long): Unit = ???
 	override def putFloat(f: Float): Unit = ???
 	override def putDouble(d: Double): Unit = ???
+
 	override def putBytes(array: Array[Byte], offset: Int, length: Int): Unit = ???
+	override def putBytes(source: NiolInput): Unit = {}
+	override def putBytes(source: ByteBuffer): Unit = {}
+	override def putBytes(source: ScatteringByteChannel): Int = 0
+
 	override def putShorts(array: Array[Short], offset: Int, length: Int): Unit = ???
 	override def putInts(array: Array[Int], offset: Int, length: Int): Unit = ???
 	override def putLongs(array: Array[Long], offset: Int, length: Int): Unit = ???
 	override def putFloats(array: Array[Float], offset: Int, length: Int): Unit = ???
 	override def putDoubles(array: Array[Double], offset: Int, length: Int): Unit = ???
-	override def putBytes(source: NiolInput): Unit = {}
-	override def putBytes(source: ByteBuffer): Unit = {}
-	override def putBytes(source: SocketChannel): Int = {}
 }

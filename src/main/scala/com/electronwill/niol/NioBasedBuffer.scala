@@ -1,7 +1,7 @@
 package com.electronwill.niol
 
 import java.nio.ByteBuffer
-import java.nio.channels.{FileChannel, SocketChannel}
+import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
 /**
  * A buffer based on a [[java.nio.ByteBuffer]].
@@ -67,6 +67,13 @@ final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
 	override def getBytes(bb: ByteBuffer): Unit = {
 		bb.put(readBuffer)
 	}
+	override def getBytes(dest: NiolBuffer): Unit = {
+		dest.putBytes(readBuffer)
+	}
+	override def getBytes(dest: GatheringByteChannel): Int = {
+		dest.write(readBuffer)
+	}
+
 	override def getShorts(array: Array[Short], offset: Int, length: Int): Unit = {
 		readBuffer.asShortBuffer().get(array, offset, length)
 	}
@@ -94,6 +101,13 @@ final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
 	override def putBytes(array: Array[Byte], offset: Int, length: Int): Unit = {
 		writeBuffer.put(array, offset, length)
 	}
+	override def putBytes(source: ByteBuffer): Unit = {
+		writeBuffer.put(source)
+	}
+	override def putBytes(source: ScatteringByteChannel): Int = {
+		source.read(writeBuffer)
+	}
+
 	override def putShorts(array: Array[Short], offset: Int, length: Int): Unit = {
 		writeBuffer.asShortBuffer().put(array, offset, length)
 	}
@@ -108,26 +122,5 @@ final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
 	}
 	override def putDoubles(array: Array[Double], offset: Int, length: Int): Unit = {
 		writeBuffer.asDoubleBuffer().put(array, offset, length)
-	}
-
-	override def putBytes(source: NiolInput): Unit = {
-		source.inputType match {
-			case InputType.NIO_BUFFER =>
-				writeBuffer.put(source.asInstanceOf[NioBasedBuffer].readBuffer)
-			case InputType.COMPOSITE_BUFFER =>
-				val composite = source.asInstanceOf[CompositeBuffer]
-				putBytes(composite.first)
-				putBytes(composite.second)
-			case InputType.FILE_CHANNEL =>
-				// TODO NIO transfer
-			case InputType.SOCKET_CHANNEL =>
-				// TODO socketChannel.read
-		}
-	}
-	override def putBytes(source: ByteBuffer): Unit = {
-		writeBuffer.put(source)
-	}
-	override def putBytes(source: SocketChannel): Unit = {
-		source.read(writeBuffer)
 	}
 }

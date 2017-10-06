@@ -1,6 +1,7 @@
 package com.electronwill.niol
 
 import java.nio.ByteBuffer
+import java.nio.channels.GatheringByteChannel
 import java.nio.charset.Charset
 
 /**
@@ -72,41 +73,42 @@ trait NiolInput {
 		array
 	}
 	def getBytes(array: Array[Byte], offset: Int, length: Int): Unit
-
 	def getBytes(bb: ByteBuffer): Unit
+	def getBytes(dest: NiolBuffer): Unit
+	def getBytes(dest: GatheringByteChannel): Int
 
+	def getShorts(array: Array[Short], offset: Int, length: Int): Unit
 	def getShorts(count: Int): Array[Short] = {
 		val array = new Array[Short](count)
 		getShorts(array, 0, count)
 		array
 	}
-	def getShorts(array: Array[Short], offset: Int, length: Int): Unit
 
+	def getInts(array: Array[Int], offset: Int, length: Int): Unit
 	def getInts(count: Int): Array[Int] = {
 		val array = new Array[Int](count)
 		getInts(array, 0, count)
 		array
 	}
-	def getInts(array: Array[Int], offset: Int, length: Int): Unit
 
+	def getLongs(array: Array[Long], offset: Int, length: Int): Unit
 	def getLongs(count: Int): Array[Long] = {
 		val array = new Array[Long](count)
 		getLongs(array, 0, count)
 		array
 	}
-	def getLongs(array: Array[Long], offset: Int, length: Int): Unit
 
+	def getFloats(array: Array[Float], offset: Int, length: Int): Unit
 	def getFloats(count: Int): Array[Float] = {
 		val array = new Array[Float](count)
 		getFloats(array, 0, count)
 		array
 	}
-	def getFloats(array: Array[Float], offset: Int, length: Int): Unit
 
+	def getDoubles(array: Array[Double], offset: Int, length: Int): Unit
 	def getDoubles(count: Int): Array[Double] = {
 		val array = new Array[Double](count)
 		getDoubles(array, 0, count)
 		array
 	}
-	def getDoubles(array: Array[Double], offset: Int, length: Int): Unit
 }
