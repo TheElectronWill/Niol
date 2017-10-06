@@ -17,6 +17,15 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 	}
 
 	override def canRead = notEnded
+
+	private[niol] def fileTransfer(dest: GatheringByteChannel): Unit = {
+		buffer.getBytes(dest)
+		val fileChannel = channel.asInstanceOf[FileChannel]
+		val pos = fileChannel.position()
+		val count = fileChannel.size() - pos
+		fileChannel.transferTo(pos, count, dest)
+	}
+
 	private def ensureReadAvail(minAvail: Int): Unit = {
 		if (buffer.readAvail < minAvail) {
 			readMore()
