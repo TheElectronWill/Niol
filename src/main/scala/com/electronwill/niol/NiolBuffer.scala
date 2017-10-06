@@ -8,6 +8,7 @@ import java.nio.ByteBuffer
 trait NiolBuffer extends NiolInput with NiolOutput {
 	// buffer state
 	def capacity: Int
+	override def canRead: Boolean = readAvail > 0
 
 	def writePos: Int
 	def writePos(pos: Int): Unit

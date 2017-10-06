@@ -10,6 +10,7 @@ import java.nio.charset.Charset
 trait NiolInput {
 	// input infos
 	protected[niol] val inputType: InputType
+	def canRead: Boolean
 
 	// get methods
 	def getByte(): Byte

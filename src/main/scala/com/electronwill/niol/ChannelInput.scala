@@ -10,11 +10,13 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 						 bufferCapacity: Int = 4096) extends NiolInput {
 
 	private[this] val buffer: NiolBuffer = new CircularBuffer(NiolBuffer.allocateDirect(bufferCapacity))
+	private[this] var notEnded = true
 
 	override protected[niol] val inputType: InputType = {
 		if (channel.isInstanceOf[FileChannel]) InputType.FILE_CHANNEL else InputType.OTHER_CHANNEL
 	}
 
+	override def canRead = notEnded
 	private def ensureReadAvail(minAvail: Int): Unit = {
 		if (buffer.readAvail < minAvail) {
 			readMore()
@@ -23,6 +25,7 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 	private def readMore(): Boolean = {
 		val read: Int = channel >>: buffer
 		if (read < 0) {
+			notEnded = false
 			channel.close()
 			//TODO throw exception
 		}
