@@ -61,7 +61,7 @@ trait NiolInput {
 	final def getUnsignedByte(): Int = getByte() & 0xFF
 	final def getUnsignedShort(): Int = getShort() & 0xFFFF
 
-	final def getString(bytesLength: Int, charset: Charset): String = {
+	def getString(bytesLength: Int, charset: Charset): String = {
 		val buff = ByteBuffer.wrap(getBytes(bytesLength))
 		charset.decode(buff).toString
 	}
