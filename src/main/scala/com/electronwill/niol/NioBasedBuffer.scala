@@ -61,11 +61,11 @@ final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
 	override def getFloat() = readBuffer.getFloat()
 	override def getDouble() = readBuffer.getDouble()
 
-	override def getBytes(array: Array[Byte], offset: Int, length: Int): Unit = {
-		readBuffer.get(array, offset, length)
+	override def getBytes(dest: Array[Byte], offset: Int, length: Int): Unit = {
+		readBuffer.get(dest, offset, length)
 	}
-	override def getBytes(bb: ByteBuffer): Unit = {
-		bb.put(readBuffer)
+	override def getBytes(dest: ByteBuffer): Unit = {
+		dest.put(readBuffer)
 	}
 	override def getBytes(dest: NiolBuffer): Unit = {
 		dest.putBytes(readBuffer)
@@ -74,20 +74,20 @@ final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
 		dest.write(readBuffer)
 	}
 
-	override def getShorts(array: Array[Short], offset: Int, length: Int): Unit = {
-		readBuffer.asShortBuffer().get(array, offset, length)
+	override def getShorts(dest: Array[Short], offset: Int, length: Int): Unit = {
+		readBuffer.asShortBuffer().get(dest, offset, length)
 	}
-	override def getInts(array: Array[Int], offset: Int, length: Int): Unit = {
-		readBuffer.asIntBuffer().get(array, offset, length)
+	override def getInts(dest: Array[Int], offset: Int, length: Int): Unit = {
+		readBuffer.asIntBuffer().get(dest, offset, length)
 	}
-	override def getLongs(array: Array[Long], offset: Int, length: Int): Unit = {
-		readBuffer.asLongBuffer().get(array, offset, length)
+	override def getLongs(dest: Array[Long], offset: Int, length: Int): Unit = {
+		readBuffer.asLongBuffer().get(dest, offset, length)
 	}
-	override def getFloats(array: Array[Float], offset: Int, length: Int): Unit = {
-		readBuffer.asFloatBuffer().get(array, offset, length)
+	override def getFloats(dest: Array[Float], offset: Int, length: Int): Unit = {
+		readBuffer.asFloatBuffer().get(dest, offset, length)
 	}
-	override def getDoubles(array: Array[Double], offset: Int, length: Int): Unit = {
-		readBuffer.asDoubleBuffer().get(array, offset, length)
+	override def getDoubles(dest: Array[Double], offset: Int, length: Int): Unit = {
+		readBuffer.asDoubleBuffer().get(dest, offset, length)
 	}
 
 	// put methods
@@ -98,29 +98,29 @@ final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
 	override def putFloat(f: Float): Unit = writeBuffer.putFloat(f)
 	override def putDouble(d: Double): Unit = writeBuffer.putDouble(d)
 
-	override def putBytes(array: Array[Byte], offset: Int, length: Int): Unit = {
-		writeBuffer.put(array, offset, length)
+	override def putBytes(src: Array[Byte], offset: Int, length: Int): Unit = {
+		writeBuffer.put(src, offset, length)
 	}
-	override def putBytes(source: ByteBuffer): Unit = {
-		writeBuffer.put(source)
+	override def putBytes(src: ByteBuffer): Unit = {
+		writeBuffer.put(src)
 	}
-	override def putBytes(source: ScatteringByteChannel): Int = {
-		source.read(writeBuffer)
+	override def putBytes(src: ScatteringByteChannel): Int = {
+		src.read(writeBuffer)
 	}
 
-	override def putShorts(array: Array[Short], offset: Int, length: Int): Unit = {
-		writeBuffer.asShortBuffer().put(array, offset, length)
+	override def putShorts(src: Array[Short], offset: Int, length: Int): Unit = {
+		writeBuffer.asShortBuffer().put(src, offset, length)
 	}
-	override def putInts(array: Array[Int], offset: Int, length: Int): Unit = {
-		writeBuffer.asIntBuffer().put(array, offset, length)
+	override def putInts(src: Array[Int], offset: Int, length: Int): Unit = {
+		writeBuffer.asIntBuffer().put(src, offset, length)
 	}
-	override def putLongs(array: Array[Long], offset: Int, length: Int): Unit = {
-		writeBuffer.asLongBuffer().put(array, offset, length)
+	override def putLongs(src: Array[Long], offset: Int, length: Int): Unit = {
+		writeBuffer.asLongBuffer().put(src, offset, length)
 	}
-	override def putFloats(array: Array[Float], offset: Int, length: Int): Unit = {
-		writeBuffer.asFloatBuffer().put(array, offset, length)
+	override def putFloats(src: Array[Float], offset: Int, length: Int): Unit = {
+		writeBuffer.asFloatBuffer().put(src, offset, length)
 	}
-	override def putDoubles(array: Array[Double], offset: Int, length: Int): Unit = {
-		writeBuffer.asDoubleBuffer().put(array, offset, length)
+	override def putDoubles(src: Array[Double], offset: Int, length: Int): Unit = {
+		writeBuffer.asDoubleBuffer().put(src, offset, length)
 	}
 }

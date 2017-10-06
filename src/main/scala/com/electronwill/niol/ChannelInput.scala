@@ -56,7 +56,7 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 		ensureReadAvail(8)
 		buffer.getDouble()
 	}
-	override def getBytes(array: Array[Byte], offset: Int, length: Int): Unit = {
+	override def getBytes(dest: Array[Byte], offset: Int, length: Int): Unit = {
 		var remaining = length
 		do {
 			if (buffer.readAvail == 0) {
@@ -64,14 +64,14 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 			}
 			val l = Math.min(remaining, buffer.readAvail)
 			val off = length - remaining
-			buffer.getBytes(array, off, l)
+			buffer.getBytes(dest, off, l)
 			remaining -= l
 		} while (remaining > 0)
 	}
-	override def getBytes(bb: ByteBuffer): Unit = {
+	override def getBytes(dest: ByteBuffer): Unit = {
 		do {
-			buffer.getBytes(bb)
-		} while(bb.hasRemaining && readMore())
+			buffer.getBytes(dest)
+		} while(dest.hasRemaining && readMore())
 	}
 	override def getBytes(dest: NiolBuffer): Unit = {
 		do {
@@ -86,7 +86,7 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 		count
 	}
 
-	override def getShorts(array: Array[Short], offset: Int, length: Int): Unit = {
+	override def getShorts(dest: Array[Short], offset: Int, length: Int): Unit = {
 		var remaining = length
 		do {
 			if (buffer.readAvail == 0) {
@@ -94,11 +94,11 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 			}
 			val l = Math.min(remaining, buffer.readAvail)
 			val offset = length - remaining
-			buffer.getShorts(array, offset, l)
+			buffer.getShorts(dest, offset, l)
 			remaining -= l
 		} while (remaining > 0)
 	}
-	override def getInts(array: Array[Int], offset: Int, length: Int): Unit = {
+	override def getInts(dest: Array[Int], offset: Int, length: Int): Unit = {
 		var remaining = length
 		do {
 			if (buffer.readAvail == 0) {
@@ -106,11 +106,11 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 			}
 			val l = Math.min(remaining, buffer.readAvail)
 			val offset = length - remaining
-			buffer.getInts(array, offset, l)
+			buffer.getInts(dest, offset, l)
 			remaining -= l
 		} while (remaining > 0)
 	}
-	override def getLongs(array: Array[Long], offset: Int, length: Int): Unit = {
+	override def getLongs(dest: Array[Long], offset: Int, length: Int): Unit = {
 		var remaining = length
 		do {
 			if (buffer.readAvail == 0) {
@@ -118,11 +118,11 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 			}
 			val l = Math.min(remaining, buffer.readAvail)
 			val offset = length - remaining
-			buffer.getLongs(array, offset, l)
+			buffer.getLongs(dest, offset, l)
 			remaining -= l
 		} while (remaining > 0)
 	}
-	override def getFloats(array: Array[Float], offset: Int, length: Int): Unit = {
+	override def getFloats(dest: Array[Float], offset: Int, length: Int): Unit = {
 		var remaining = length
 		do {
 			if (buffer.readAvail == 0) {
@@ -130,11 +130,11 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 			}
 			val l = Math.min(remaining, buffer.readAvail)
 			val offset = length - remaining
-			buffer.getFloats(array, offset, l)
+			buffer.getFloats(dest, offset, l)
 			remaining -= l
 		} while (remaining > 0)
 	}
-	override def getDoubles(array: Array[Double], offset: Int, length: Int): Unit = {
+	override def getDoubles(dest: Array[Double], offset: Int, length: Int): Unit = {
 		var remaining = length
 		do {
 			if (buffer.readAvail == 0) {
@@ -142,7 +142,7 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 			}
 			val l = Math.min(remaining, buffer.readAvail)
 			val offset = length - remaining
-			buffer.getDoubles(array, offset, l)
+			buffer.getDoubles(dest, offset, l)
 			remaining -= l
 		} while (remaining > 0)
 	}

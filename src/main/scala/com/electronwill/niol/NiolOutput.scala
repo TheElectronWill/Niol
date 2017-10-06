@@ -45,26 +45,26 @@ trait NiolOutput {
 	final def putString(str: String, charset: Charset): Unit = charset.encode(str) >>: this
 
 	// bulk put methods
-	def putBytes(array: Array[Byte]): Unit = putBytes(array, 0, array.length)
-	def putBytes(array: Array[Byte], offset: Int, length: Int): Unit
-	def putBytes(source: NiolInput): Unit
-	def putBytes(source: ByteBuffer): Unit
-	def putBytes(source: ScatteringByteChannel): Int
+	def putBytes(src: Array[Byte]): Unit = putBytes(src, 0, src.length)
+	def putBytes(src: Array[Byte], offset: Int, length: Int): Unit
+	def putBytes(src: NiolInput): Unit
+	def putBytes(src: ByteBuffer): Unit
+	def putBytes(src: ScatteringByteChannel): Int
 
-	def putShorts(array: Array[Short]): Unit = putShorts(array, 0, array.length)
-	def putShorts(array: Array[Short], offset: Int, length: Int): Unit
+	def putShorts(src: Array[Short]): Unit = putShorts(src, 0, src.length)
+	def putShorts(src: Array[Short], offset: Int, length: Int): Unit
 
-	def putInts(array: Array[Int]): Unit = putInts(array, 0, array.length)
-	def putInts(array: Array[Int], offset: Int, length: Int): Unit
+	def putInts(src: Array[Int]): Unit = putInts(src, 0, src.length)
+	def putInts(src: Array[Int], offset: Int, length: Int): Unit
 
-	def putLongs(array: Array[Long]): Unit = putLongs(array, 0, array.length)
-	def putLongs(array: Array[Long], offset: Int, length: Int): Unit
+	def putLongs(src: Array[Long]): Unit = putLongs(src, 0, src.length)
+	def putLongs(src: Array[Long], offset: Int, length: Int): Unit
 
-	def putFloats(array: Array[Float]): Unit = putFloats(array, 0, array.length)
-	def putFloats(array: Array[Float], offset: Int, length: Int): Unit
+	def putFloats(src: Array[Float]): Unit = putFloats(src, 0, src.length)
+	def putFloats(src: Array[Float], offset: Int, length: Int): Unit
 
-	def putDoubles(array: Array[Double]): Unit = putDoubles(array, 0, array.length)
-	def putDoubles(array: Array[Double], offset: Int, length: Int): Unit
+	def putDoubles(src: Array[Double]): Unit = putDoubles(src, 0, src.length)
+	def putDoubles(src: Array[Double], offset: Int, length: Int): Unit
 
 	// shortcuts
 	@inline final def >>:(bool: Boolean): Unit = putBool(bool)

@@ -162,24 +162,24 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 	}
 
 	// bulk get methods
-	override def getBytes(array: Array[Byte], offset: Int, length: Int): Unit = {
+	override def getBytes(dest: Array[Byte], offset: Int, length: Int): Unit = {
 		if (currentRead.eq(second) || first.readPos + length < first.capacity) {
-			currentRead.getBytes(array, offset, length)
+			currentRead.getBytes(dest, offset, length)
 		} else {
 			val firstLength = Math.min(length, first.capacity - first.readPos)
 			val secondLength = length - firstLength
-			first.getBytes(array, offset, firstLength)
-			second.getBytes(array, offset + firstLength, secondLength)
+			first.getBytes(dest, offset, firstLength)
+			second.getBytes(dest, offset + firstLength, secondLength)
 			currentRead = second
 		}
 	}
-	override def getBytes(bb: ByteBuffer): Unit = {
-		val length = Math.min(readLimit - readPos, bb.remaining)
+	override def getBytes(dest: ByteBuffer): Unit = {
+		val length = Math.min(readLimit - readPos, dest.remaining)
 		if (currentRead.eq(second) || first.readPos + length < first.capacity) {
-			currentRead.getBytes(bb)
+			currentRead.getBytes(dest)
 		} else {
-			first.getBytes(bb)
-			second.getBytes(bb)
+			first.getBytes(dest)
+			second.getBytes(dest)
 			currentRead = second
 		}
 	}
@@ -201,25 +201,25 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 		}
 	}
 
-	override def getShorts(array: Array[Short], offset: Int, length: Int): Unit = {
+	override def getShorts(dest: Array[Short], offset: Int, length: Int): Unit = {
 		val bytes = getBytes(length * 2)
-		ByteBuffer.wrap(bytes).asShortBuffer().get(array, offset, length)
+		ByteBuffer.wrap(bytes).asShortBuffer().get(dest, offset, length)
 	}
-	override def getInts(array: Array[Int], offset: Int, length: Int): Unit = {
+	override def getInts(dest: Array[Int], offset: Int, length: Int): Unit = {
 		val bytes = getBytes(length * 4)
-		ByteBuffer.wrap(bytes).asIntBuffer().get(array, offset, length)
+		ByteBuffer.wrap(bytes).asIntBuffer().get(dest, offset, length)
 	}
-	override def getLongs(array: Array[Long], offset: Int, length: Int): Unit = {
+	override def getLongs(dest: Array[Long], offset: Int, length: Int): Unit = {
 		val bytes = getBytes(length * 8)
-		ByteBuffer.wrap(bytes).asLongBuffer().get(array, offset, length)
+		ByteBuffer.wrap(bytes).asLongBuffer().get(dest, offset, length)
 	}
-	override def getFloats(array: Array[Float], offset: Int, length: Int): Unit = {
+	override def getFloats(dest: Array[Float], offset: Int, length: Int): Unit = {
 		val bytes = getBytes(length * 4)
-		ByteBuffer.wrap(bytes).asFloatBuffer().get(array, offset, length)
+		ByteBuffer.wrap(bytes).asFloatBuffer().get(dest, offset, length)
 	}
-	override def getDoubles(array: Array[Double], offset: Int, length: Int): Unit = {
+	override def getDoubles(dest: Array[Double], offset: Int, length: Int): Unit = {
 		val bytes = getBytes(length * 8)
-		ByteBuffer.wrap(bytes).asDoubleBuffer().get(array, offset, length)
+		ByteBuffer.wrap(bytes).asDoubleBuffer().get(dest, offset, length)
 	}
 
 	// put methods
@@ -284,63 +284,63 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 	}
 
 	// bulk put methods
-	override def putBytes(array: Array[Byte], offset: Int, length: Int): Unit = {
+	override def putBytes(src: Array[Byte], offset: Int, length: Int): Unit = {
 		if (currentWrite.eq(second) || first.writePos + length < first.capacity) {
-			currentWrite.putBytes(array, offset, length)
+			currentWrite.putBytes(src, offset, length)
 		} else {
 			val firstLength = Math.min(length, first.capacity - first.readPos)
 			val secondLength = length - firstLength
-			first.putBytes(array, offset, firstLength)
-			second.putBytes(array, offset + firstLength, secondLength)
+			first.putBytes(src, offset, firstLength)
+			second.putBytes(src, offset + firstLength, secondLength)
 			currentWrite = second
 		}
 	}
-	override def putShorts(array: Array[Short], offset: Int, length: Int): Unit = {
+	override def putShorts(src: Array[Short], offset: Int, length: Int): Unit = {
 		val bytes = ByteBuffer.allocate(length * 2)
-		bytes.asShortBuffer().put(array, offset, length)
+		bytes.asShortBuffer().put(src, offset, length)
 		putBytes(bytes)
 	}
-	override def putInts(array: Array[Int], offset: Int, length: Int): Unit = {
+	override def putInts(src: Array[Int], offset: Int, length: Int): Unit = {
 		val bytes = ByteBuffer.allocate(length * 4)
-		bytes.asIntBuffer().put(array, offset, length)
+		bytes.asIntBuffer().put(src, offset, length)
 		putBytes(bytes)
 	}
-	override def putLongs(array: Array[Long], offset: Int, length: Int): Unit = {
+	override def putLongs(src: Array[Long], offset: Int, length: Int): Unit = {
 		val bytes = ByteBuffer.allocate(length * 8)
-		bytes.asLongBuffer().put(array, offset, length)
+		bytes.asLongBuffer().put(src, offset, length)
 		putBytes(bytes)
 	}
-	override def putFloats(array: Array[Float], offset: Int, length: Int): Unit = {
+	override def putFloats(src: Array[Float], offset: Int, length: Int): Unit = {
 		val bytes = ByteBuffer.allocate(length * 4)
-		bytes.asFloatBuffer().put(array, offset, length)
+		bytes.asFloatBuffer().put(src, offset, length)
 		putBytes(bytes)
 	}
-	override def putDoubles(array: Array[Double], offset: Int, length: Int): Unit = {
+	override def putDoubles(src: Array[Double], offset: Int, length: Int): Unit = {
 		val bytes = ByteBuffer.allocate(length * 8)
-		bytes.asDoubleBuffer().put(array, offset, length)
+		bytes.asDoubleBuffer().put(src, offset, length)
 		putBytes(bytes)
 	}
-	override def putBytes(source: ByteBuffer): Unit = {
-		val length = Math.min(writeLimit - writePos, source.remaining)
+	override def putBytes(src: ByteBuffer): Unit = {
+		val length = Math.min(writeLimit - writePos, src.remaining)
 		if (length == 0) return
 		if (currentWrite.eq(second) || first.readPos + length < first.capacity) {
-			currentWrite.putBytes(source)
+			currentWrite.putBytes(src)
 		} else {
-			first.putBytes(source)
-			second.putBytes(source)
+			first.putBytes(src)
+			second.putBytes(src)
 			currentWrite = second
 		}
 	}
-	override def putBytes(source: ScatteringByteChannel): Int = {
+	override def putBytes(src: ScatteringByteChannel): Int = {
 		if (currentWrite eq second) {
-			second.putBytes(source)
+			second.putBytes(src)
 		} else {
 			if (first.inputType == InputType.NIO_BUFFER &&
 				second.inputType == InputType.NIO_BUFFER) {
-				source.read(Array(first.asInstanceOf[NioBasedBuffer].readBuffer,
+				src.read(Array(first.asInstanceOf[NioBasedBuffer].readBuffer,
 					second.asInstanceOf[NioBasedBuffer].readBuffer)).toInt
 			} else {
-				first.putBytes(source) + second.putBytes(source)
+				first.putBytes(src) + second.putBytes(src)
 			}
 		}
 	}

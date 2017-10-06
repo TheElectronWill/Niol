@@ -79,7 +79,7 @@ trait NiolBuffer extends NiolInput with NiolOutput {
 	@inline final def +++(buffer: NiolBuffer): NiolBuffer = concatCopy(buffer)
 
 	// overrides
-	override def putBytes(source: NiolInput): Unit = source.getBytes(this)
+	override def putBytes(src: NiolInput): Unit = src.getBytes(this)
 }
 object NiolBuffer {
 	def allocateHeap(capacity: Int): NiolBuffer = wrap(ByteBuffer.allocate(capacity))

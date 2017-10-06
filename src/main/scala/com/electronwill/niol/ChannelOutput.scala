@@ -46,7 +46,7 @@ final class ChannelOutput(private[this] val channel: GatheringByteChannel,
 		buffer.putDouble(d)
 	}
 
-	override def putBytes(array: Array[Byte], offset: Int, length: Int): Unit = {
+	override def putBytes(src: Array[Byte], offset: Int, length: Int): Unit = {
 		var remaining = length
 		do {
 			if (!buffer.hasRemaining) {
@@ -54,24 +54,24 @@ final class ChannelOutput(private[this] val channel: GatheringByteChannel,
 			}
 			val l = Math.min(remaining, buffer.position)
 			val off = length - remaining
-			buffer.put(array, off, l)
+			buffer.put(src, off, l)
 			remaining += l
 		} while (remaining > 0)
 	}
-	override def putBytes(source: NiolInput): Unit = {
-		var remaining = length
+	override def putBytes(src: NiolInput): Unit = {
+		var remaining: Int = ???
 		do {
 
-		}
+		} while (remaining > 0)
 	}
-	override def putBytes(source: ByteBuffer): Unit = ???
-	override def putBytes(source: ScatteringByteChannel): Int = ???
+	override def putBytes(src: ByteBuffer): Unit = ???
+	override def putBytes(src: ScatteringByteChannel): Int = ???
 
-	override def putShorts(array: Array[Short], offset: Int, length: Int): Unit = ???
-	override def putInts(array: Array[Int], offset: Int, length: Int): Unit = ???
-	override def putLongs(array: Array[Long], offset: Int, length: Int): Unit = ???
-	override def putFloats(array: Array[Float], offset: Int, length: Int): Unit = ???
-	override def putDoubles(array: Array[Double], offset: Int, length: Int): Unit = ???
+	override def putShorts(src: Array[Short], offset: Int, length: Int): Unit = ???
+	override def putInts(src: Array[Int], offset: Int, length: Int): Unit = ???
+	override def putLongs(src: Array[Long], offset: Int, length: Int): Unit = ???
+	override def putFloats(src: Array[Float], offset: Int, length: Int): Unit = ???
+	override def putDoubles(src: Array[Double], offset: Int, length: Int): Unit = ???
 
 	def flush(): Unit = {
 		channel.write(buffer)
