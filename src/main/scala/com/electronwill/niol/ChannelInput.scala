@@ -9,7 +9,9 @@ import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChann
 final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 						 bufferCapacity: Int = 4096) extends NiolInput {
 
-	private[this] val buffer: NiolBuffer = new CircularBuffer(NiolBuffer.allocateDirect(bufferCapacity))
+	private[this] val buffer: NiolBuffer = {
+		new CircularBuffer(NiolBuffer.allocateDirect(bufferCapacity))
+	}
 	private[this] var notEnded = true
 
 	override protected[niol] val inputType: InputType = {
@@ -18,7 +20,7 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 
 	override def canRead = notEnded
 
-	private[niol] def fileTransfer(dest: GatheringByteChannel): Unit = {
+	private[niol] def fileTransfer(dest: GatheringByteChannel): Long = {
 		buffer.getBytes(dest)
 		val fileChannel = channel.asInstanceOf[FileChannel]
 		val pos = fileChannel.position()
@@ -83,19 +85,23 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 	override def getBytes(dest: ByteBuffer): Unit = {
 		do {
 			buffer.getBytes(dest)
-		} while(dest.hasRemaining && readMore())
+		} while (dest.hasRemaining && readMore())
 	}
 	override def getBytes(dest: NiolBuffer): Unit = {
 		do {
 			dest.putBytes(buffer)
-		} while(dest.writeAvail > 0 && readMore())
+		} while (dest.writeAvail > 0 && readMore())
 	}
 	override def getBytes(dest: GatheringByteChannel): Int = {
-		var count = 0
-		do {
-			count += buffer.getBytes(dest)
-		} while(readMore())
-		count
+		if (inputType == InputType.FILE_CHANNEL && dest.isInstanceOf[FileChannel]) {
+			fileTransfer(dest).toInt
+		} else {
+			var count = 0
+			do {
+				count += buffer.getBytes(dest)
+			} while (readMore())
+			count
+		}
 	}
 
 	override def getShorts(dest: Array[Short], offset: Int, length: Int): Unit = {
