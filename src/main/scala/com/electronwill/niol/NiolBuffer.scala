@@ -127,4 +127,14 @@ trait NiolBuffer extends NiolInput with NiolOutput {
 	// overrides
 	override def putBytes(src: NiolInput): Unit = src.getBytes(this)
 
+	/** @return a String containing the informations about the state of this buffer. */
+	override def toString: String =
+		s"""NiolBuffer(
+		   | capacity=$capacity;
+		   | writePos=$writePos,
+		   | writeLimit=$writeLimit,
+		   | writeAvail=$writeAvail;
+		   | readPos=$readPos,
+		   | readLimit=$readLimit,
+		   | readAvail=$readAvail)""".stripMargin
 }
