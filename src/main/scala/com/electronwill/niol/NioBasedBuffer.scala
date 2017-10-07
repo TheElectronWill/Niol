@@ -31,8 +31,9 @@ final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
 	override def resetReadPos() = readBuffer.reset()
 
 	// buffer operations
-	override def duplicate: NiolBuffer = new NioBasedBuffer(writeBuffer.duplicate(), readBuffer
-																					 .duplicate())
+	override def duplicate: NiolBuffer = {
+		new NioBasedBuffer(writeBuffer.duplicate(), readBuffer.duplicate())
+	}
 
 	override def copy(begin: Int, end: Int): NiolBuffer = {
 		val copy = NiolBuffer.allocateHeap(end - begin)

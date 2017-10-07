@@ -73,11 +73,13 @@ trait NiolInput {
 		getBytes(array, 0, count)
 		array
 	}
+	def getBytes(dest: Array[Byte]) = getBytes(dest, 0, dest.length)
 	def getBytes(dest: Array[Byte], offset: Int, length: Int): Unit
 	def getBytes(dest: ByteBuffer): Unit
 	def getBytes(dest: NiolBuffer): Unit
 	def getBytes(dest: GatheringByteChannel): Int
 
+	def getShorts(dest: Array[Short]) = getShorts(dest, 0, dest.length)
 	def getShorts(dest: Array[Short], offset: Int, length: Int): Unit
 	def getShorts(count: Int): Array[Short] = {
 		val array = new Array[Short](count)
@@ -85,6 +87,7 @@ trait NiolInput {
 		array
 	}
 
+	def getInts(dest: Array[Int]) = getInts(dest, 0, dest.length)
 	def getInts(dest: Array[Int], offset: Int, length: Int): Unit
 	def getInts(count: Int): Array[Int] = {
 		val array = new Array[Int](count)
@@ -92,6 +95,7 @@ trait NiolInput {
 		array
 	}
 
+	def getLongs(dest: Array[Long]) = getLongs(dest, 0, dest.length)
 	def getLongs(dest: Array[Long], offset: Int, length: Int): Unit
 	def getLongs(count: Int): Array[Long] = {
 		val array = new Array[Long](count)
@@ -99,6 +103,7 @@ trait NiolInput {
 		array
 	}
 
+	def getFloats(dest: Array[Float]) = getFloats(dest, 0, dest.length)
 	def getFloats(dest: Array[Float], offset: Int, length: Int): Unit
 	def getFloats(count: Int): Array[Float] = {
 		val array = new Array[Float](count)
@@ -106,10 +111,29 @@ trait NiolInput {
 		array
 	}
 
+	def getDoubles(dest: Array[Double]) = getDoubles(dest, 0, dest.length)
 	def getDoubles(dest: Array[Double], offset: Int, length: Int): Unit
 	def getDoubles(count: Int): Array[Double] = {
 		val array = new Array[Double](count)
 		getDoubles(array, 0, count)
 		array
 	}
+
+	// shortcuts
+	@inline final def <<:(dest: Array[Byte]): Unit = getBytes(dest)
+	@inline final def <<:(dest: Array[Byte], offset: Int, length: Int): Unit = getBytes(dest, offset, length)
+	@inline final def <<:(array: Array[Short]): Unit = getShorts(array)
+	@inline final def <<:(array: Array[Short], offset: Int, length: Int): Unit = getShorts(array, offset, length)
+	@inline final def <<:(array: Array[Int]): Unit = getInts(array)
+	@inline final def <<:(array: Array[Int], offset: Int, length: Int): Unit = getInts(array, offset, length)
+	@inline final def <<:(array: Array[Long]): Unit = getLongs(array)
+	@inline final def <<:(array: Array[Long], offset: Int, length: Int): Unit = getLongs(array, offset, length)
+	@inline final def <<:(array: Array[Float]): Unit = getFloats(array)
+	@inline final def <<:(array: Array[Float], offset: Int, length: Int): Unit = getFloats(array, offset, length)
+	@inline final def <<:(array: Array[Double]): Unit = getDoubles(array)
+	@inline final def <<:(array: Array[Double], offset: Int, length: Int): Unit = getDoubles(array, offset, length)
+
+	@inline final def <<:(dest: ByteBuffer): Unit = getBytes(dest)
+	@inline final def <<:(dest: NiolBuffer): Unit = getBytes(dest)
+	@inline final def <<:(dest: GatheringByteChannel): Unit = getBytes(dest)
 }
