@@ -88,12 +88,15 @@ final class ChannelOutput(private[this] val channel: GatheringByteChannel,
 				fc.transferTo(pos, count, channel).toInt
 			case _ =>
 				var read = 1
+				var totalRead = 0
 				do {
 					if (!buffer.hasRemaining) {
 						flush()
 					}
 					read = src.read(buffer)
+					totalRead += read
 				} while (read > 0)
+				totalRead
 		}
 	}
 
