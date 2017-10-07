@@ -10,7 +10,6 @@ import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
  */
 final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
 						   private[niol] val readBuffer: ByteBuffer) extends NiolBuffer {
-
 	// buffer state
 	override protected[niol] val inputType: InputType = InputType.NIO_BUFFER
 
@@ -36,14 +35,14 @@ final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
 	}
 
 	override def copy(begin: Int, end: Int): NiolBuffer = {
-		val copy = NiolBuffer.allocateHeap(end - begin)
+		val copy = NioBasedBuffer.allocateHeap(end - begin)
 		bbView(begin, end) >>: copy
 		copy
 	}
 
 	override def sub(begin: Int, end: Int): NiolBuffer = {
 		val buff = bbView(begin, end).slice()
-		NiolBuffer.wrap(buff)
+		NioBasedBuffer.wrap(buff)
 	}
 
 	private def bbView(begin: Int, end: Int): ByteBuffer = {
@@ -123,5 +122,17 @@ final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
 	}
 	override def putDoubles(src: Array[Double], offset: Int, length: Int): Unit = {
 		writeBuffer.asDoubleBuffer().put(src, offset, length)
+	}
+}
+object NioBasedBuffer {
+	def allocateHeap(capacity: Int): NiolBuffer = wrap(ByteBuffer.allocate(capacity))
+
+	def allocateDirect(capacity: Int): NiolBuffer = wrap(ByteBuffer.allocateDirect(capacity))
+
+	def wrap(writeBuffer: ByteBuffer): NiolBuffer = {
+		val readBuffer = writeBuffer.duplicate()
+		readBuffer.position(0)
+		readBuffer.limit(writeBuffer.position())
+		new NioBasedBuffer(writeBuffer, readBuffer)
 	}
 }

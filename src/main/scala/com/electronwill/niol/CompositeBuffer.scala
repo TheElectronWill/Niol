@@ -97,7 +97,7 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 		new CompositeBuffer(first.duplicate, second.duplicate)
 	}
 	override def copy(begin: Int, end: Int): NiolBuffer = {
-		val copy = NiolBuffer.allocateHeap(end - begin)
+		val copy = NioBasedBuffer.allocateHeap(end - begin)
 		if (begin < first.capacity) {
 			val firstEnd = Math.min(first.capacity, end)
 			val secondEnd = end - firstEnd

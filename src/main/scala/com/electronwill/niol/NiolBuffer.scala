@@ -1,7 +1,5 @@
 package com.electronwill.niol
 
-import java.nio.ByteBuffer
-
 /**
  * @author TheElectronWill
  */
@@ -81,14 +79,5 @@ trait NiolBuffer extends NiolInput with NiolOutput {
 
 	// overrides
 	override def putBytes(src: NiolInput): Unit = src.getBytes(this)
-}
-object NiolBuffer {
-	def allocateHeap(capacity: Int): NiolBuffer = wrap(ByteBuffer.allocate(capacity))
 
-	def allocateDirect(capacity: Int): NiolBuffer = wrap(ByteBuffer.allocateDirect(capacity))
-
-	def wrap(writeBuffer: ByteBuffer): NiolBuffer = {
-		val readBuffer = writeBuffer.duplicate()
-		new NioBasedBuffer(writeBuffer, readBuffer)
-	}
 }

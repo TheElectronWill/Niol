@@ -10,7 +10,7 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 						 bufferCapacity: Int = 4096) extends NiolInput {
 
 	private[this] val buffer: NiolBuffer = {
-		new CircularBuffer(NiolBuffer.allocateDirect(bufferCapacity))
+		new CircularBuffer(NioBasedBuffer.allocateDirect(bufferCapacity))
 	}
 	private[this] var notEnded = true
 
