@@ -52,6 +52,17 @@ final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
 		buff
 	}
 
+	override def compact(): Unit = {
+		readBuffer.limit(writePos)
+		readBuffer.compact() // move [readPos, writePos[ to [0, newWritePos[
+
+		val newWritePos = readBuffer.position()
+		writeBuffer.limit(capacity)
+		writeBuffer.position(newWritePos)
+		readBuffer.position(0)
+		readBuffer.limit(newWritePos)
+	}
+
 	// get methods
 	override def getByte() = readBuffer.get()
 	override def getShort() = readBuffer.getShort()

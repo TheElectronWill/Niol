@@ -73,6 +73,20 @@ trait NiolBuffer extends NiolInput with NiolOutput {
 		}
 	}
 
+	/** Compacts this buffer by moving its readable content to position 0 if possible. */
+	def compact(): Unit
+
+	/**
+	 * Clears this buffer. readPos, readLimit and writePos are set to 0 and the writeLimit is
+	 * set to the capacity.
+	 */
+	def clear() = {
+		readPos(0)
+		readLimit(0)
+		writePos(0)
+		writeLimit(capacity)
+	}
+
 	// shortcuts
 	@inline final def +(buffer: NiolBuffer): NiolBuffer = concat(buffer)
 	@inline final def +++(buffer: NiolBuffer): NiolBuffer = concatCopy(buffer)

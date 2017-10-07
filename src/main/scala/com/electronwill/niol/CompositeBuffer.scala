@@ -122,6 +122,13 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 		}
 	}
 
+	override def compact(): Unit = {
+		val data = sub(readPos, writePos)
+		clear()
+		putBytes(data)
+	}
+
+
 	// get methods
 	override def getByte(): Byte = {
 		val b = currentRead.getByte()
