@@ -1,7 +1,9 @@
-package com.electronwill.niol
+package com.electronwill.niol.buffer
 
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 import java.nio.{ByteBuffer, InvalidMarkException}
+
+import com.electronwill.niol.InputType
 
 /**
  * A composite buffer made of two buffers A and B. It acts as a continuous buffer containing the

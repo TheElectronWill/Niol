@@ -1,7 +1,9 @@
-package com.electronwill.niol
+package com.electronwill.niol.buffer
 
 import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
+
+import com.electronwill.niol.InputType
 
 /**
  * A straight buffer enforcing 0 <= readPos < readLimit = writePos < writeLimit

@@ -1,9 +1,9 @@
-package com.electronwill
+package com.electronwill.niol
 
 /**
  * @author TheElectronWill
  */
-package object niol {
+package object buffer {
 	def printBuffer(buff: NiolBuffer): Unit = {
 		println(s"readPos: ${buff.readPos}, writePos: ${buff.writePos}, " +
 			s"readLimit: ${buff.readLimit}, writeLimit: ${buff.writeLimit}, " +

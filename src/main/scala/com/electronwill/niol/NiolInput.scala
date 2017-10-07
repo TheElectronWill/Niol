@@ -4,6 +4,8 @@ import java.nio.ByteBuffer
 import java.nio.channels.GatheringByteChannel
 import java.nio.charset.Charset
 
+import com.electronwill.niol.buffer.NiolBuffer
+
 /**
  * @author TheElectronWill
  */

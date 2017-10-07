@@ -1,4 +1,4 @@
-package com.electronwill.niol
+package com.electronwill.niol.buffer
 
 import java.nio.charset.StandardCharsets
 

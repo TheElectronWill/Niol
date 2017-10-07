@@ -1,7 +1,9 @@
-package com.electronwill.niol
+package com.electronwill.niol.buffer
 
 import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
+
+import com.electronwill.niol.InputType
 
 /**
  * A buffer based on a [[java.nio.ByteBuffer]].

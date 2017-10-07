@@ -1,4 +1,6 @@
-package com.electronwill.niol
+package com.electronwill.niol.buffer
+
+import com.electronwill.niol._
 
 /**
  * @author TheElectronWill
