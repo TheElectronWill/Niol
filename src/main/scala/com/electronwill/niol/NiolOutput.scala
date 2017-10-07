@@ -74,20 +74,16 @@ trait NiolOutput {
 	@inline final def >>:(l: Long): Unit = putLong(l)
 	@inline final def >>:(f: Float): Unit = putFloat(f)
 	@inline final def >>:(d: Double): Unit = putDouble(d)
-	@inline final def >>:(str: String, charset: Charset): Unit = putString(str, charset)
+	@inline final def >>:(t: (String, Charset)): Unit = putString(t._1, t._2)
 
 	@inline final def >>:(array: Array[Byte]): Unit = putBytes(array)
-	@inline final def >>:(array: Array[Byte], offset: Int, length: Int): Unit = putBytes(array, offset, length)
+	@inline final def >>:(t: (Array[Byte], Int, Int)): Unit = putBytes(t._1, t._2, t._3)
+
 	@inline final def >>:(array: Array[Short]): Unit = putShorts(array)
-	@inline final def >>:(array: Array[Short], offset: Int, length: Int): Unit = putShorts(array, offset, length)
 	@inline final def >>:(array: Array[Int]): Unit = putInts(array)
-	@inline final def >>:(array: Array[Int], offset: Int, length: Int): Unit = putInts(array, offset, length)
 	@inline final def >>:(array: Array[Long]): Unit = putLongs(array)
-	@inline final def >>:(array: Array[Long], offset: Int, length: Int): Unit = putLongs(array, offset, length)
 	@inline final def >>:(array: Array[Float]): Unit = putFloats(array)
-	@inline final def >>:(array: Array[Float], offset: Int, length: Int): Unit = putFloats(array, offset, length)
 	@inline final def >>:(array: Array[Double]): Unit = putDoubles(array)
-	@inline final def >>:(array: Array[Double], offset: Int, length: Int): Unit = putDoubles(array, offset, length)
 
 	@inline final def >>:(input: NiolInput): Unit = putBytes(input)
 	@inline final def >>:(bb: ByteBuffer): Unit = putBytes(bb)
