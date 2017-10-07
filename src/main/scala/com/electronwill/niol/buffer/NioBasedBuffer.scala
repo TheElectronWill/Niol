@@ -10,8 +10,8 @@ import com.electronwill.niol.InputType
  *
  * @author TheElectronWill
  */
-final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
-						   private[niol] val readBuffer: ByteBuffer) extends NiolBuffer {
+final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuffer,
+										 private[this] val readBuffer: ByteBuffer) extends NiolBuffer {
 	// buffer state
 	override protected[niol] val inputType: InputType = InputType.NIO_BUFFER
 
@@ -30,6 +30,8 @@ final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
 	override def readLimit(limit: Int) = readBuffer.limit(limit)
 	override def markReadPos() = readBuffer.mark()
 	override def resetReadPos() = readBuffer.reset()
+
+	private[niol] def asReadByteBuffer: ByteBuffer = readBuffer
 
 	// buffer operations
 	override def duplicate: NiolBuffer = {

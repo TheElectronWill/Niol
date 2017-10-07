@@ -202,8 +202,8 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 		} else {
 			if (first.inputType == InputType.NIO_BUFFER &&
 				second.inputType == InputType.NIO_BUFFER) {
-				dest.write(Array(first.asInstanceOf[NioBasedBuffer].readBuffer,
-					second.asInstanceOf[NioBasedBuffer].readBuffer)).toInt
+				dest.write(Array(first.asInstanceOf[NioBasedBuffer].asReadByteBuffer,
+					second.asInstanceOf[NioBasedBuffer].asReadByteBuffer)).toInt
 			} else {
 				first.getBytes(dest) + second.getBytes(dest)
 			}
@@ -346,8 +346,8 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 		} else {
 			if (first.inputType == InputType.NIO_BUFFER &&
 				second.inputType == InputType.NIO_BUFFER) {
-				src.read(Array(first.asInstanceOf[NioBasedBuffer].readBuffer,
-					second.asInstanceOf[NioBasedBuffer].readBuffer)).toInt
+				src.read(Array(first.asInstanceOf[NioBasedBuffer].asReadByteBuffer,
+					second.asInstanceOf[NioBasedBuffer].asReadByteBuffer)).toInt
 			} else {
 				first.putBytes(src) + second.putBytes(src)
 			}
