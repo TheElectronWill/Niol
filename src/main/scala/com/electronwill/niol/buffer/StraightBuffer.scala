@@ -37,6 +37,7 @@ final class StraightBuffer(private[this] val buff: NiolBuffer) extends NiolBuffe
 	override def sub(begin: Int, end: Int): NiolBuffer = buff.sub(begin, end)
 	override def duplicate = new StraightBuffer(buff.duplicate)
 	override def compact(): Unit = buff.compact()
+	override def discard(): Unit = buff.discard()
 
 	// get methods
 	override def getByte(): Byte = buff.getByte()

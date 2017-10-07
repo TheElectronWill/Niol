@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
 import com.electronwill.niol.InputType
+import com.electronwill.niol.buffer.provider.BufferProvider
 
 /**
  * A buffer based on a [[java.nio.ByteBuffer]].
@@ -11,7 +12,8 @@ import com.electronwill.niol.InputType
  * @author TheElectronWill
  */
 final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuffer,
-										 private[this] val readBuffer: ByteBuffer) extends NiolBuffer {
+										 private[this] val readBuffer: ByteBuffer,
+										 private[this] val provider: BufferProvider) extends NiolBuffer {
 	// buffer state
 	override protected[niol] val inputType: InputType = InputType.NIO_BUFFER
 
@@ -35,7 +37,7 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 
 	// buffer operations
 	override def duplicate: NiolBuffer = {
-		new NioBasedBuffer(writeBuffer.duplicate(), readBuffer.duplicate())
+		new NioBasedBuffer(writeBuffer.duplicate(), readBuffer.duplicate(), null)
 	}
 
 	override def copy(begin: Int, end: Int): NiolBuffer = {
@@ -65,6 +67,12 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 		writeBuffer.position(newWritePos)
 		readBuffer.position(0)
 		readBuffer.limit(newWritePos)
+	}
+
+	override def discard(): Unit = {
+		if (provider != null) {
+			provider.discard(this)
+		}
 	}
 
 	// get methods
@@ -138,6 +146,6 @@ object NioBasedBuffer {
 		val readBuffer = writeBuffer.duplicate()
 		readBuffer.position(0)
 		readBuffer.limit(writeBuffer.position())
-		new NioBasedBuffer(writeBuffer, readBuffer)
+		new NioBasedBuffer(writeBuffer, readBuffer, null)
 	}
 }

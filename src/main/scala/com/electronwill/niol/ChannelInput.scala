@@ -3,7 +3,7 @@ package com.electronwill.niol
 import java.nio.ByteBuffer
 import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
 
-import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer}
+import com.electronwill.niol.buffer.{CircularBuffer, NioBasedBuffer, NiolBuffer}
 
 /**
  * @author TheElectronWill

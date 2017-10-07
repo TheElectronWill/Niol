@@ -96,6 +96,7 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 	override def sub(begin: Int, end: Int): NiolBuffer = buff.sub(begin, end)
 	override def duplicate = new CircularBuffer(buff.duplicate)
 	override def compact(): Unit = {}
+	override def discard(): Unit = buff.discard()
 
 	// get methods
 	/** Called when readPos = capacity, to make the buffer circular */

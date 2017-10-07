@@ -33,7 +33,7 @@ object EmptyBuffer extends NiolBuffer {
 	override def copy(begin: Int, end: Int) = EmptyBuffer
 	override def sub(begin: Int, end: Int) = EmptyBuffer
 	override def compact(): Unit = {}
-
+	override def discard(): Unit = {}
 
 	// get methods
 	override def getByte(): Byte = ???

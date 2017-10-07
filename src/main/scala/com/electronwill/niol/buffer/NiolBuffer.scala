@@ -119,6 +119,12 @@ trait NiolBuffer extends NiolInput with NiolOutput {
 		writeLimit(capacity)
 	}
 
+	/**
+	 * Discards this buffer: returns it to the pool it comes from. A discarded buffer must no
+	 * longer be used, except when re-obtained later from the pool.
+	 */
+	def discard(): Unit
+
 	// shortcuts
 	/** Concatenates two buffers without copying their content. */
 	@inline final def +(buffer: NiolBuffer): NiolBuffer = concat(buffer)

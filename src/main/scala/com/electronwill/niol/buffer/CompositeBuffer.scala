@@ -130,6 +130,10 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 		putBytes(data)
 	}
 
+	override def discard(): Unit = {
+		first.discard()
+		second.discard()
+	}
 
 	// get methods
 	override def getByte(): Byte = {
