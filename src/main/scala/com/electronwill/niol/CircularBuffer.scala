@@ -28,6 +28,13 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 		}
 	}
 
+	/**
+	 * Used when readPos == writePos to distinguish between the situation where everything has been
+	 * read (allRead = true, readAvail = 0) and the situation where everything has been written
+	 * (allRead = false, writeAvail = 0).
+	 */
+	private[this] var allRead = true
+
 	override def readPos: Int = buff.readPos
 	override def readPos(pos: Int): Unit = buff.readPos(pos)
 	override def readLimit: Int = buff.readLimit
@@ -45,10 +52,14 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 	}
 
 	override def writeAvail: Int = {
-		if (readPos >= writePos) readPos - writePos else capacity - writePos + readPos
+		if (readPos == writePos) if (allRead) capacity else 0
+		else if (readPos > writePos) readPos - writePos
+		else capacity - writePos + readPos
 	}
 	override def readAvail: Int = {
-		if (writePos > readPos) writePos - readPos else capacity - readPos + writePos
+		if (readPos == writePos) if (allRead) 0 else capacity
+		else if (writePos > readPos) writePos - readPos
+		else capacity - readPos + writePos
 	}
 
 	// buffer operations
@@ -90,24 +101,36 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 		readPos(0)
 		readLimit(writePos)
 		writeLimit(capacity)
+		if (writePos == 0) {
+			allRead = true
+		}
 	}
 	/** Called when writePos = capacity, to make the buffer circular */
 	private def circleWritePos(): Unit = {
 		writePos(0)
 		writeLimit(readPos)
 		readLimit(capacity)
+		if (readPos == 0) {
+			allRead = false
+		}
 	}
 	/** Called after a write operation to update the readLimit if needed */
 	private def updateReadLimit(): Unit = {
 		if (writePos > readPos) {
 			readLimit(writePos)
-		} // else readLimit = capacity, already set normally
+		} else if (writePos == readPos) {
+			allRead = false
+		}
+		// else readLimit = capacity, already set normally
 	}
 	/** Called after a read operation to update the writeLimit if needed */
 	private def updateWriteLimit(): Unit = {
-		if (readPos >= writePos) {
+		if (readPos > writePos) {
 			writeLimit(readPos)
-		} // else writeLimit = capacity, already set normally
+		} else if (readPos == writePos) {
+			allRead = true
+		}
+		// else writeLimit = capacity, already set normally
 	}
 	override def getByte(): Byte = {
 		val b = buff.getByte()
@@ -250,7 +273,7 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 		}
 	}
 	override def putShort(s: Short): Unit = {
-		val newPos = readPos + 2
+		val newPos = writePos + 2
 		if (newPos <= capacity) {
 			buff.putShort(s)
 			if (newPos == capacity) {
@@ -264,7 +287,7 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 		}
 	}
 	override def putInt(i: Int): Unit = {
-		val newPos = readPos + 4
+		val newPos = writePos + 4
 		if (newPos <= capacity) {
 			buff.putInt(i)
 			if (newPos == capacity) {
@@ -280,7 +303,7 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 		}
 	}
 	override def putLong(l: Long): Unit = {
-		val newPos = readPos + 8
+		val newPos = writePos + 8
 		if (newPos <= capacity) {
 			buff.putLong(l)
 			if (newPos == capacity) {
