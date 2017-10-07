@@ -75,15 +75,9 @@ final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
 	override def getBytes(dest: Array[Byte], offset: Int, length: Int): Unit = {
 		readBuffer.get(dest, offset, length)
 	}
-	override def getBytes(dest: ByteBuffer): Unit = {
-		dest.put(readBuffer)
-	}
-	override def getBytes(dest: NiolBuffer): Unit = {
-		dest.putBytes(readBuffer)
-	}
-	override def getBytes(dest: GatheringByteChannel): Int = {
-		dest.write(readBuffer)
-	}
+	override def getBytes(dest: ByteBuffer): Unit = dest.put(readBuffer)
+	override def getBytes(dest: NiolBuffer): Unit = dest.putBytes(readBuffer)
+	override def getBytes(dest: GatheringByteChannel): Int = dest.write(readBuffer)
 
 	override def getShorts(dest: Array[Short], offset: Int, length: Int): Unit = {
 		readBuffer.asShortBuffer().get(dest, offset, length)
@@ -112,12 +106,8 @@ final class NioBasedBuffer(private[this] val writeBuffer: ByteBuffer,
 	override def putBytes(src: Array[Byte], offset: Int, length: Int): Unit = {
 		writeBuffer.put(src, offset, length)
 	}
-	override def putBytes(src: ByteBuffer): Unit = {
-		writeBuffer.put(src)
-	}
-	override def putBytes(src: ScatteringByteChannel): Int = {
-		src.read(writeBuffer)
-	}
+	override def putBytes(src: ByteBuffer): Unit = writeBuffer.put(src)
+	override def putBytes(src: ScatteringByteChannel): Int = src.read(writeBuffer)
 
 	override def putShorts(src: Array[Short], offset: Int, length: Int): Unit = {
 		writeBuffer.asShortBuffer().put(src, offset, length)
