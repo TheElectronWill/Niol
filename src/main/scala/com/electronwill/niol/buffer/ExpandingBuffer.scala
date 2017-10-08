@@ -1,0 +1,133 @@
+package com.electronwill.niol.buffer
+
+import java.nio.ByteBuffer
+import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
+
+import com.electronwill.niol.InputType
+import com.electronwill.niol.buffer.provider.BufferProvider
+
+/**
+ * A buffer that grows automatically without copying data.
+ *
+ * @author TheElectronWill
+ */
+final class ExpandingBuffer(minCapacityIncrement: Int, maxCapacity: Int,
+							private[this] val bufferProvider: BufferProvider) extends NiolBuffer {
+	private[this] val minIncrement = Math.max(minCapacityIncrement, 32)
+	private[this] var buff: NiolBuffer = EmptyBuffer
+
+	override def capacity: Int = maxCapacity
+	override protected[niol] val inputType: InputType = buff.inputType
+
+	override def writePos: Int = buff.writePos
+	override def writePos(pos: Int): Unit = buff.writePos(pos)
+	override def writeLimit: Int = buff.writeLimit
+	override def writeLimit(limit: Int): Unit = buff.writeLimit(limit)
+	override def markWritePos(): Unit = buff.markWritePos()
+	override def resetWritePos(): Unit = buff.resetWritePos()
+
+	override def readPos: Int = buff.readPos
+	override def readPos(pos: Int): Unit = buff.readPos(pos)
+	override def readLimit: Int = buff.readLimit
+	override def readLimit(limit: Int): Unit = buff.readLimit(limit)
+	override def markReadPos(): Unit = buff.markReadPos()
+	override def resetReadPos(): Unit = buff.resetReadPos()
+
+	override def duplicate: NiolBuffer = buff.duplicate
+	override def copy(begin: Int, end: Int): NiolBuffer = buff.copy(begin, end)
+	override def sub(begin: Int, end: Int): NiolBuffer = buff.sub(begin, end)
+	override def compact(): Unit = buff.compact()
+	override def discard(): Unit = buff.discard()
+
+	override def getByte(): Byte = buff.getByte()
+	override def getShort(): Short = buff.getShort()
+	override def getChar(): Char = buff.getChar()
+	override def getInt(): Int = buff.getInt()
+	override def getLong(): Long = buff.getLong()
+	override def getFloat(): Float = buff.getFloat()
+	override def getDouble(): Double = buff.getDouble()
+	override def getBytes(dest: Array[Byte], offset: Int, length: Int): Unit = {
+		buff.getBytes(dest, offset, length)
+	}
+	override def getBytes(dest: ByteBuffer): Unit = buff.getBytes(dest)
+	override def getBytes(dest: NiolBuffer): Unit = buff.getBytes(dest)
+	override def getBytes(dest: GatheringByteChannel): Int = buff.getBytes(dest)
+	override def getShorts(dest: Array[Short], offset: Int, length: Int): Unit = {
+		buff.getShorts(dest, offset, length)
+	}
+	override def getInts(dest: Array[Int], offset: Int, length: Int): Unit = {
+		buff.getInts(dest, offset, length)
+	}
+	override def getLongs(dest: Array[Long], offset: Int, length: Int): Unit = {
+		buff.getLongs(dest, offset, length)
+	}
+	override def getFloats(dest: Array[Float], offset: Int, length: Int): Unit = {
+		buff.getFloats(dest, offset, length)
+	}
+	override def getDoubles(dest: Array[Double], offset: Int, length: Int): Unit = {
+		buff.getDoubles(dest, offset, length)
+	}
+
+	def ensureWriteAvail(writeLength: Int): Unit = {
+		val avail = buff.writeAvail
+		if (avail < writeLength) {
+			buff = buff + bufferProvider.getBuffer(Math.max(minIncrement, writeLength - avail))
+		}
+	}
+
+	override def putByte(b: Byte): Unit = {
+		ensureWriteAvail(1)
+		buff.putByte(b)
+	}
+	override def putShort(s: Short): Unit = {
+		ensureWriteAvail(2)
+		buff.putShort(s)
+	}
+	override def putInt(i: Int): Unit = {
+		ensureWriteAvail(4)
+		buff.putInt(i)
+	}
+	override def putLong(l: Long): Unit = {
+		ensureWriteAvail(8)
+		buff.putLong(l)
+	}
+	override def putFloat(f: Float): Unit = {
+		ensureWriteAvail(4)
+		buff.putFloat(f)
+	}
+	override def putDouble(d: Double): Unit = {
+		ensureWriteAvail(8)
+		buff.putDouble(d)
+	}
+	override def putBytes(src: Array[Byte], offset: Int, length: Int): Unit = {
+		ensureWriteAvail(length)
+		buff.putBytes(src, offset, length)
+	}
+	override def putBytes(src: ByteBuffer): Unit = {
+		ensureWriteAvail(src.remaining())
+		buff.putBytes(src)
+	}
+	override def putBytes(src: ScatteringByteChannel): (Int, Boolean) = {
+		buff.putBytes(src)
+	}
+	override def putShorts(src: Array[Short], offset: Int, length: Int): Unit = {
+		ensureWriteAvail(length * 2)
+		buff.putShorts(src, offset, length)
+	}
+	override def putInts(src: Array[Int], offset: Int, length: Int): Unit = {
+		ensureWriteAvail(length * 4)
+		buff.putInts(src, offset, length)
+	}
+	override def putLongs(src: Array[Long], offset: Int, length: Int): Unit = {
+		ensureWriteAvail(length * 8)
+		buff.putLongs(src, offset, length)
+	}
+	override def putFloats(src: Array[Float], offset: Int, length: Int): Unit = {
+		ensureWriteAvail(length * 4)
+		buff.putFloats(src, offset, length)
+	}
+	override def putDoubles(src: Array[Double], offset: Int, length: Int): Unit = {
+		ensureWriteAvail(length * 8)
+		buff.putDoubles(src, offset, length)
+	}
+}
