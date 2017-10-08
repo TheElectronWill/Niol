@@ -8,7 +8,7 @@ import com.electronwill.niol.buffer.provider.HeapNioAllocator
 
 /**
  * A composite buffer made of two buffers A and B. It acts as a continuous buffer containing the
- * elements of A in [0, A.capacity[ followed by the elements of B in [0, B.capacity[.
+ * elements of A followed by the elements of B.
  *
  * @author TheElectronWill
  */
@@ -64,6 +64,8 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 		writePos(writeMark)
 	}
 
+	override def writeAvail: Int = first.writeAvail + second.writeAvail
+
 	override def readPos: Int = {
 		if (currentRead eq first) first.readPos
 		else first.capacity + second.readPos
@@ -96,6 +98,8 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 		if (readMark == -1) throw new InvalidMarkException
 		writePos(readMark)
 	}
+
+	override def readAvail: Int = first.readAvail + second.readAvail
 
 	// buffer operations
 	override def duplicate: NiolBuffer = {
@@ -153,29 +157,38 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 	// get methods
 	override def getByte(): Byte = {
 		val b = currentRead.getByte()
-		if (currentRead.eq(first) && first.readPos == first.capacity) {
+		if (currentRead.eq(first) && first.readAvail == 0) {
 			currentRead = second
 		}
 		b
 	}
 	override def getShort(): Short = {
-		if (currentRead.eq(second) || first.readPos + 2 < first.capacity) {
+		if (currentRead.eq(second) || first.readAvail > 2) {
 			currentRead.getShort()
+		} else if (first.readAvail == 2) {
+			currentRead = second
+			first.getShort()
 		} else {
 			(getByte() << 8 | getByte()).toShort
 		}
 	}
 	override def getChar(): Char = getShort().toChar
 	override def getInt(): Int = {
-		if (currentRead.eq(second) || first.readPos + 4 < first.capacity) {
+		if (currentRead.eq(second) || first.readAvail > 4) {
 			currentRead.getInt()
+		} else if (first.readAvail == 4) {
+			currentRead = second
+			first.getInt()
 		} else {
 			getByte() << 24 | getByte() << 16 | getByte() << 8 | getByte()
 		}
 	}
 	override def getLong(): Long = {
-		if (currentRead.eq(second) || first.readPos + 8 < first.capacity) {
+		if (currentRead.eq(second) || first.readAvail > 8) {
 			currentRead.getInt()
+		} else if (first.readAvail == 8) {
+			currentRead = second
+			first.getLong()
 		} else {
 			val bytes = getBytes(8)
 			bytes(0) << 56 | bytes(1) << 48 | bytes(2) << 40 | bytes(3) << 32 |
@@ -191,10 +204,10 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 
 	// bulk get methods
 	override def getBytes(dest: Array[Byte], offset: Int, length: Int): Unit = {
-		if (currentRead.eq(second) || first.readPos + length < first.capacity) {
+		if (currentRead.eq(second) || first.readAvail > length) {
 			currentRead.getBytes(dest, offset, length)
 		} else {
-			val firstLength = Math.min(length, first.capacity - first.readPos)
+			val firstLength = Math.min(length, first.readAvail)
 			val secondLength = length - firstLength
 			first.getBytes(dest, offset, firstLength)
 			second.getBytes(dest, offset + firstLength, secondLength)
@@ -202,8 +215,8 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 		}
 	}
 	override def getBytes(dest: ByteBuffer): Unit = {
-		val length = Math.min(readLimit - readPos, dest.remaining)
-		if (currentRead.eq(second) || first.readPos + length < first.capacity) {
+		val length = Math.min(readAvail, dest.remaining)
+		if (currentRead.eq(second) || first.readAvail > length) {
 			currentRead.getBytes(dest)
 		} else {
 			first.getBytes(dest)
@@ -253,42 +266,57 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 	// put methods
 	override def putByte(b: Byte): Unit = {
 		currentWrite.putByte(b)
-		if (currentWrite.eq(first) && first.writePos == first.capacity) {
+		if (currentWrite.eq(first) && first.writeAvail == 0) {
 			currentWrite = second
 		}
 	}
 	override def putShort(s: Short): Unit = {
-		if (currentWrite.eq(second) || first.writePos + 2 < first.capacity) {
+		if (currentWrite.eq(second) || first.writeAvail > 2) {
 			currentWrite.putShort(s)
+		} else if (first.writeAvail == 2) {
+			currentWrite = second
+			first.putShort(s)
 		} else {
 			putByte(s >> 8)
 			putByte(s)
 		}
 	}
 	override def putInt(i: Int): Unit = {
-		if (currentWrite.eq(second) || first.writePos + 4 < first.capacity) {
+		if (currentWrite.eq(second) || first.writeAvail > 4) {
 			currentWrite.putInt(i)
+		} else if (first.writeAvail == 4) {
+			currentWrite = second
+			first.putInt(i)
 		} else {
 			putIntBytes(i)
 		}
 	}
 	override def putLong(l: Long): Unit = {
-		if (currentWrite.eq(second) || first.writePos + 8 < first.capacity) {
+		if (currentWrite.eq(second) || first.writeAvail > 8) {
 			currentWrite.putLong(l)
+		} else if (first.writeAvail == 8) {
+			currentWrite = second
+			first.putLong(l)
 		} else {
 			putLongBytes(l)
 		}
 	}
 	override def putFloat(f: Float): Unit = {
-		if (currentWrite.eq(second) || first.writePos + 4 < first.capacity) {
+		if (currentWrite.eq(second) || first.writeAvail > 4) {
 			currentWrite.putFloat(f)
+		} else if (first.writeAvail == 4) {
+			currentWrite = second
+			first.putFloat(f)
 		} else {
 			putIntBytes(java.lang.Float.floatToIntBits(f))
 		}
 	}
 	override def putDouble(d: Double): Unit = {
-		if (currentWrite.eq(second) || first.writePos + 8 < first.capacity) {
+		if (currentWrite.eq(second) || first.writeAvail > 8) {
 			currentWrite.putDouble(d)
+		} else if (first.writeAvail == 8) {
+			currentWrite = second
+			first.putDouble(d)
 		} else {
 			putLongBytes(java.lang.Double.doubleToLongBits(d))
 		}
@@ -313,10 +341,10 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 
 	// bulk put methods
 	override def putBytes(src: Array[Byte], offset: Int, length: Int): Unit = {
-		if (currentWrite.eq(second) || first.writePos + length < first.capacity) {
+		if (currentWrite.eq(second) || first.writeAvail > length) {
 			currentWrite.putBytes(src, offset, length)
 		} else {
-			val firstLength = Math.min(length, first.capacity - first.readPos)
+			val firstLength = Math.min(length, first.writeAvail)
 			val secondLength = length - firstLength
 			first.putBytes(src, offset, firstLength)
 			second.putBytes(src, offset + firstLength, secondLength)
@@ -349,9 +377,9 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 		putBytes(bytes)
 	}
 	override def putBytes(src: ByteBuffer): Unit = {
-		val length = Math.min(writeLimit - writePos, src.remaining)
+		val length = Math.min(writeAvail, src.remaining)
 		if (length == 0) return
-		if (currentWrite.eq(second) || first.readPos + length < first.capacity) {
+		if (currentWrite.eq(second) || first.writeAvail > length) {
 			currentWrite.putBytes(src)
 		} else {
 			first.putBytes(src)
