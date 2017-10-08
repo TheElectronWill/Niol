@@ -12,6 +12,7 @@ import com.electronwill.niol.InputType
  */
 final class StraightBuffer(private[this] val buff: NiolBuffer) extends NiolBuffer {
 	require(buff.capacity > 0)
+	buff.markUsed()
 
 	// buffer state
 	override protected[niol] val inputType: InputType = InputType.SPECIAL_BUFFER
@@ -34,10 +35,23 @@ final class StraightBuffer(private[this] val buff: NiolBuffer) extends NiolBuffe
 
 	// buffer operations
 	override def copy(begin: Int, end: Int): NiolBuffer = buff.copy(begin, end)
-	override def sub(begin: Int, end: Int): NiolBuffer = buff.sub(begin, end)
-	override def duplicate = new StraightBuffer(buff.duplicate)
+	override def sub(begin: Int, end: Int): NiolBuffer = {
+		val sub = buff.sub(begin, end)
+		markUsed()
+		sub
+	}
+	override def duplicate: NiolBuffer = {
+		val d = new StraightBuffer(buff.duplicate)
+		markUsed()
+		d
+	}
 	override def compact(): Unit = buff.compact()
-	override def discard(): Unit = buff.discard()
+	override def discard(): Unit = {
+		if (useCount.decrementAndGet() == 0) {
+			buff.discard()
+		}
+	}
+	override protected[niol] def freeMemory(): Unit = buff.freeMemory()
 
 	// get methods
 	override def getByte(): Byte = buff.getByte()

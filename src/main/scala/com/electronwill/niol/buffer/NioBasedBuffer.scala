@@ -4,7 +4,8 @@ import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
 import com.electronwill.niol.InputType
-import com.electronwill.niol.buffer.provider.BufferProvider
+import com.electronwill.niol.buffer.provider.{BufferProvider, HeapAllocator}
+import sun.nio.ch.DirectBuffer
 
 /**
  * A buffer based on a [[java.nio.ByteBuffer]].
@@ -13,7 +14,15 @@ import com.electronwill.niol.buffer.provider.BufferProvider
  */
 final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuffer,
 										 private[this] val readBuffer: ByteBuffer,
+										 private[this] val parent: NiolBuffer,
 										 private[this] val provider: BufferProvider) extends NiolBuffer {
+
+	private[niol] def this(writeBuff: ByteBuffer, parent: NiolBuffer, provider: BufferProvider) = {
+		this(writeBuff, readBuffer.duplicate(), parent, provider)
+		readBuffer.position(0)
+		readBuffer.limit(writeBuff.position())
+	}
+
 	// buffer state
 	override protected[niol] val inputType: InputType = InputType.NIO_BUFFER
 
@@ -37,18 +46,21 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 
 	// buffer operations
 	override def duplicate: NiolBuffer = {
-		new NioBasedBuffer(writeBuffer.duplicate(), readBuffer.duplicate(), null)
+		val d = new NioBasedBuffer(writeBuffer.duplicate(), readBuffer.duplicate(), this, null)
+		markUsed()
+		d
 	}
 
 	override def copy(begin: Int, end: Int): NiolBuffer = {
-		val copy = NioBasedBuffer.allocateHeap(end - begin)
+		val copy = HeapAllocator.getBuffer(end - begin)
 		bbView(begin, end) >>: copy
 		copy
 	}
 
 	override def sub(begin: Int, end: Int): NiolBuffer = {
 		val buff = bbView(begin, end).slice()
-		NioBasedBuffer.wrap(buff)
+		markUsed()
+		new NioBasedBuffer(buff, this, null)
 	}
 
 	private def bbView(begin: Int, end: Int): ByteBuffer = {
@@ -70,8 +82,19 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 	}
 
 	override def discard(): Unit = {
-		if (provider != null) {
-			provider.discard(this)
+		if (useCount.decrementAndGet() == 0) {
+			if (parent ne null) {
+				parent.discard()
+			}
+			if (provider ne null) {
+				provider.discard(this)
+			}
+		}
+	}
+
+	override protected[niol] def freeMemory(): Unit = {
+		if (writeBuffer.isDirect) {
+			writeBuffer.asInstanceOf[DirectBuffer].cleaner().clean()
 		}
 	}
 
@@ -135,17 +158,5 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 	}
 	override def putDoubles(src: Array[Double], offset: Int, length: Int): Unit = {
 		writeBuffer.asDoubleBuffer().put(src, offset, length)
-	}
-}
-object NioBasedBuffer {
-	def allocateHeap(capacity: Int): NiolBuffer = wrap(ByteBuffer.allocate(capacity))
-
-	def allocateDirect(capacity: Int): NiolBuffer = wrap(ByteBuffer.allocateDirect(capacity))
-
-	def wrap(writeBuffer: ByteBuffer): NiolBuffer = {
-		val readBuffer = writeBuffer.duplicate()
-		readBuffer.position(0)
-		readBuffer.limit(writeBuffer.position())
-		new NioBasedBuffer(writeBuffer, readBuffer, null)
 	}
 }

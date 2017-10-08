@@ -4,6 +4,7 @@ import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 import java.nio.{ByteBuffer, InvalidMarkException}
 
 import com.electronwill.niol.InputType
+import com.electronwill.niol.buffer.provider.HeapAllocator
 
 /**
  * A composite buffer made of two buffers A and B. It acts as a continuous buffer containing the
@@ -15,6 +16,8 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 							private[this] val second: NiolBuffer) extends NiolBuffer {
 	require(first.capacity > 0)
 	require(second.capacity > 0)
+	first.markUsed()
+	second.markUsed()
 
 	// buffer state
 	override protected[niol] val inputType: InputType = InputType.SPECIAL_BUFFER
@@ -96,10 +99,12 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 
 	// buffer operations
 	override def duplicate: NiolBuffer = {
-		new CompositeBuffer(first.duplicate, second.duplicate)
+		val d = new CompositeBuffer(first.duplicate, second.duplicate)
+		markUsed()
+		d
 	}
 	override def copy(begin: Int, end: Int): NiolBuffer = {
-		val copy = NioBasedBuffer.allocateHeap(end - begin)
+		val copy = HeapAllocator.getBuffer(end - begin)
 		if (begin < first.capacity) {
 			val firstEnd = Math.min(first.capacity, end)
 			val secondEnd = end - firstEnd
@@ -112,16 +117,19 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 	}
 
 	override def sub(begin: Int, end: Int): NiolBuffer = {
-		if (begin < first.capacity) {
-			if (end < first.capacity) {
-				first.sub(begin, end)
+		val sub =
+			if (begin < first.capacity) {
+				if (end < first.capacity) {
+					first.sub(begin, end)
+				} else {
+					val secondEnd = end - first.capacity
+					first.sub(begin, first.capacity) + second.sub(0, secondEnd)
+				}
 			} else {
-				val secondEnd = end - first.capacity
-				first.sub(begin, first.capacity) + second.sub(0, secondEnd)
+				second.sub(begin - first.capacity, end - first.capacity)
 			}
-		} else {
-			second.sub(begin - first.capacity, end - first.capacity)
-		}
+		markUsed()
+		sub
 	}
 
 	override def compact(): Unit = {
@@ -131,8 +139,15 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 	}
 
 	override def discard(): Unit = {
-		first.discard()
-		second.discard()
+		if (useCount.decrementAndGet() == 0) {
+			first.discard()
+			second.discard()
+		}
+	}
+
+	override protected[niol] def freeMemory(): Unit = {
+		first.freeMemory()
+		second.freeMemory()
 	}
 
 	// get methods

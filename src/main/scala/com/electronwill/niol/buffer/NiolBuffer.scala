@@ -1,11 +1,16 @@
 package com.electronwill.niol.buffer
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import com.electronwill.niol._
+import com.electronwill.niol.buffer.provider.HeapAllocator
 
 /**
  * @author TheElectronWill
  */
-trait NiolBuffer extends NiolInput with NiolOutput {
+abstract class NiolBuffer extends NiolInput with NiolOutput {
+	protected[this] val useCount = new AtomicInteger(1)
+
 	// buffer state
 	/** @return the buffer's capacity */
 	def capacity: Int
@@ -98,7 +103,7 @@ trait NiolBuffer extends NiolInput with NiolOutput {
 		if (availableThis == 0) {if (availableBuff == 0) EmptyBuffer else buffer.copyRead}
 		else if (availableBuff == 0) this.copyRead
 		else {
-			val copy = NioBasedBuffer.allocateHeap(availableThis + availableBuff)
+			val copy = HeapAllocator.getBuffer(availableThis + availableBuff)
 			this.duplicate >>: copy
 			buffer.duplicate >>: copy
 			copy
@@ -120,10 +125,23 @@ trait NiolBuffer extends NiolInput with NiolOutput {
 	}
 
 	/**
-	 * Discards this buffer: returns it to the pool it comes from. A discarded buffer must no
-	 * longer be used, except when re-obtained later from the pool.
+	 * Discards this buffer: if its use count is 0 (after decrease), returns it to the pool it
+	 * comes from. A discarded buffer must no longer be used, except when re-obtained later from
+	 * the pool.
 	 */
 	def discard(): Unit
+
+	/**
+	 * Frees the buffer memory. A freed buffer must no longer be used nor obtained from the pool.
+	 */
+	protected[niol] def freeMemory(): Unit = {}
+
+	/**
+	 * Marks this buffer as used by incrementing its use count. Manually calling this method is
+	 * rarely necessary because creating, duplicating or subviewing a buffer automatically
+	 * increases the use count.
+	 */
+	def markUsed(): Unit = useCount.getAndIncrement()
 
 	// shortcuts
 	/** Concatenates two buffers without copying their content. */

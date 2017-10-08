@@ -4,12 +4,14 @@ import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
 import com.electronwill.niol.InputType
+import com.electronwill.niol.buffer.provider.HeapAllocator
 
 /**
  * @author TheElectronWill
  */
 final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffer {
 	require(buff.capacity > 0)
+	buff.markUsed()
 
 	// buffer state
 	override protected[niol] val inputType: InputType = InputType.SPECIAL_BUFFER
@@ -66,7 +68,7 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 
 	// buffer operations
 	override def copyRead: NiolBuffer = {
-		val copy = NioBasedBuffer.allocateHeap(readAvail)
+		val copy = HeapAllocator.getBuffer(readAvail)
 		if (readPos >= writePos) {
 			sub(readPos, capacity) >>: copy
 			sub(0, writePos) >>: copy
@@ -93,10 +95,23 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 	}
 
 	override def copy(begin: Int, end: Int): NiolBuffer = buff.copy(begin, end)
-	override def sub(begin: Int, end: Int): NiolBuffer = buff.sub(begin, end)
-	override def duplicate = new CircularBuffer(buff.duplicate)
+	override def sub(begin: Int, end: Int): NiolBuffer = {
+		val sub = buff.sub(begin, end)
+		markUsed()
+		sub
+	}
+	override def duplicate: NiolBuffer = {
+		val d = new CircularBuffer(buff.duplicate)
+		markUsed()
+		d
+	}
 	override def compact(): Unit = {}
-	override def discard(): Unit = buff.discard()
+	override def discard(): Unit = {
+		if (useCount.decrementAndGet() == 0) {
+			buff.discard()
+		}
+	}
+	override protected[niol] def freeMemory(): Unit = buff.freeMemory()
 
 	// get methods
 	/** Called when readPos = capacity, to make the buffer circular */

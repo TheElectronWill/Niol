@@ -1,8 +1,6 @@
 package com.electronwill.niol.buffer.provider
 
-import com.electronwill.niol.InputType
-import com.electronwill.niol.buffer.{NioBasedBuffer, NiolBuffer}
-import sun.nio.ch.DirectBuffer
+import com.electronwill.niol.buffer.NiolBuffer
 
 /**
  * @author TheElectronWill
@@ -20,7 +18,7 @@ final class StageBufferPool private[provider](/** in asc capacity order */
 
 	override def discard(buffer: NiolBuffer): Unit = {
 		buffer.clear()
-		findStage(buffer.capacity).flatMap(_.tryCache(buffer)).foreach(freeMemory)
+		findStage(buffer.capacity).flatMap(_.tryCache(buffer)).foreach(_.freeMemory())
 	}
 
 	private def findStage(capacity: Int): Option[PoolStage] = {
@@ -31,14 +29,5 @@ final class StageBufferPool private[provider](/** in asc capacity order */
 			i += 1
 		}
 		None
-	}
-
-	private def freeMemory(buffer: NiolBuffer): Unit = {
-		if (buffer.inputType == InputType.NIO_BUFFER) {
-			val nioBuff = buffer.asInstanceOf[NioBasedBuffer].asReadByteBuffer
-			if (nioBuff.isDirect) {
-				nioBuff.asInstanceOf[DirectBuffer].cleaner().clean()
-			}
-		}
 	}
 }

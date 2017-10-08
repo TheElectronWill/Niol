@@ -3,16 +3,22 @@ package com.electronwill.niol
 import java.nio.ByteBuffer
 import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
 
-import com.electronwill.niol.buffer.{CircularBuffer, NioBasedBuffer, NiolBuffer}
+import com.electronwill.niol.buffer.provider.{BufferProvider, DirectAllocator}
+import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer}
 
 /**
  * @author TheElectronWill
  */
 final class ChannelInput(private[this] val channel: ScatteringByteChannel,
-						 bufferCapacity: Int = 4096) extends NiolInput {
+						 bufferCapacity: Int = 4096,
+						 bufferProvider: BufferProvider = DirectAllocator) extends NiolInput {
+
+	def this(fc: FileChannel, bufferProvider: BufferProvider) = {
+		this(fc, Math.min(4096, fc.size), bufferProvider)
+	}
 
 	private[this] val buffer: NiolBuffer = {
-		new CircularBuffer(NioBasedBuffer.allocateDirect(bufferCapacity))
+		new CircularBuffer(bufferProvider.getBuffer(bufferCapacity))
 	}
 	private[this] var notEnded = true
 
