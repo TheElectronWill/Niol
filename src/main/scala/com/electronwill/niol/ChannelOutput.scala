@@ -7,9 +7,16 @@ import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChann
  * @author TheElectronWill
  */
 final class ChannelOutput(private[this] val channel: GatheringByteChannel,
-						  bufferCapacity: Int = 4096) extends NiolOutput {
+						  bufferCapacity: Int = 4096,
+						  directBuffer: Boolean = true) extends NiolOutput {
 
-	private[this] val buffer: ByteBuffer = ByteBuffer.allocateDirect(bufferCapacity)
+	private[this] val buffer: ByteBuffer = {
+		if (directBuffer) {
+			ByteBuffer.allocateDirect(bufferCapacity)
+		} else {
+			ByteBuffer.allocate(bufferCapacity)
+		}
+	}
 
 	private def ensureAvailable(min: Int): Unit = {
 		if (buffer.remaining() < min) {
