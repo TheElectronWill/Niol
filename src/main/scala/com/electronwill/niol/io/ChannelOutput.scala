@@ -1,16 +1,20 @@
 package com.electronwill.niol.io
 
+import java.io.{Closeable, IOException}
 import java.nio.ByteBuffer
 import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
 
 import com.electronwill.niol.{InputType, NiolInput, NiolOutput}
 
 /**
+ * A NiolOutput based on a ByteChannel. The channel must be in blocking mode for the ChannelOutput
+ * to work correctly.
+ *
  * @author TheElectronWill
  */
 final class ChannelOutput(private[this] val channel: GatheringByteChannel,
 						  bufferCapacity: Int = 4096,
-						  directBuffer: Boolean = true) extends NiolOutput {
+						  directBuffer: Boolean = true) extends NiolOutput with Closeable {
 
 	private[this] val buffer: ByteBuffer = {
 		if (directBuffer) {
@@ -174,5 +178,11 @@ final class ChannelOutput(private[this] val channel: GatheringByteChannel,
 		buffer.flip()
 		channel.write(buffer)
 		buffer.clear()
+	}
+
+	@throws[IOException]
+	def close(): Unit = {
+		flush()
+		channel.close()
 	}
 }
