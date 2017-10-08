@@ -1,7 +1,9 @@
-package com.electronwill.niol
+package com.electronwill.niol.io
 
 import java.nio.ByteBuffer
 import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
+
+import com.electronwill.niol.{InputType, NiolInput, NiolOutput}
 
 /**
  * @author TheElectronWill
