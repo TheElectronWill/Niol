@@ -49,7 +49,7 @@ trait NiolOutput {
 	def putBytes(src: Array[Byte], offset: Int, length: Int): Unit
 	def putBytes(src: NiolInput): Unit
 	def putBytes(src: ByteBuffer): Unit
-	def putBytes(src: ScatteringByteChannel): Int
+	def putBytes(src: ScatteringByteChannel): (Int, Boolean)
 
 	def putShorts(src: Array[Short]): Unit = putShorts(src, 0, src.length)
 	def putShorts(src: Array[Short], offset: Int, length: Int): Unit
@@ -87,5 +87,5 @@ trait NiolOutput {
 
 	@inline final def >>:(input: NiolInput): Unit = putBytes(input)
 	@inline final def >>:(bb: ByteBuffer): Unit = putBytes(bb)
-	@inline final def >>:(chan: ScatteringByteChannel): Int = putBytes(chan)
+	@inline final def >>:(chan: ScatteringByteChannel): (Int, Boolean) = putBytes(chan)
 }

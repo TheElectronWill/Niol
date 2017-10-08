@@ -44,13 +44,13 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 		}
 	}
 	private def readMore(): Boolean = {
-		val read: Int = channel >>: buffer
-		if (read < 0) {
+		val eos: Boolean = (channel >>: buffer)._2
+		if (eos) {
 			notEnded = false
 			channel.close()
 			//TODO throw exception
 		}
-		read >= 0 // false iff the end of the stream has been reached
+		eos
 	}
 	override def getByte(): Byte = {
 		ensureReadAvail(1)

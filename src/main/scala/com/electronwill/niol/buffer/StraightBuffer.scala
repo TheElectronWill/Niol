@@ -119,10 +119,10 @@ final class StraightBuffer(private[this] val buff: NiolBuffer) extends NiolBuffe
 		buff.putBytes(src)
 		readLimit(writePos)
 	}
-	override def putBytes(src: ScatteringByteChannel): Int = {
-		val count = buff.putBytes(src)
+	override def putBytes(src: ScatteringByteChannel): (Int, Boolean) = {
+		val result = buff.putBytes(src)
 		readLimit(writePos)
-		count
+		result
 	}
 
 	override def putShorts(src: Array[Short], offset: Int, length: Int): Unit = {

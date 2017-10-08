@@ -387,16 +387,19 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 			currentWrite = second
 		}
 	}
-	override def putBytes(src: ScatteringByteChannel): Int = {
+	override def putBytes(src: ScatteringByteChannel): (Int, Boolean) = {
 		if (currentWrite eq second) {
 			second.putBytes(src)
 		} else {
 			if (first.inputType == InputType.NIO_BUFFER &&
 				second.inputType == InputType.NIO_BUFFER) {
-				src.read(Array(first.asInstanceOf[NioBasedBuffer].asReadByteBuffer,
-					second.asInstanceOf[NioBasedBuffer].asReadByteBuffer)).toInt
+				val n = src.read(Array(first.asInstanceOf[NioBasedBuffer].asReadByteBuffer,
+					second.asInstanceOf[NioBasedBuffer].asReadByteBuffer))
+				if (n == -1) (0, true) else (n.toInt, false)
 			} else {
-				first.putBytes(src) + second.putBytes(src)
+				val n1 = first.putBytes(src)._1
+				val (n2, eos) = second.putBytes(src)
+				(n1 + n2, eos)
 			}
 		}
 	}

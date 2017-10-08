@@ -372,15 +372,16 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 		}
 		updateReadLimit()
 	}
-	override def putBytes(src: ScatteringByteChannel): Int = {
-		var count = buff.putBytes(src)
+	override def putBytes(src: ScatteringByteChannel): (Int, Boolean) = {
+		val (n, eos) = buff.putBytes(src)
 		if (writePos == capacity) {
 			circleWritePos()
-			count += buff.putBytes(src)
+			val (n2, eos2) = buff.putBytes(src)
+			(n + n2, eos2)
 		} else {
 			updateReadLimit()
+			(n, eos)
 		}
-		count
 	}
 
 	override def putShorts(src: Array[Short], offset: Int, length: Int): Unit = {

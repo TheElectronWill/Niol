@@ -18,7 +18,7 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 										 private[this] val provider: BufferProvider) extends NiolBuffer {
 
 	private[niol] def this(writeBuff: ByteBuffer, parent: NiolBuffer, provider: BufferProvider) = {
-		this(writeBuff, readBuffer.duplicate(), parent, provider)
+		this(writeBuff, writeBuff.duplicate(), parent, provider)
 		readBuffer.position(0)
 		readBuffer.limit(writeBuff.position())
 	}
@@ -142,7 +142,10 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 		writeBuffer.put(src, offset, length)
 	}
 	override def putBytes(src: ByteBuffer): Unit = writeBuffer.put(src)
-	override def putBytes(src: ScatteringByteChannel): Int = src.read(writeBuffer)
+	override def putBytes(src: ScatteringByteChannel): (Int, Boolean) = {
+		val n = src.read(writeBuffer)
+		if (n == -1) (0, true) else (n, false)
+	}
 
 	override def putShorts(src: Array[Short], offset: Int, length: Int): Unit = {
 		writeBuffer.asShortBuffer().put(src, offset, length)
