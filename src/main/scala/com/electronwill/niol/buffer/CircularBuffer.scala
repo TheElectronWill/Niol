@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
 import com.electronwill.niol.InputType
-import com.electronwill.niol.buffer.provider.HeapAllocator
+import com.electronwill.niol.buffer.provider.HeapNioAllocator
 
 /**
  * @author TheElectronWill
@@ -68,7 +68,7 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 
 	// buffer operations
 	override def copyRead: NiolBuffer = {
-		val copy = HeapAllocator.getBuffer(readAvail)
+		val copy = HeapNioAllocator.getBuffer(readAvail)
 		if (readPos >= writePos) {
 			sub(readPos, capacity) >>: copy
 			sub(0, writePos) >>: copy

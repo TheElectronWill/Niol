@@ -4,7 +4,7 @@ import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 import java.nio.{ByteBuffer, InvalidMarkException}
 
 import com.electronwill.niol.InputType
-import com.electronwill.niol.buffer.provider.HeapAllocator
+import com.electronwill.niol.buffer.provider.HeapNioAllocator
 
 /**
  * A composite buffer made of two buffers A and B. It acts as a continuous buffer containing the
@@ -104,7 +104,7 @@ final class CompositeBuffer(private[this] val first: NiolBuffer,
 		d
 	}
 	override def copy(begin: Int, end: Int): NiolBuffer = {
-		val copy = HeapAllocator.getBuffer(end - begin)
+		val copy = HeapNioAllocator.getBuffer(end - begin)
 		if (begin < first.capacity) {
 			val firstEnd = Math.min(first.capacity, end)
 			val secondEnd = end - firstEnd

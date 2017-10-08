@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
 import com.electronwill.niol.InputType
-import com.electronwill.niol.buffer.provider.{BufferProvider, HeapAllocator}
+import com.electronwill.niol.buffer.provider.{BufferProvider, HeapNioAllocator}
 import sun.nio.ch.DirectBuffer
 
 /**
@@ -52,7 +52,7 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 	}
 
 	override def copy(begin: Int, end: Int): NiolBuffer = {
-		val copy = HeapAllocator.getBuffer(end - begin)
+		val copy = HeapNioAllocator.getBuffer(end - begin)
 		bbView(begin, end) >>: copy
 		copy
 	}

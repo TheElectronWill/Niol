@@ -10,3 +10,7 @@ trait BufferProvider {
 
 	def discard(buffer: NiolBuffer): Unit
 }
+object BufferProvider {
+	@volatile var DefaultOffHeapProvider: BufferProvider = DirectNioAllocator
+	@volatile var DefaultInHeapProvider: BufferProvider = HeapNioAllocator
+}

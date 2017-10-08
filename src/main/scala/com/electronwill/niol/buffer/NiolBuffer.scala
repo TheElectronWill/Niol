@@ -3,7 +3,7 @@ package com.electronwill.niol.buffer
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.electronwill.niol._
-import com.electronwill.niol.buffer.provider.HeapAllocator
+import com.electronwill.niol.buffer.provider.HeapNioAllocator
 
 /**
  * @author TheElectronWill
@@ -103,7 +103,7 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
 		if (availableThis == 0) {if (availableBuff == 0) EmptyBuffer else buffer.copyRead}
 		else if (availableBuff == 0) this.copyRead
 		else {
-			val copy = HeapAllocator.getBuffer(availableThis + availableBuff)
+			val copy = HeapNioAllocator.getBuffer(availableThis + availableBuff)
 			this.duplicate >>: copy
 			buffer.duplicate >>: copy
 			copy
