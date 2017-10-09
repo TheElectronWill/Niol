@@ -55,13 +55,15 @@ abstract class TcpServer[A](val port: Int, private[network] val baseBufferSize: 
 		selector.close()
 	}
 
-	def start(threadName: String): Thread = {
+	final def start(threadName: String): Thread = {
+		onStart()
 		val t = new Thread(this, threadName)
 		t.start()
 		t
 	}
 
-	def stop(): Unit = {
+	final def stop(): Unit = {
+		onStop()
 		_run = false
 		selector.wakeup()
 	}
@@ -71,6 +73,10 @@ abstract class TcpServer[A](val port: Int, private[network] val baseBufferSize: 
 	protected def onDisconnect(clientAttach: ClientAttach[A]): Unit
 
 	protected def onError(e: Exception): Unit
+	
+	protected def onStart(): Unit = {}
+	
+	protected def onStop(): Unit = {}
 
 	private def accept(clientChannel: SocketChannel): Unit = {
 		clientChannel.configureBlocking(false)
