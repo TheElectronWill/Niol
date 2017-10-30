@@ -71,6 +71,7 @@ final class CircularBuffer(private[niol] val buff: RandomAccessBuffer) extends N
 		} else {
 			sub(readPos, writePos) >>: copy
 		}
+		copy.readLimit(copy.writePos) // Allows the data to be immediately read
 		copy
 	}
 	override def subRead: NiolBuffer = {
