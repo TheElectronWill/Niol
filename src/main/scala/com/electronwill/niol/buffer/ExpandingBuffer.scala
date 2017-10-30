@@ -1,7 +1,7 @@
 package com.electronwill.niol.buffer
 
-import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
+import java.nio.{BufferOverflowException, ByteBuffer}
 
 import com.electronwill.niol.InputType
 import com.electronwill.niol.buffer.provider.BufferProvider
@@ -14,28 +14,25 @@ import com.electronwill.niol.buffer.provider.BufferProvider
 final class ExpandingBuffer(minCapacityIncrement: Int, maxCapacity: Int,
 							private[this] val bufferProvider: BufferProvider) extends NiolBuffer {
 	private[this] val minIncrement = Math.max(minCapacityIncrement, 32)
-	private[this] var buff: NiolBuffer = EmptyBuffer
+	private[this] var buff: NiolBuffer = new MultiCompositeBuffer()
 
-	override def capacity: Int = maxCapacity
-	override protected[niol] val inputType: InputType = buff.inputType
+	override val capacity: Int = maxCapacity
+	override protected[niol] val inputType: InputType = InputType.SPECIAL_BUFFER
 
-	override def writePos: Int = buff.writePos
-	override def writePos(pos: Int): Unit = buff.writePos(pos)
-	override def writeLimit: Int = buff.writeLimit
-	override def writeLimit(limit: Int): Unit = buff.writeLimit(limit)
-	override def markWritePos(): Unit = buff.markWritePos()
-	override def resetWritePos(): Unit = buff.resetWritePos()
+	override def readAvail: Int = buff.readAvail
+	override def writeAvail: Int = capacity - buff.capacity + buff.writeAvail
 
-	override def readPos: Int = buff.readPos
-	override def readPos(pos: Int): Unit = buff.readPos(pos)
-	override def readLimit: Int = buff.readLimit
-	override def readLimit(limit: Int): Unit = buff.readLimit(limit)
-	override def markReadPos(): Unit = buff.markReadPos()
-	override def resetReadPos(): Unit = buff.resetReadPos()
-
+	override def skipWrite(n: Int): Unit = {
+		ensureWriteAvail(n)
+		buff.skipWrite(n)
+	}
+	override def skipRead(n: Int): Unit = buff.skipRead(n)
+	override def copyRead: NiolBuffer = buff.copyRead
+	override def subRead: NiolBuffer = buff.subRead
+	override def subRead(maxLength: Int): NiolBuffer = buff.subRead(maxLength)
+	override def subWrite: NiolBuffer = buff.subWrite
+	override def clear(): Unit = buff.clear()
 	override def duplicate: NiolBuffer = buff.duplicate
-	override def copy(begin: Int, end: Int): NiolBuffer = buff.copy(begin, end)
-	override def sub(begin: Int, end: Int): NiolBuffer = buff.sub(begin, end)
 	override def compact(): Unit = buff.compact()
 	override def discard(): Unit = buff.discard()
 
@@ -71,7 +68,11 @@ final class ExpandingBuffer(minCapacityIncrement: Int, maxCapacity: Int,
 	def ensureWriteAvail(writeLength: Int): Unit = {
 		val avail = buff.writeAvail
 		if (avail < writeLength) {
-			buff = buff + bufferProvider.getBuffer(Math.max(minIncrement, writeLength - avail))
+			val increment = Math.max(minIncrement, writeLength - writeAvail)
+			if (increment + buff.capacity > maxCapacity) {
+				throw new BufferOverflowException
+			}
+			buff += bufferProvider.getBuffer(increment)
 		}
 	}
 

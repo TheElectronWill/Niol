@@ -2,6 +2,7 @@ package com.electronwill.niol.buffer
 
 import java.nio.charset.StandardCharsets
 
+import com.electronwill.niol.buffer.provider.HeapNioAllocator
 import org.junit.jupiter.api.Test
 
 /**
@@ -11,7 +12,7 @@ class StraightBufferTest {
 	@Test
 	def test(): Unit = {
 		val cap = 512
-		val buff = new StraightBuffer(NioBasedBuffer.allocateHeap(cap))
+		val buff = new StraightBuffer(HeapNioAllocator.getBuffer(cap))
 		assert(buff.capacity == cap)
 		assert(buff.readPos == 0 && buff.writePos == 0)
 		assert(buff.readLimit == 0 && buff.writeLimit == cap)
@@ -43,7 +44,7 @@ class StraightBufferTest {
 	@Test
 	def bulkTest(): Unit = {
 		val length = 500
-		val buff = new StraightBuffer(NioBasedBuffer.allocateHeap(length))
+		val buff = new StraightBuffer(HeapNioAllocator.getBuffer(length))
 		val array = new Array[Byte](length)
 		array >>: buff
 		assert(buff.readAvail == array.length)

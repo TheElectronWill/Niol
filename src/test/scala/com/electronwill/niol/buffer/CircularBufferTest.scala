@@ -2,6 +2,7 @@ package com.electronwill.niol.buffer
 
 import java.nio.charset.StandardCharsets
 
+import com.electronwill.niol.buffer.provider.HeapNioAllocator
 import org.junit.jupiter.api.Test
 
 /**
@@ -11,7 +12,7 @@ class CircularBufferTest {
 	@Test
 	def straightTest(): Unit = {
 		val cap = 512
-		val buff = new CircularBuffer(NioBasedBuffer.allocateHeap(cap))
+		val buff = new CircularBuffer(HeapNioAllocator.getBuffer(cap))
 		printBuffer(buff)
 		assert(buff.capacity == cap)
 		assert(buff.readPos == 0 && buff.writePos == 0)
@@ -46,7 +47,7 @@ class CircularBufferTest {
 	@Test
 	def circularTest(): Unit = {
 		val cap = 50
-		val buff = new CircularBuffer(NioBasedBuffer.allocateHeap(cap))
+		val buff = new CircularBuffer(HeapNioAllocator.getBuffer(cap))
 
 		putInts(1, 12, buff)
 		printBuffer(buff)

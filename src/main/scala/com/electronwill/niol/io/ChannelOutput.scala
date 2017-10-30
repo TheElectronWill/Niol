@@ -92,24 +92,29 @@ final class ChannelOutput(private[this] val channel: GatheringByteChannel,
 			} while (src.hasRemaining)
 		}
 	}
-	override def putBytes(src: ScatteringByteChannel): Int = {
+	override def putBytes(src: ScatteringByteChannel): (Int, Boolean) = {
 		src match {
 			case fc: FileChannel =>
 				flush()
 				val pos = fc.position()
 				val count = fc.size() - pos
-				fc.transferTo(pos, count, channel).toInt
+				(fc.transferTo(pos, count, channel).toInt, false)
 			case _ =>
 				var read = 1
 				var totalRead = 0
+				var eos = false
 				do {
 					if (!buffer.hasRemaining) {
 						flush()
 					}
 					read = src.read(buffer)
-					totalRead += read
+					if (read == -1) {
+						eos = true
+					} else {
+						totalRead += read
+					}
 				} while (read > 0)
-				totalRead
+				(totalRead, eos)
 		}
 	}
 

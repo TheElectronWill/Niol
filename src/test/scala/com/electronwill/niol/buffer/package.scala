@@ -5,8 +5,13 @@ package com.electronwill.niol
  */
 package object buffer {
 	def printBuffer(buff: NiolBuffer): Unit = {
-		println(s"readPos: ${buff.readPos}, writePos: ${buff.writePos}, " +
-			s"readLimit: ${buff.readLimit}, writeLimit: ${buff.writeLimit}, " +
-			s"readAvail: ${buff.readAvail}, writeAvail: ${buff.writeAvail}")
+		buff match {
+			case r: RandomAccessBuffer =>
+				println(s"readPos: ${r.readPos}, writePos: ${r.writePos}, " +
+					s"readLimit: ${r.readLimit}, writeLimit: ${r.writeLimit}, " +
+					s"readAvail: ${r.readAvail}, writeAvail: ${r.writeAvail}")
+			case _ =>
+				println(s"readAvail: ${buff.readAvail}, writeAvail: ${buff.writeAvail}")
+		}
 	}
 }

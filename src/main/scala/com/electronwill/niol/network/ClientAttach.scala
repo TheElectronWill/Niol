@@ -87,8 +87,7 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 
 	private final def handleDataView(): Unit = {
 		// Isolates the packet
-		val dataView = readBuffer.subRead
-		dataView.readLimit(dataLength)
+		val dataView = readBuffer.subRead(maxLength = dataLength)
 
 		try {
 			// Handles the packet
