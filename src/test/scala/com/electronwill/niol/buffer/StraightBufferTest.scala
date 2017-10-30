@@ -27,8 +27,13 @@ class StraightBufferTest {
 		15d >>: buff
 		("test", StandardCharsets.UTF_8) >>: buff
 
-		printBuffer(buff)
+		val copy = buff.copyRead
+		assertContent(buff)
+		assertContent(copy)
+	}
 
+	private def assertContent(buff: NiolBuffer): Unit={
+		printBuffer(buff)
 		assert(buff.getBool())
 		assert(buff.getByte() == 10)
 		assert(buff.getShort() == 11)
@@ -37,7 +42,6 @@ class StraightBufferTest {
 		assert(buff.getFloat() == 14f)
 		assert(buff.getDouble() == 15d)
 		assert(buff.getString(4, StandardCharsets.UTF_8) == "test")
-
 		printBuffer(buff)
 	}
 
