@@ -5,6 +5,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 import com.electronwill.niol.buffer.NiolBuffer
 
+import scala.annotation.tailrec
+
 /**
  * @author TheElectronWill
  */
@@ -25,6 +27,7 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 	/**
 	 * Reads more data from the SocketChannel.
 	 */
+	@tailrec
 	private[network] final def readMore(): Unit = {
 		eos = (channel >>: readBuffer)._2
 		state match {
