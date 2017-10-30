@@ -9,19 +9,17 @@ import com.electronwill.niol.buffer.provider.HeapNioAllocator
 /**
  * @author TheElectronWill
  */
-final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffer {
+final class CircularBuffer(private[niol] val buff: RandomAccessBuffer) extends NiolBuffer {
 	require(buff.capacity > 0)
 	buff.markUsed()
 
 	// buffer state
 	override protected[niol] val inputType: InputType = InputType.SPECIAL_BUFFER
 	override def capacity: Int = buff.capacity
-	override def writePos: Int = buff.writePos
-	override def writePos(pos: Int): Unit = buff.writePos(pos)
-	override def writeLimit: Int = buff.writeLimit
-	override def writeLimit(limit: Int): Unit = buff.writeLimit(limit)
-	override def markWritePos(): Unit = buff.markWritePos()
-	override def resetWritePos(): Unit = buff.markReadPos()
+	private[buffer] def writePos: Int = buff.writePos
+	private def writePos(pos: Int): Unit = buff.writePos(pos)
+	private[buffer] def writeLimit: Int = buff.writeLimit
+	private def writeLimit(limit: Int): Unit = buff.writeLimit(limit)
 	override def skipWrite(n: Int): Unit = {
 		if (writePos + n >= capacity) {
 			writeLimit(readPos)
@@ -33,18 +31,16 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 	}
 
 	/**
-	 * Used when readPos == writePos to distinguish between the situation where everything has been
-	 * read (allRead = true, readAvail = 0) and the situation where everything has been written
+	 * Used when readPos == writePos to differentiate between the situation where everything has
+	 * been read (allRead = true, readAvail = 0) and the situation where everything has been written
 	 * (allRead = false, writeAvail = 0).
 	 */
 	private[this] var allRead = true
 
-	override def readPos: Int = buff.readPos
-	override def readPos(pos: Int): Unit = buff.readPos(pos)
-	override def readLimit: Int = buff.readLimit
-	override def readLimit(limit: Int): Unit = buff.readLimit(limit)
-	override def markReadPos(): Unit = buff.markReadPos()
-	override def resetReadPos(): Unit = buff.resetReadPos()
+	private[buffer] def readPos: Int = buff.readPos
+	private def readPos(pos: Int): Unit = buff.readPos(pos)
+	private[buffer] def readLimit: Int = buff.readLimit
+	private def readLimit(limit: Int): Unit = buff.readLimit(limit)
 	override def skipRead(n: Int): Unit = {
 		if (readPos + n >= capacity) {
 			readLimit(writePos)
@@ -79,9 +75,26 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 	}
 	override def subRead: NiolBuffer = {
 		if (readPos >= writePos) {
-			sub(0, writePos) + sub(readPos, writePos)
+			sub(readPos, capacity) + sub(0, writePos)
 		} else {
 			sub(readPos, writePos)
+		}
+	}
+	override def subRead(maxLength: Int): NiolBuffer = {
+		if (readPos >= writePos) {
+			val partA = capacity - readPos
+			if (partA >= maxLength) {
+				sub(readPos, maxLength)
+			} else {
+				var partB = writePos
+				if (partA + partB > maxLength) {
+					partB = maxLength - partA
+				}
+				sub(readPos, capacity) + sub(0, partB)
+			}
+		} else {
+			val end = Math.min(writePos, readPos + maxLength)
+			sub(readPos, end)
 		}
 	}
 	override def subWrite: NiolBuffer = {
@@ -94,8 +107,8 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 		}
 	}
 
-	override def copy(begin: Int, end: Int): NiolBuffer = buff.copy(begin, end)
-	override def sub(begin: Int, end: Int): NiolBuffer = {
+	private def copy(begin: Int, end: Int): NiolBuffer = buff.copy(begin, end)
+	private def sub(begin: Int, end: Int): NiolBuffer = {
 		val sub = buff.sub(begin, end)
 		markUsed()
 		sub
@@ -105,6 +118,7 @@ final class CircularBuffer(private[niol] val buff: NiolBuffer) extends NiolBuffe
 		markUsed()
 		d
 	}
+	override def clear(): Unit = buff.clear()
 	override def compact(): Unit = {}
 	override def discard(): Unit = {
 		if (useCount.decrementAndGet() == 0) {

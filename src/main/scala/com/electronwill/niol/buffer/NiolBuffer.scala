@@ -6,6 +6,8 @@ import com.electronwill.niol._
 import com.electronwill.niol.buffer.provider.HeapNioAllocator
 
 /**
+ * An abstract readable and writable container of bytes.
+ *
  * @author TheElectronWill
  */
 abstract class NiolBuffer extends NiolInput with NiolOutput {
@@ -14,56 +16,21 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
 	// buffer state
 	/** @return the buffer's capacity */
 	def capacity: Int
+
 	/** @return true iff readAvail > 0 */
 	override def canRead: Boolean = readAvail > 0
 
-	/** @return the current write position, at which the next put operation will occur. */
-	def writePos: Int
+	/** @return the available space to write. */
+	def writeAvail: Int
 
-	/** Sets the write position, at which the next put operation will occur. */
-	def writePos(pos: Int): Unit
+	/** Skips n writable bytes. */
+	def skipWrite(n: Int): Unit
 
-	/** @return the current write limit */
-	def writeLimit: Int
+	/** @return the available space to read. */
+	def readAvail: Int
 
-	/** Sets the write limit. */
-	def writeLimit(limit: Int): Unit
-
-	/** Marks the current write position */
-	def markWritePos(): Unit
-
-	/** Resets the write position to the last position marked by [[markWritePos]]. */
-	def resetWritePos(): Unit
-
-	/** @return the available space to write, generally writeLimit - writePos */
-	def writeAvail: Int = writeLimit - writePos
-
-	/** Increases the write position by n. */
-	def skipWrite(n: Int): Unit = writePos(writePos + n)
-
-	/** @return the current read position, at which the next get operation will occur. */
-	def readPos: Int
-
-	/** Sets the read position, at which the next get operation will occur. */
-	def readPos(pos: Int): Unit
-
-	/** @return the current read limit */
-	def readLimit: Int
-
-	/** Sets the read limit. */
-	def readLimit(limit: Int): Unit
-
-	/** Marks the current read position */
-	def markReadPos(): Unit
-
-	/** Resets the write position to the last position marked by [[markReadPos]]. */
-	def resetReadPos(): Unit
-
-	/** @return the available space to read, generally readLimit - readPos */
-	def readAvail: Int = readLimit - readPos
-
-	/** Increases the read position by n. */
-	def skipRead(n: Int): Unit = readPos(readPos + n)
+	/** Skips n readable bytes. */
+	def skipRead(n: Int): Unit
 
 	// buffer operations
 	/**
@@ -74,26 +41,27 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
 	 */
 	def duplicate: NiolBuffer
 
-	/** Copies the readable content of this buffer in a new NiolBuffer. */
-	def copyRead: NiolBuffer = copy(readPos, readLimit)
-
-	/** Copies a portion of this buffer in a new buffer. */
-	def copy(begin: Int, end: Int): NiolBuffer //absolute, exclusive end
+	/** Copies the readable content of this buffer in a new buffer. */
+	def copyRead: NiolBuffer
 
 	/** Creates a view of the buffer's readable data. */
-	def subRead: NiolBuffer = sub(readPos, readLimit)
+	def subRead: NiolBuffer
+
+	/** Creates a limited view of the buffer's readable data. */
+	def subRead(maxLength: Int): NiolBuffer
 
 	/** Creates a view of the buffer's writeable space. */
-	def subWrite: NiolBuffer = sub(writePos, writeLimit)
-
-	/** Creates a view of a portion of this buffer. */
-	def sub(begin: Int, end: Int): NiolBuffer // absolute, exclusive end
+	def subWrite: NiolBuffer
 
 	/** Concatenates two buffers without copying their content. */
 	def concat(buffer: NiolBuffer): NiolBuffer = {
 		if (this.capacity == 0) {if (buffer.capacity == 0) EmptyBuffer else buffer.duplicate}
 		else if (buffer.capacity == 0) this.duplicate
-		else new CompositeBuffer(this, buffer)
+		else {
+			val res = new MultiCompositeBuffer(this)
+			res += buffer
+			res
+		}
 	}
 
 	/** Concatenates two buffers by copying them to a new buffer. */
@@ -114,15 +82,9 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
 	def compact(): Unit
 
 	/**
-	 * Clears this buffer. readPos, readLimit and writePos are set to 0 and the writeLimit is
-	 * set to the capacity.
+	 * Clears this buffer.
 	 */
-	def clear() = {
-		readPos(0)
-		readLimit(0)
-		writePos(0)
-		writeLimit(capacity)
-	}
+	def clear()
 
 	/**
 	 * Discards this buffer: if its use count is 0 (after decrease), returns it to the pool it
@@ -155,12 +117,8 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
 
 	/** @return a String containing the informations about the state of this buffer. */
 	override def toString: String =
-		s"""NiolBuffer(
+		s"""${getClass.getSimpleName}(
 		   | capacity=$capacity;
-		   | writePos=$writePos,
-		   | writeLimit=$writeLimit,
 		   | writeAvail=$writeAvail;
-		   | readPos=$readPos,
-		   | readLimit=$readLimit,
 		   | readAvail=$readAvail)""".stripMargin
 }

@@ -15,7 +15,8 @@ import sun.nio.ch.DirectBuffer
 final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuffer,
 										 private[this] val readBuffer: ByteBuffer,
 										 private[this] val parent: NiolBuffer,
-										 private[this] val provider: BufferProvider) extends NiolBuffer {
+										 private[this] val provider: BufferProvider)
+	extends RandomAccessBuffer {
 
 	private[niol] def this(writeBuff: ByteBuffer, parent: NiolBuffer, provider: BufferProvider) = {
 		this(writeBuff, writeBuff.duplicate(), parent, provider)
@@ -45,19 +46,19 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 	private[niol] def asReadByteBuffer: ByteBuffer = readBuffer
 
 	// buffer operations
-	override def duplicate: NiolBuffer = {
+	override def duplicate: RandomAccessBuffer = {
 		val d = new NioBasedBuffer(writeBuffer.duplicate(), readBuffer.duplicate(), this, null)
 		markUsed()
 		d
 	}
 
-	override def copy(begin: Int, end: Int): NiolBuffer = {
+	override def copy(begin: Int, end: Int): RandomAccessBuffer = {
 		val copy = HeapNioAllocator.getBuffer(end - begin)
 		bbView(begin, end) >>: copy
 		copy
 	}
 
-	override def sub(begin: Int, end: Int): NiolBuffer = {
+	override def sub(begin: Int, end: Int): RandomAccessBuffer = {
 		val buff = bbView(begin, end).slice()
 		markUsed()
 		new NioBasedBuffer(buff, this, null)

@@ -10,7 +10,7 @@ import com.electronwill.niol.InputType
  *
  * @author TheElectronWill
  */
-final class StraightBuffer(private[this] val buff: NiolBuffer) extends NiolBuffer {
+final class StraightBuffer(private[this] val buff: RandomAccessBuffer) extends RandomAccessBuffer {
 	require(buff.capacity > 0)
 	buff.markUsed()
 
@@ -34,13 +34,13 @@ final class StraightBuffer(private[this] val buff: NiolBuffer) extends NiolBuffe
 	override def skipRead(n: Int): Unit = readPos(readPos + n)
 
 	// buffer operations
-	override def copy(begin: Int, end: Int): NiolBuffer = buff.copy(begin, end)
-	override def sub(begin: Int, end: Int): NiolBuffer = {
+	override def copy(begin: Int, end: Int): RandomAccessBuffer = buff.copy(begin, end)
+	override def sub(begin: Int, end: Int): RandomAccessBuffer = {
 		val sub = buff.sub(begin, end)
 		markUsed()
 		sub
 	}
-	override def duplicate: NiolBuffer = {
+	override def duplicate: RandomAccessBuffer = {
 		val d = new StraightBuffer(buff.duplicate)
 		markUsed()
 		d
