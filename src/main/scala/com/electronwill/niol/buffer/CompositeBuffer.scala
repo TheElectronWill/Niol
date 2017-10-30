@@ -8,7 +8,7 @@ import com.electronwill.niol.InputType
 /**
  * @author TheElectronWill
  */
-final class MultiCompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffer {
+final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffer {
 	private def this(firstNode: Node) = {
 		this(firstNode, firstNode, firstNode)
 	}
@@ -46,7 +46,7 @@ final class MultiCompositeBuffer private(h: Node, r: Node, w: Node) extends Niol
 		writeAvailNext += buffer.writeAvail
 	}
 
-	def +=(mBuffer: MultiCompositeBuffer): Unit = {
+	def +=(mBuffer: CompositeBuffer): Unit = {
 		mBuffer.discardExhausted()
 		chainAddDuplicates(this, mBuffer.headNode)
 	}
@@ -57,7 +57,7 @@ final class MultiCompositeBuffer private(h: Node, r: Node, w: Node) extends Niol
 		if (this.capacity == 0) {if (buffer.capacity == 0) EmptyBuffer else buffer.duplicate}
 		else if (buffer.capacity == 0) this.duplicate
 		else {
-			val res = new MultiCompositeBuffer()
+			val res = new CompositeBuffer()
 			res += this
 			res += buffer
 			res
@@ -71,7 +71,7 @@ final class MultiCompositeBuffer private(h: Node, r: Node, w: Node) extends Niol
 	override def writeAvail: Int = currentWrite.data.writeAvail + writeAvailNext
 
 	// buffer operations
-	private def chainAddDuplicates(dest: MultiCompositeBuffer, begin: Node): Unit = {
+	private def chainAddDuplicates(dest: CompositeBuffer, begin: Node): Unit = {
 		var node = begin
 		while (node ne null) {
 			dest += node.data.duplicate
@@ -84,7 +84,7 @@ final class MultiCompositeBuffer private(h: Node, r: Node, w: Node) extends Niol
 		val dupRead = currentRead.shallowDuplicate
 		val dupWrite = currentWrite.shallowDuplicate
 		val dupHead = if (head eq currentRead) dupRead else dupWrite
-		val buff = new MultiCompositeBuffer(dupHead, dupRead, dupWrite)
+		val buff = new CompositeBuffer(dupHead, dupRead, dupWrite)
 
 		// Duplicates the next nodes
 		chainAddDuplicates(buff, head.next)
@@ -95,7 +95,7 @@ final class MultiCompositeBuffer private(h: Node, r: Node, w: Node) extends Niol
 	override def copyRead: NiolBuffer = {
 		// Copies the read head
 		val copiedRead = currentRead.data.copyRead
-		val buff = new MultiCompositeBuffer(copiedRead)
+		val buff = new CompositeBuffer(copiedRead)
 		// Copies the other read buffers
 		var node = currentRead.next
 		while (node ne null) {
@@ -107,7 +107,7 @@ final class MultiCompositeBuffer private(h: Node, r: Node, w: Node) extends Niol
 	override def subRead: NiolBuffer = {
 		// Adds the read head
 		val dupRead = currentRead.shallowDuplicate
-		val buff = new MultiCompositeBuffer(dupRead)
+		val buff = new CompositeBuffer(dupRead)
 		// Adds the other read buffers
 		chainAddDuplicates(buff, currentRead.next)
 		buff
@@ -118,7 +118,7 @@ final class MultiCompositeBuffer private(h: Node, r: Node, w: Node) extends Niol
 		if (headAvail <= maxLength) {
 			readHead.duplicate
 		} else {
-			val buff = new MultiCompositeBuffer(readHead.subRead)
+			val buff = new CompositeBuffer(readHead.subRead)
 			var node = currentRead.next
 			var remaining = maxLength - headAvail
 			while (node ne null) {
@@ -140,7 +140,7 @@ final class MultiCompositeBuffer private(h: Node, r: Node, w: Node) extends Niol
 	override def subWrite: NiolBuffer = {
 		// Adds the write head
 		val dupWrite = currentWrite.shallowDuplicate
-		val buff = new MultiCompositeBuffer(dupWrite)
+		val buff = new CompositeBuffer(dupWrite)
 		// Adds the other write buffers
 		chainAddDuplicates(buff, currentWrite.next)
 		buff

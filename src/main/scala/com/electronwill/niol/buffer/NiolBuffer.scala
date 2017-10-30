@@ -58,7 +58,7 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
 		if (this.capacity == 0) {if (buffer.capacity == 0) EmptyBuffer else buffer.duplicate}
 		else if (buffer.capacity == 0) this.duplicate
 		else {
-			val res = new MultiCompositeBuffer(this)
+			val res = new CompositeBuffer(this)
 			res += buffer
 			res
 		}
