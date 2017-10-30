@@ -1,6 +1,6 @@
 package com.electronwill.niol.buffer.provider
 
-import com.electronwill.niol.buffer.{NioBasedBuffer, NiolBuffer}
+import com.electronwill.niol.buffer.RandomAccessBuffer
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -9,17 +9,17 @@ import scala.collection.mutable.ArrayBuffer
  */
 final class StageBufferPoolBuilder {
 	private[this] val stages = new ArrayBuffer[PoolStage]
-	private[this] var defaultHandler: Int => NiolBuffer = _
+	private[this] var defaultHandler: Int => RandomAccessBuffer = _
 
-	def +=(maxCapacity: Int, maxCached: Int, allocator: Int => NiolBuffer): Unit = {
+	def +=(maxCapacity: Int, maxCached: Int, allocator: Int => RandomAccessBuffer): Unit = {
 		stages += new PoolStage(maxCapacity, maxCached, allocator)
 	}
 
 	def +=(maxCapacity: Int, maxCached: Int): Unit = {
-		stages += new PoolStage(maxCapacity, maxCached, NioBasedBuffer.allocateDirect)
+		stages += new PoolStage(maxCapacity, maxCached, DirectNioAllocator.getBuffer)
 	}
 
-	def defaultHandler(handler: Int => NiolBuffer): Unit = {
+	def defaultHandler(handler: Int => RandomAccessBuffer): Unit = {
 		defaultHandler = handler
 	}
 
