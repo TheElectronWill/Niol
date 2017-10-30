@@ -8,6 +8,10 @@ import com.electronwill.niol.buffer.NiolBuffer
 import scala.annotation.tailrec
 
 /**
+ * Stores data associated to a unique TCP client. This abstract class provides basic reading and
+ * writing functionnality. Additionnal information and features may and should be added by the
+ * subclasses, by using the [[infos]] field and/or adding new methods.
+ *
  * @author TheElectronWill
  */
 abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server: TcpServer[A]) {
@@ -21,7 +25,9 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 	/** @return true if the end of the stream has been reached, false otherwise */
 	def streamEnded: Boolean = eos
 
-	// write infos
+	/**
+	 * The queue that contains the data waiting for being written.
+	 */
 	private[this] val writeQueue = new ConcurrentLinkedQueue[(NiolBuffer, Runnable)]
 
 	/**
@@ -40,10 +46,10 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 						// All the data is available => handle it
 						handleDataView()
 					} else if (readBuffer.capacity < dataLength) {
-						// The buffer is too small => create a complementary buffer
-						val complement = dataLength - readBuffer.capacity
-						val complBuffer = server.bufferProvider.getBuffer(complement)
-						readBuffer = baseReadBuffer + complBuffer // Creates a CompositeBuffer without copy
+						// The buffer is too small => create an additional buffer
+						val additional = dataLength - readBuffer.capacity
+						val additionalBuffer = server.bufferProvider.getBuffer(additional)
+						readBuffer = baseReadBuffer + additionalBuffer // Creates a CompositeBuffer without copying the data
 						readMore() // Attempts to fill the buffer -- tail recursive call!
 					}
 				}
@@ -61,7 +67,7 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 	 * @return true if all the pending data has been written, false otherwise
 	 */
 	private[network] final def writeMore(): Boolean = {
-		var queued = writeQueue.peek()
+		var queued = writeQueue.peek() // the next element. null if the queue is empty
 		while (queued ne null) {
 			val buffer = queued._1
 			channel <<: buffer
@@ -79,8 +85,21 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 		true
 	}
 
+	/**
+	 * Writes some data to the client. The data isn't written immediately but at some time in the
+	 * future. Therefore this method isn't blocking.
+	 *
+	 * @param buffer the data to write
+	 */
 	final def write(buffer: NiolBuffer): Unit = write(buffer, null)
 
+	/**
+	 * Asynchronously writes some data to the client, and executes the given completion handler
+	 * when the operation completes.
+	 *
+	 * @param buffer            the data to write
+	 * @param completionHandler the handler to execute after the operation
+	 */
 	final def write(buffer: NiolBuffer, completionHandler: Runnable): Unit = {
 		channel <<: buffer
 		if (buffer.writeAvail > 0) {
@@ -88,6 +107,9 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 		}
 	}
 
+	/**
+	 * Handles the data of the currently available packet.
+	 */
 	private final def handleDataView(): Unit = {
 		// Isolates the packet
 		val dataView = readBuffer.subRead(maxLength = dataLength)
@@ -100,13 +122,13 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 			state = InputState.READ_HEADER // switches the state
 			readBuffer.skipRead(dataLength) // marks the data as read
 
-			// Discards the complement buffer, if any
+			// Discards the additional buffer, if any
 			if (readBuffer != baseReadBuffer) {
 				readBuffer.discard()
 				baseReadBuffer.clear()
 				readBuffer = baseReadBuffer
 			}
-			// Discards the dataView
+			// Discards the view buffer
 			dataView.discard()
 		}
 	}
