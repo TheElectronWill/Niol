@@ -1,7 +1,7 @@
 package com.electronwill.niol.network
 
-import java.nio.channels.SocketChannel
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.nio.channels.{SelectionKey, SocketChannel}
+import java.util
 
 import com.electronwill.niol.buffer.NiolBuffer
 
@@ -10,7 +10,15 @@ import scala.annotation.tailrec
 /**
  * Stores data associated to a unique TCP client. This abstract class provides basic reading and
  * writing functionnality. Additionnal information and features may and should be added by the
- * subclasses, by using the [[infos]] field and/or adding new methods.
+ * subclasses, by using the [[infos]] field and/or by adding new methods.
+ *
+ * == Thread-safety ==
+ * - The public methods of ClientAttach may be called from any thread without problem.
+ * - The others are always called from the Selector thread. In particular, [[readHeader()]] and
+ * [[handleData()]] don't need to be thread-safe.
+ * - The completion handlers are run on the Selector thread. Therefore they should NOT perform
+ * long computations. If you have long computations to do, send them to an ExecutorService or
+ * something similar.
  *
  * @author TheElectronWill
  */
@@ -20,6 +28,9 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 	private[this] var readBuffer: NiolBuffer = baseReadBuffer
 	private[this] var state: InputState = InputState.READ_HEADER
 	private[this] var dataLength: Int = _
+	private[this] val key: SelectionKey = channel.register(server.selector, SelectionKey.OP_READ)
+
+	@volatile
 	private[this] var eos: Boolean = false
 
 	/** @return true if the end of the stream has been reached, false otherwise */
@@ -28,7 +39,7 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 	/**
 	 * The queue that contains the data waiting for being written.
 	 */
-	private[this] val writeQueue = new ConcurrentLinkedQueue[(NiolBuffer, Runnable)]
+	private[this] val writeQueue = new util.ArrayDeque[(NiolBuffer, Runnable)]
 
 	/**
 	 * Reads more data from the SocketChannel.
@@ -67,22 +78,25 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 	 * @return true if all the pending data has been written, false otherwise
 	 */
 	private[network] final def writeMore(): Boolean = {
-		var queued = writeQueue.peek() // the next element. null if the queue is empty
-		while (queued ne null) {
-			val buffer = queued._1
-			channel <<: buffer
-			if (buffer.readAvail == 0) {
-				writeQueue.poll()
-				val completionHandler = queued._2
-				if (completionHandler ne null) {
-					completionHandler.run()
+		writeQueue.synchronized { // Sync protects the queue and the consistency of the interestOps
+			var queued = writeQueue.peek() // the next element. null if the queue is empty
+			while (queued ne null) {
+				val buffer = queued._1
+				channel <<: buffer
+				if (buffer.readAvail == 0) {
+					writeQueue.poll()
+					val completionHandler = queued._2
+					if (completionHandler ne null) {
+						completionHandler.run()
+					}
+					queued = writeQueue.peek() // fetches the next element
+				} else {
+					return false
 				}
-				queued = writeQueue.peek() // fetches the next element
-			} else {
-				return false
 			}
+			key.interestOps(SelectionKey.OP_READ) // Stop listening for OP_WRITE
+			true
 		}
-		true
 	}
 
 	/**
@@ -101,9 +115,18 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 	 * @param completionHandler the handler to execute after the operation
 	 */
 	final def write(buffer: NiolBuffer, completionHandler: Runnable): Unit = {
-		channel <<: buffer
-		if (buffer.writeAvail > 0) {
-			writeQueue.offer((buffer, completionHandler))
+		writeQueue.synchronized { // Sync protects the queue and the consistency of the interestOps
+			if (writeQueue.isEmpty) {
+				channel <<: buffer
+				if (buffer.writeAvail > 0) {
+					writeQueue.offer((buffer, completionHandler))
+					key.interestOps(SelectionKey.OP_WRITE) // Continue to write later
+				} else {
+					writeQueue.offer((buffer, completionHandler))
+				}
+			} else {
+				writeQueue.offer((buffer, completionHandler))
+			}
 		}
 	}
 

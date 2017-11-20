@@ -13,7 +13,7 @@ import com.electronwill.niol.buffer.provider.BufferProvider
 abstract class TcpServer[A](val port: Int, private[network] val baseBufferSize: Int,
 							private[network] val bufferProvider: BufferProvider) extends Runnable {
 
-	private[this] val selector = Selector.open()
+	private[network] val selector = Selector.open()
 	private[this] val serverChannel = ServerSocketChannel.open()
 	@volatile private[this] var _run = true
 
