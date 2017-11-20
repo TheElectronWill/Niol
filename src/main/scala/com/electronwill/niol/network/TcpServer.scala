@@ -39,16 +39,20 @@ abstract class TcpServer[A](val port: Int, private[network] val baseBufferSize: 
 						if ((ops & SelectionKey.OP_ACCEPT) != 0) { // New client -> accept
 							val channel = serverChannel.accept()
 							accept(channel)
-						} else { // Don't try to read/write from/to a new client, since they
+							// Don't try to read/write from/to a new client, since they
 							// haven't been registered yet for OP_READ nor OP_WRITE operations.
-							var keep = true
-							if ((ops & SelectionKey.OP_READ) != 0) { // Data available -> read
-								keep &= read(key)
-							}
-							if ((ops & SelectionKey.OP_WRITE) != 0) { // Data pending -> write
-								keep &= write(key)
-							}
-							if (!keep || !key.isValid) { // Invalid key -> cancel
+						} else {
+							if (key.isValid) {
+								if ((ops & SelectionKey.OP_READ) != 0) { // Data available -> read
+									val endOfStream = read(key)
+									if (endOfStream) {
+										cancel(key)
+									}
+								}
+								if ((ops & SelectionKey.OP_WRITE) != 0) { // Data pending -> write
+									write(key)
+								}
+							} else { // Invalid key -> cancel
 								cancel(key)
 							}
 						}
