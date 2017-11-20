@@ -15,7 +15,7 @@ abstract class TcpServer[A](val port: Int, private[network] val baseBufferSize: 
 
 	private[network] val selector = Selector.open()
 	private[this] val serverChannel = ServerSocketChannel.open()
-	@volatile private[this] var _run = true
+	@volatile private[this] var _run = false
 
 	serverChannel.configureBlocking(false)
 	serverChannel.bind(new InetSocketAddress(port))
@@ -77,6 +77,7 @@ abstract class TcpServer[A](val port: Int, private[network] val baseBufferSize: 
 		if (_run) {
 			throw new IllegalStateException("The server is already running!")
 		}
+		_run = true
 		onStart()
 		val t = new Thread(this, threadName)
 		t.start()
