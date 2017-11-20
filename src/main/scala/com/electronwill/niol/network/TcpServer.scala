@@ -116,42 +116,50 @@ abstract class TcpServer[A](val port: Int, private[network] val baseBufferSize: 
 	protected def onError(e: Exception): Unit
 
 	/**
-	 * Called when the [[start]] method is called.
+	 * Called when the [[start]] method is called, before [[onStarted]].
 	 */
 	protected def onStart(): Unit = {}
 
 	/**
-	 * Called when the server's execution begins in its thread.
+	 * Called when the server's execution begins in its thread, after [[onStart]].
 	 */
 	protected def onStarted(): Unit = {}
 
 	/**
-	 * Called when the [[stop]] method is called.
+	 * Called when the [[stop]] method is called, before [[onStopped]].
 	 */
 	protected def onStop(): Unit = {}
 
 	/**
-	 * Called when the server's execution finally stops.
+	 * Called when the server's execution finally stops, after [[onStop]].
 	 */
 	protected def onStopped(): Unit = {}
 
+	/** Accepts the client channel: make it non-blocking, call `onAccept` and register OP_READ */
 	private def accept(clientChannel: SocketChannel): Unit = {
 		clientChannel.configureBlocking(false)
 		val clientAttach = onAccept(clientChannel)
 		clientChannel.register(selector, SelectionKey.OP_READ, clientAttach)
 	}
 
+	/**
+	 * Reads more data from the client channel.
+	 *
+	 * @return true iff the end of the stream has been reached, false otherwise.
+	 */
 	private def read(key: SelectionKey): Boolean = {
 		val attach = key.attachment().asInstanceOf[ClientAttach[A]]
 		attach.readMore()
 		attach.streamEnded
 	}
 
+	/** Write more data to the client channel */
 	private def write(key: SelectionKey): Boolean = {
 		val attach = key.attachment().asInstanceOf[ClientAttach[A]]
 		attach.writeMore()
 	}
 
+	/** Cancels a key and call `onDisconnect` */
 	private def cancel(key: SelectionKey): Unit = {
 		key.cancel()
 		val attach = key.attachment().asInstanceOf[ClientAttach[A]]
