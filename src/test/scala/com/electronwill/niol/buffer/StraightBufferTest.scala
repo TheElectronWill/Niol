@@ -13,6 +13,7 @@ class StraightBufferTest {
 	def test(): Unit = {
 		val cap = 512
 		val buff = new StraightBuffer(HeapNioAllocator.getBuffer(cap))
+		println(buff)
 		assert(buff.capacity == cap)
 		assert(buff.readPos == 0 && buff.writePos == 0)
 		assert(buff.readLimit == 0 && buff.writeLimit == cap)
