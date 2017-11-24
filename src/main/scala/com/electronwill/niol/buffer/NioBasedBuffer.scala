@@ -100,7 +100,6 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 
 	override def sub(begin: Int, end: Int): RandomAccessBuffer = {
 		// Creates subviews of the buffer
-		println(s"sub($begin, $end)")
 		val rbuff = bbView(begin, end).slice()
 		val wbuff = rbuff.duplicate()
 		// Increases the use count and return
