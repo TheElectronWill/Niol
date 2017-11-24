@@ -115,8 +115,8 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
 	override def subRead(maxLength: Int): NiolBuffer = {
 		val readHead = currentRead.data
 		val headAvail = readHead.readAvail
-		if (headAvail <= maxLength) {
-			readHead.duplicate
+		if (headAvail >= maxLength) {
+			readHead.subRead(maxLength)
 		} else {
 			val buff = new CompositeBuffer(readHead.subRead)
 			var node = currentRead.next
@@ -149,8 +149,8 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
 	override def subWrite(maxLength: Int): NiolBuffer = {
 		val writeHead = currentWrite.data
 		val headAvail = writeHead.writeAvail
-		if (headAvail <= maxLength) {
-			writeHead.duplicate
+		if (headAvail >= maxLength) {
+			writeHead.subWrite(maxLength)
 		} else {
 			val buff = new CompositeBuffer(writeHead.subWrite)
 			var node = currentWrite.next
@@ -370,6 +370,11 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
 		currentWrite = currentWrite.next
 		writeAvailNext -= currentWrite.data.writeAvail
 	}
+	private def addReadAvail(n: Int): Unit = {
+		if (currentWrite ne currentRead) {
+			readAvailNext += n
+		}
+	}
 	private def canWriteDirectly(count: Int): Boolean = {
 		val avail = currentWrite.data.writeAvail
 		if (avail == 0) {
@@ -396,7 +401,7 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
 			if (currentWrite.next eq null) {
 				throw new BufferOverflowException
 			}
-			moveToNextRead()
+			moveToNextWrite()
 		}
 		currentWrite.data.putByte(b)
 	}
@@ -449,6 +454,8 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
 			currentWrite.data.putBytes(src, length - remaining, l)
 			// Updates the counter
 			remaining -= l
+			// Updates readAvail
+			addReadAvail(l)
 			// Moves to the next buffer if needed
 			if (remaining > 0) {
 				if (currentWrite.next eq null) throw new BufferOverflowException
@@ -461,6 +468,7 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
 		while (again) {
 			currentWrite.data.putBytes(src)
 			if ((currentWrite.next ne null) && src.hasRemaining) {
+				addReadAvail(src.position())
 				moveToNextWrite()
 			} else {
 				again = false
@@ -474,7 +482,8 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
 		while (!stop) {
 			val (read, eos) = currentWrite.data.putBytes(src)
 			totalRead += read
-			stop = eos || (currentWrite.next ne null)
+			stop = eos || (currentWrite.next eq null)
+			addReadAvail(read)
 			if (!stop) {
 				moveToNextWrite()
 			} else {
