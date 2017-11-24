@@ -146,6 +146,31 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
 		buff
 	}
 
+	override def subWrite(maxLength: Int): NiolBuffer = {
+		val writeHead = currentWrite.data
+		val headAvail = writeHead.writeAvail
+		if (headAvail <= maxLength) {
+			writeHead.duplicate
+		} else {
+			val buff = new CompositeBuffer(writeHead.subWrite)
+			var node = currentWrite.next
+			var remaining = maxLength - headAvail
+			while (node ne null) {
+				val nodeData = node.data
+				val nodeAvail = nodeData.writeAvail
+				if (nodeAvail > remaining) {
+					buff += nodeData.subWrite(remaining)
+					node = null
+				} else {
+					buff += nodeData.duplicate
+					remaining -= nodeAvail
+					node = node.next
+				}
+			}
+			buff
+		}
+	}
+
 	override def clear(): Unit = {
 		discardExhausted()
 		var node = head

@@ -35,16 +35,10 @@ final class StraightBuffer(private[this] val buff: RandomAccessBuffer) extends R
 
 	// buffer operations
 	override def copy(begin: Int, end: Int): RandomAccessBuffer = buff.copy(begin, end)
-	override def sub(begin: Int, end: Int): RandomAccessBuffer = {
-		val sub = buff.sub(begin, end)
-		markUsed()
-		sub
-	}
-	override def duplicate: RandomAccessBuffer = {
-		val d = new StraightBuffer(buff.duplicate)
-		markUsed()
-		d
-	}
+	override def subRead(maxLength: Int): RandomAccessBuffer = buff.subRead(maxLength)
+	override def subWrite(maxLength: Int): RandomAccessBuffer = buff.subWrite(maxLength)
+	override def sub(begin: Int, end: Int): RandomAccessBuffer = buff.sub(begin, end)
+	override def duplicate: RandomAccessBuffer = new StraightBuffer(buff.duplicate)
 	override def compact(): Unit = buff.compact()
 	override def discard(): Unit = {
 		if (useCount.decrementAndGet() == 0) {

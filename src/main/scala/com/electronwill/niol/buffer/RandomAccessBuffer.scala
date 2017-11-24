@@ -1,7 +1,5 @@
 package com.electronwill.niol.buffer
 
-import Math.min
-
 /**
  * A NiolBuffer that can be randomly accessed like an array of bytes.
  *
@@ -55,6 +53,7 @@ abstract class RandomAccessBuffer extends NiolBuffer {
 	override def skipRead(n: Int): Unit = readPos(readPos + n)
 
 	// buffer operations
+	def copyRead: RandomAccessBuffer = copy(readPos, readLimit)
 	/**
 	 * Copies a portion of this buffer in a new buffer.
 	 *
@@ -71,15 +70,15 @@ abstract class RandomAccessBuffer extends NiolBuffer {
 	 */
 	def sub(begin: Int, end: Int): RandomAccessBuffer // absolute, exclusive end
 
-	override final def copyRead: RandomAccessBuffer = copy(readPos, readLimit)
+	override def subRead: RandomAccessBuffer = subRead(readAvail)
 
-	override final def subRead: RandomAccessBuffer = sub(readPos, readLimit)
+	def subRead(maxLength: Int): RandomAccessBuffer
 
-	override final def subWrite: RandomAccessBuffer = sub(writePos, writeLimit)
+	override def subWrite: RandomAccessBuffer = subWrite(writeAvail)
 
-	override final def subRead(maxLength: Int) = sub(readPos, min(readPos + maxLength, readLimit))
+	def subWrite(maxLength: Int): RandomAccessBuffer
 
-	override def duplicate: RandomAccessBuffer
+	def duplicate: RandomAccessBuffer
 
 	/**
 	 * Clears this buffer. readPos, readLimit and writePos are set to 0 and the writeLimit is

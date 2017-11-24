@@ -26,6 +26,7 @@ object EmptyBuffer extends NiolBuffer {
 	override def subRead: NiolBuffer = EmptyBuffer
 	override def subRead(maxLength: Int): NiolBuffer = EmptyBuffer
 	override def subWrite: NiolBuffer = EmptyBuffer
+	override def subWrite(maxLength: Int): NiolBuffer = EmptyBuffer
 	override def clear(): Unit = {}
 
 	// get methods

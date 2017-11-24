@@ -31,6 +31,7 @@ final class ExpandingBuffer(minCapacityIncrement: Int, maxCapacity: Int,
 	override def subRead: NiolBuffer = buff.subRead
 	override def subRead(maxLength: Int): NiolBuffer = buff.subRead(maxLength)
 	override def subWrite: NiolBuffer = buff.subWrite
+	override def subWrite(maxLength: Int): NiolBuffer = buff.subWrite(maxLength)
 	override def clear(): Unit = buff.clear()
 	override def duplicate: NiolBuffer = buff.duplicate
 	override def compact(): Unit = buff.compact()

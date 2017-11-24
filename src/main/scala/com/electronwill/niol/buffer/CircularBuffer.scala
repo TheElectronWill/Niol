@@ -107,6 +107,24 @@ final class CircularBuffer(private[niol] val buff: RandomAccessBuffer) extends N
 			sub(writePos, capacity) + sub(0, readPos)
 		}
 	}
+	override def subWrite(maxLength: Int): NiolBuffer = {
+		if (readPos >= writePos) {
+			sub(writePos, Math.min(readPos, writePos + maxLength))
+		} else if (readPos == 0) {
+			sub(writePos, Math.min(capacity, writePos + maxLength))
+		} else {
+			val partA = capacity - writePos
+			if (partA >= maxLength) {
+				sub(writePos, capacity)
+			} else {
+				var partB = readPos
+				if (partA + partB > maxLength) {
+					partB = maxLength - partA
+				}
+				sub(writePos, capacity) + sub(0, partB)
+			}
+		}
+	}
 
 	private def copy(begin: Int, end: Int): NiolBuffer = buff.copy(begin, end)
 	private def sub(begin: Int, end: Int): NiolBuffer = {

@@ -60,10 +60,44 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 		copy
 	}
 
-	override def sub(begin: Int, end: Int): RandomAccessBuffer = {
-		val buff = bbView(begin, end).slice()
+	override def subRead(maxLength: Int): RandomAccessBuffer = {
+		// Creates subviews of the buffer
+		val lim = Math.min(readLimit, readPos + maxLength)
+		val rbuff = bbView(readPos, lim).slice()
+		val wbuff = rbuff.duplicate()
+		// Prevents writes
+		wbuff.position(0)
+		wbuff.limit(0)
+		// Increases the use count and return
 		markUsed()
-		new NioBasedBuffer(buff, this, null)
+		new NioBasedBuffer(wbuff, rbuff, this, null)
+	}
+
+	override def subWrite(maxLength: Int): RandomAccessBuffer = {
+		// Creates subviews of the buffer
+		val lim = Math.min(writeLimit, writePos + maxLength)
+		val wbuff = bbView(writePos, lim).slice()
+		val rbuff = wbuff.duplicate()
+		// Prevents reads
+		rbuff.position(0)
+		rbuff.limit(0)
+		// Increases the use count and return
+		markUsed()
+		new NioBasedBuffer(wbuff, rbuff, this, null)
+	}
+
+	override def sub(begin: Int, end: Int): RandomAccessBuffer = {
+		// Creates subviews of the buffer
+		val wbuff = bbView(begin, end).slice()
+		val rbuff = wbuff.duplicate()
+		// Applies the position and limit
+		wbuff.position(Math.max(0, writePos - begin))
+		wbuff.limit(Math.min(end - begin, writeLimit - begin))
+		rbuff.position(Math.max(0, readPos - begin))
+		rbuff.limit(Math.min(end - begin, readLimit - begin))
+		// Increases the use count and return
+		markUsed()
+		new NioBasedBuffer(wbuff, rbuff, this, null)
 	}
 
 	private def bbView(begin: Int, end: Int): ByteBuffer = {

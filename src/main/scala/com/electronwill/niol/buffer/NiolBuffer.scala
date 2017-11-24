@@ -44,14 +44,41 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
 	/** Copies the readable content of this buffer in a new buffer. */
 	def copyRead: NiolBuffer
 
-	/** Creates a view of the buffer's readable data. */
-	def subRead: NiolBuffer
+	/**
+	 * Creates a view of the buffer's readable data.
+	 * The returned buffer has the following characteristics:
+	 * - readPosition = 0
+	 * - readAvail = capacity = thisBuffer.readAvail
+	 * - writeAvail = 0
+	 */
+	def subRead: NiolBuffer = subRead(readAvail)
 
-	/** Creates a limited view of the buffer's readable data. */
+	/**
+	 * Creates a limited view of the buffer's readable data.
+	 * The returned buffer has the following characteristics:
+	 * - readPosition = 0
+	 * - readAvail = capacity
+	 * - writeAvail = 0
+	 */
 	def subRead(maxLength: Int): NiolBuffer
 
-	/** Creates a view of the buffer's writeable space. */
-	def subWrite: NiolBuffer
+	/**
+	 * Creates a view of the buffer's writeable space.
+	 * The returned buffer has the following characteristics:
+	 * - writePosition = 0
+	 * - writeAvail = capacity = thisBuffer.writeAvail
+	 * - readAvail = 0
+	 */
+	def subWrite: NiolBuffer = subWrite(writeAvail)
+
+	/**
+	 * Creates a limited view of the buffer's writeable space.
+	 * The returned buffer has the following characteristics:
+	 * - writePosition = 0
+	 * - writeAvail = capacity
+	 * - readAvail = 0
+	 */
+	def subWrite(maxLength: Int): NiolBuffer
 
 	/** Concatenates two buffers without copying their content. */
 	def concat(buffer: NiolBuffer): NiolBuffer = {
