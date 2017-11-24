@@ -3,7 +3,7 @@ package com.electronwill.niol.network
 import java.nio.channels.{SelectionKey, SocketChannel}
 import java.util
 
-import com.electronwill.niol.buffer.NiolBuffer
+import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer, StraightBuffer}
 
 import scala.annotation.tailrec
 
@@ -24,7 +24,10 @@ import scala.annotation.tailrec
  */
 abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server: TcpServer[A]) {
 	// read infos
-	private[this] val baseReadBuffer = server.bufferProvider.getBuffer(server.baseBufferSize)
+	private[this] val baseReadBuffer = {
+		val lowLevelBuffer = server.bufferProvider.getBuffer(server.baseBufferSize)
+		new CircularBuffer(lowLevelBuffer)
+	}
 	private[this] var readBuffer: NiolBuffer = baseReadBuffer
 	private[this] var state: InputState = InputState.READ_HEADER
 	private[this] var dataLength: Int = _
@@ -60,9 +63,13 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 						// The buffer is too small => create an additional buffer
 						val additional = dataLength - readBuffer.capacity
 						val additionalBuffer = server.bufferProvider.getBuffer(additional)
-						readBuffer = baseReadBuffer + additionalBuffer // Creates a CompositeBuffer without copying the data
-						readMore() // Attempts to fill the buffer -- tail recursive call!
+						val additionalStraight = new StraightBuffer(additionalBuffer)
+						// Creates a CompositeBuffer without copying the data
+						readBuffer = baseReadBuffer + additionalStraight
+						// Attempts to fill the buffer -- tail recursive call!
+						readMore()
 					}
+					// Unlike a StraightBuffer, a CircularBuffer doesn't need to be compacted.
 				}
 			// Then, the data must be read
 			case InputState.READ_DATA =>
@@ -118,11 +125,9 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 		writeQueue.synchronized { // Sync protects the queue and the consistency of the interestOps
 			if (writeQueue.isEmpty) {
 				channel <<: buffer
-				if (buffer.writeAvail > 0) {
+				if (buffer.readAvail > 0) {
 					writeQueue.offer((buffer, completionHandler))
 					key.interestOps(SelectionKey.OP_WRITE) // Continue to write later
-				} else {
-					writeQueue.offer((buffer, completionHandler))
 				}
 			} else {
 				writeQueue.offer((buffer, completionHandler))
