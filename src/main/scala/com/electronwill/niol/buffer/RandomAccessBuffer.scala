@@ -63,7 +63,19 @@ abstract class RandomAccessBuffer extends NiolBuffer {
 	def copy(begin: Int, end: Int): RandomAccessBuffer //absolute, exclusive end
 
 	/**
+	 * Creates a view of a portion of this buffer that respects the buffer's positions and limit.
+	 *
+	 * @param begin the beginning of the view, inclusive
+	 * @param end   the end of the view, exclusive
+	 */
+	def lsub(begin: Int, end: Int): RandomAccessBuffer // absolute, exclusive end
+
+	/**
 	 * Creates a view of a portion of this buffer.
+	 * The returned buffer has the following characteristics:
+	 * - readPos = writePos = 0
+	 * - readLimit = writeLimit = capacity
+	 * - readAvail = writeAvail = end - begin
 	 *
 	 * @param begin the beginning of the view, inclusive
 	 * @param end   the end of the view, exclusive

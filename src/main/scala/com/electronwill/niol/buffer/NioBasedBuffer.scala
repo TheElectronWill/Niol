@@ -66,7 +66,6 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 		val rbuff = bbView(readPos, lim).slice()
 		val wbuff = rbuff.duplicate()
 		// Prevents writes
-		wbuff.position(0)
 		wbuff.limit(0)
 		// Increases the use count and return
 		markUsed()
@@ -79,8 +78,21 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 		val wbuff = bbView(writePos, lim).slice()
 		val rbuff = wbuff.duplicate()
 		// Prevents reads
-		rbuff.position(0)
 		rbuff.limit(0)
+		// Increases the use count and return
+		markUsed()
+		new NioBasedBuffer(wbuff, rbuff, this, null)
+	}
+
+	override def lsub(begin: Int, end: Int): RandomAccessBuffer = {
+		// Creates subviews of the buffer
+		val wbuff = bbView(begin, end).slice()
+		val rbuff = wbuff.duplicate()
+		// Applies the position and limit
+		wbuff.limit(Math.min(end - begin, writeLimit - begin))
+		wbuff.position(Math.max(0, writePos - begin))
+		rbuff.limit(Math.min(end - begin, readLimit - begin))
+		rbuff.position(Math.max(0, readPos - begin))
 		// Increases the use count and return
 		markUsed()
 		new NioBasedBuffer(wbuff, rbuff, this, null)
@@ -88,13 +100,9 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 
 	override def sub(begin: Int, end: Int): RandomAccessBuffer = {
 		// Creates subviews of the buffer
-		val wbuff = bbView(begin, end).slice()
-		val rbuff = wbuff.duplicate()
-		// Applies the position and limit
-		wbuff.position(Math.max(0, writePos - begin))
-		wbuff.limit(Math.min(end - begin, writeLimit - begin))
-		rbuff.position(Math.max(0, readPos - begin))
-		rbuff.limit(Math.min(end - begin, readLimit - begin))
+		println(s"sub($begin, $end)")
+		val rbuff = bbView(begin, end).slice()
+		val wbuff = rbuff.duplicate()
 		// Increases the use count and return
 		markUsed()
 		new NioBasedBuffer(wbuff, rbuff, this, null)
@@ -114,8 +122,8 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 		val newWritePos = readBuffer.position()
 		writeBuffer.limit(capacity)
 		writeBuffer.position(newWritePos)
-		readBuffer.position(0)
 		readBuffer.limit(newWritePos)
+		readBuffer.position(0)
 	}
 
 	override def discard(): Unit = {
