@@ -42,12 +42,13 @@ final class CircularBuffer(private[niol] val buff: RandomAccessBuffer) extends N
 	private[buffer] def readLimit: Int = buff.readLimit
 	private def readLimit(limit: Int): Unit = buff.readLimit(limit)
 	override def skipRead(n: Int): Unit = {
-		if (readPos + n >= capacity) {
+		val newPos = readPos + n
+		if (newPos >= capacity) {
 			readLimit(writePos)
 			writeLimit(capacity)
-			readPos(n - capacity + 1)
+			readPos(newPos - capacity)
 		} else {
-			readPos(readPos + n)
+			readPos(newPos)
 		}
 	}
 
@@ -85,7 +86,7 @@ final class CircularBuffer(private[niol] val buff: RandomAccessBuffer) extends N
 		if (readPos >= writePos) {
 			val partA = capacity - readPos
 			if (partA >= maxLength) {
-				sub(readPos, maxLength)
+				sub(readPos, readPos + maxLength)
 			} else {
 				var partB = writePos
 				if (partA + partB > maxLength) {
