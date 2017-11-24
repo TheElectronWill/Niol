@@ -229,6 +229,11 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
 		currentRead = currentRead.next
 		readAvailNext -= currentRead.data.readAvail
 	}
+	private def removeWriteAvail(n: Int): Unit = {
+		if (currentWrite ne currentRead) {
+			writeAvailNext -= n
+		}
+	}
 	private def canReadDirectly(count: Int): Boolean = {
 		val avail = currentRead.data.readAvail
 		if (avail == 0) {
@@ -305,6 +310,8 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
 			currentRead.data.getBytes(dest, length - remaining, l)
 			// Updates the counter
 			remaining -= l
+			// Updates writeAvail
+			removeWriteAvail(l)
 			// Moves to the next buffer if needed
 			if (remaining > 0) {
 				if (currentRead.next eq null) throw new BufferUnderflowException
@@ -315,8 +322,10 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
 	override def getBytes(dest: ByteBuffer): Unit = {
 		var again = true
 		while (again) {
+			val pos0 = dest.position()
 			currentRead.data.getBytes(dest)
 			if ((currentRead.next ne null) && dest.hasRemaining) {
+				removeWriteAvail(dest.position() - pos0)
 				moveToNextRead()
 			} else {
 				again = false
@@ -326,7 +335,10 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
 	override def getBytes(dest: NiolBuffer): Unit = {
 		var again = true
 		while (again) {
-			currentRead.data.getBytes(dest)
+			val readData = currentRead.data
+			val avail0 = readData.readAvail
+			readData.getBytes(dest)
+			removeWriteAvail(readData.readAvail - avail0)
 			if ((currentRead.next ne null) && dest.writeAvail > 0) {
 				moveToNextRead()
 			} else {
@@ -337,9 +349,12 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
 	override def getBytes(dest: GatheringByteChannel): Int = {
 		var count = 0
 		count += currentRead.data.getBytes(dest)
+		removeWriteAvail(count)
 		while (currentRead.next ne null) {
 			moveToNextRead()
-			count += currentRead.data.getBytes(dest)
+			val l = currentRead.data.getBytes(dest)
+			removeWriteAvail(l)
+			count += l
 		}
 		count
 	}
@@ -466,9 +481,10 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
 	override def putBytes(src: ByteBuffer): Unit = {
 		var again = true
 		while (again) {
+			val pos0 = src.position()
 			currentWrite.data.putBytes(src)
 			if ((currentWrite.next ne null) && src.hasRemaining) {
-				addReadAvail(src.position())
+				addReadAvail(src.position() - pos0)
 				moveToNextWrite()
 			} else {
 				again = false
