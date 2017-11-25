@@ -16,6 +16,7 @@ import com.electronwill.niol.network.{ClientAttach, TcpServer}
 object EchoServer {
 	val possibleMessages = Seq("Hello,world", "Hello,test", "this is a big message " +
 		(1 to 1000).toBuffer)
+	val counter = new AtomicInteger()
 	def main(args: Array[String]): Unit = {
 		val port = 3000
 		val poolBuilder = new StageBufferPoolBuilder
@@ -42,38 +43,42 @@ object EchoServer {
 				println("Server stopped")
 			}
 		}
-		val client = new Thread(() => {
-			val socket = new Socket("localhost", port)
-			val out = new DataOutputStream(socket.getOutputStream)
-			val in = new DataInputStream(socket.getInputStream)
-			out.writeShort(10)
-			out.write("Hello,test".getBytes(StandardCharsets.UTF_8))
-			println("[C] written")
-			Thread.sleep(1000)
-			var i = 0
-			while (true) {
-				val header = in.readShort()
-				println(s"[C] Received header: $header")
-				val array = new Array[Byte](header)
-				val read = in.read(array)
-				println(s"[C] Read $read")
-				println(s"[C] Received message: ${new String(array, StandardCharsets.UTF_8)}")
-				//Thread.sleep(2000)
-				i += 1
-				if (i % 20 == 0) {
-					println("======================================================")
-					val bytes = possibleMessages(2).getBytes(StandardCharsets.UTF_8)
-					out.writeShort(bytes.length)
-					out.write(bytes)
-				} else {
-					out.writeShort(11)
-					out.write("Hello,world".getBytes(StandardCharsets.UTF_8))
+		val clientRun = new Runnable {
+			override def run(): Unit = {
+				val socket = new Socket("localhost", port)
+				val out = new DataOutputStream(socket.getOutputStream)
+				val in = new DataInputStream(socket.getInputStream)
+				out.writeShort(10)
+				out.write("Hello,test".getBytes(StandardCharsets.UTF_8))
+				println("[C] written")
+				Thread.sleep(1000)
+				var i = 0
+				while (true) {
+					val header = in.readShort()
+					println(s"[C] Received header: $header")
+					val array = new Array[Byte](header)
+					val read = in.read(array)
+					println(s"[C] Read $read")
+					println(s"[C] Received message: ${new String(array, StandardCharsets.UTF_8)}")
+					//Thread.sleep(2000)
+					i += 1
+					if (i % 20 == 0) {
+						println("======================================================")
+						val bytes = possibleMessages(2).getBytes(StandardCharsets.UTF_8)
+						out.writeShort(bytes.length)
+						out.write(bytes)
+					} else {
+						out.writeShort(11)
+						out.write("Hello,world".getBytes(StandardCharsets.UTF_8))
+					}
 				}
 			}
-		})
+		}
 		server.start("Echo Server")
 		Thread.sleep(1000)
-		client.start()
+		for (i <- 1 to 3) {
+			new Thread(clientRun).start()
+		}
 	}
 }
 class Client(chan: SocketChannel, server: TcpServer[Int])
