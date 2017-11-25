@@ -1,2 +1,8 @@
+![logo: edelweiss roug](logo.png)
+
 # Niol
-Modern NIO Library
+
+Niol is a Scala NIO Library, designed to ease the creation of powerful servers.
+
+
+
