@@ -3,6 +3,7 @@ package com.electronwill.niol.io
 import java.io.{Closeable, IOException}
 import java.nio.ByteBuffer
 import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
+import java.nio.file.{Path, StandardOpenOption}
 
 import com.electronwill.niol.{InputType, NiolInput, NiolOutput}
 
@@ -15,6 +16,11 @@ import com.electronwill.niol.{InputType, NiolInput, NiolOutput}
 final class ChannelOutput(private[this] val channel: GatheringByteChannel,
 						  bufferCapacity: Int = 4096,
 						  directBuffer: Boolean = true) extends NiolOutput with Closeable {
+
+	def this(path: Path, bufferCapacity: Int = 4096, directBuffer: Boolean = true) = {
+		this(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE),
+			bufferCapacity, directBuffer)
+	}
 
 	private[this] val buffer: ByteBuffer = {
 		if (directBuffer) {

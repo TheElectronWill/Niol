@@ -3,6 +3,7 @@ package com.electronwill.niol.io
 import java.io.{Closeable, IOException}
 import java.nio.ByteBuffer
 import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
+import java.nio.file.{Path, StandardOpenOption}
 
 import com.electronwill.niol.buffer.provider.BufferProvider
 import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer}
@@ -19,8 +20,12 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 						 bufferProvider: BufferProvider = BufferProvider.DefaultOffHeapProvider)
 	extends NiolInput with Closeable {
 
-	def this(fc: FileChannel, bufferProvider: BufferProvider) = {
+	def this(fc: FileChannel, bufferProvider: BufferProvider = BufferProvider.DefaultOffHeapProvider) = {
 		this(fc, Math.min(4096, fc.size.toInt), bufferProvider)
+	}
+
+	def this(path: Path, bufferProvider: BufferProvider = BufferProvider.DefaultOffHeapProvider) = {
+		this(FileChannel.open(path, StandardOpenOption.READ), bufferProvider)
 	}
 
 	private[this] val buffer: NiolBuffer = {
@@ -32,7 +37,7 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 		if (channel.isInstanceOf[FileChannel]) InputType.FILE_CHANNEL else InputType.OTHER_CHANNEL
 	}
 
-	override def canRead = notEnded
+	override def canRead: Boolean = notEnded
 
 	@throws[IOException]
 	override def close(): Unit = {
