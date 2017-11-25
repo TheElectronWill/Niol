@@ -10,3 +10,6 @@ dependencies {
 	compile 'org.scala-lang:scala-library:2.12.4'
 	testCompile 'org.junit.jupiter:junit-jupiter-api:5.0.0'
 }
+tasks.withType(ScalaCompile) {
+	scalaCompileOptions.additionalParameters = ["-opt:l:inline", "-opt:copy-propagation"]
+}
