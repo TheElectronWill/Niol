@@ -8,14 +8,15 @@ import com.electronwill.niol.buffer.provider.{BufferProvider, HeapNioAllocator}
 import sun.nio.ch.DirectBuffer
 
 /**
- * A buffer based on a [[java.nio.ByteBuffer]].
+ * A buffer based on a [[java.nio.ByteBuffer]]. The NioBaseBuffer is used as a base for the other
+ * buffers.
  *
  * @author TheElectronWill
  */
-final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuffer,
-										 private[this] val readBuffer: ByteBuffer,
-										 private[this] val parent: NiolBuffer,
-										 private[this] val provider: BufferProvider)
+final class NioBaseBuffer private[niol](private[this] val writeBuffer: ByteBuffer,
+										private[this] val readBuffer: ByteBuffer,
+										private[this] val parent: NiolBuffer,
+										private[this] val provider: BufferProvider)
 	extends RandomAccessBuffer {
 
 	private[niol] def this(writeBuff: ByteBuffer, parent: NiolBuffer, provider: BufferProvider) = {
@@ -47,7 +48,7 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 
 	// buffer operations
 	override def duplicate: RandomAccessBuffer = {
-		val d = new NioBasedBuffer(writeBuffer.duplicate(), readBuffer.duplicate(), this, null)
+		val d = new NioBaseBuffer(writeBuffer.duplicate(), readBuffer.duplicate(), this, null)
 		markUsed()
 		d
 	}
@@ -69,7 +70,7 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 		wbuff.limit(0)
 		// Increases the use count and return
 		markUsed()
-		new NioBasedBuffer(wbuff, rbuff, this, null)
+		new NioBaseBuffer(wbuff, rbuff, this, null)
 	}
 
 	override def subWrite(maxLength: Int): RandomAccessBuffer = {
@@ -81,7 +82,7 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 		rbuff.limit(0)
 		// Increases the use count and return
 		markUsed()
-		new NioBasedBuffer(wbuff, rbuff, this, null)
+		new NioBaseBuffer(wbuff, rbuff, this, null)
 	}
 
 	override def lsub(begin: Int, end: Int): RandomAccessBuffer = {
@@ -95,7 +96,7 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 		rbuff.position(Math.max(0, readPos - begin))
 		// Increases the use count and return
 		markUsed()
-		new NioBasedBuffer(wbuff, rbuff, this, null)
+		new NioBaseBuffer(wbuff, rbuff, this, null)
 	}
 
 	override def sub(begin: Int, end: Int): RandomAccessBuffer = {
@@ -104,7 +105,7 @@ final class NioBasedBuffer private[niol](private[this] val writeBuffer: ByteBuff
 		val wbuff = rbuff.duplicate()
 		// Increases the use count and return
 		markUsed()
-		new NioBasedBuffer(wbuff, rbuff, this, null)
+		new NioBaseBuffer(wbuff, rbuff, this, null)
 	}
 
 	private def bbView(begin: Int, end: Int): ByteBuffer = {
