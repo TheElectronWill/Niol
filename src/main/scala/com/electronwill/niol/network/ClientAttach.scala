@@ -151,7 +151,7 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 			readBuffer.skipRead(dataLength) // marks the data as read
 
 			// Discards the additional buffer, if any
-			if (readBuffer != baseReadBuffer) {
+			if (readBuffer ne baseReadBuffer) {
 				readBuffer.discard()
 				baseReadBuffer.clear()
 				readBuffer = baseReadBuffer
