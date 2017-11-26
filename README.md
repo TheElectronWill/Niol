@@ -75,7 +75,7 @@ Niol also provides a `StageBufferPool`, which is organized in capacity intervals
 ```scala
 val builder = new StageBufferPoolBuilder()
 builder += (100, 250) // keep up to 250 buffers of capacity 100
-builder += (1000, 10) // keep up to 10 buffer of capacity 1000
+builder += (1000, 10) // keep up to 10 buffers of capacity 1000
 builder.defaultHandler(HeapNioAllocator.getBuffer) // above 1000, allocate on-demand on the heap
 val pool = builder.build()
 val smalBuffer = pool.getBuffer(75) // 75 <= 100 so this returns a buffer of capacity 100
@@ -110,6 +110,7 @@ The `network` package contains a few classes that allows you to quickly create a
 - Reacts to events: client accepted, client disconnected, message received, message sent, etc.
 - Handles messages' headers and data separately.
 - Efficient buffer management that avoids copying the data.
+- Robust exception handling.
 
 ### Glimpse
 
@@ -124,11 +125,11 @@ final class MyServer[A] extends TcpServer[A](port, baseBufferSize, bufferProvide
       // Reacts to a disconnection
 	}
 	override def onError(e: Exception): Unit = {
-      // Reacts to an exception. You can decide to rethrow an exception to stop the server, or to continue.
+      // Reacts to an exception. You can decide to throw an exception to stop the server, or to continue.
 	}
 	// There are also onStart, onStarted, onStop and onStopped
 }
-final class MyAttach[A](i:A, c: SocketChannel, s: TcpServer[A]) extends ClientAttach[A](i,c,s) {
+final class MyAttach[A](i: A, c: SocketChannel, s: TcpServer[A]) extends ClientAttach[A](i,c,s) {
 	override def readHeader(buffer: NiolBuffer): Int = {
       // Parses the message's header
       // Returns the message's size
