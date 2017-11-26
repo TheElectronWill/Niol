@@ -17,7 +17,7 @@ final class NioBaseBuffer private[niol](private[this] val writeBuffer: ByteBuffe
 										private[this] val readBuffer: ByteBuffer,
 										private[this] val parent: NiolBuffer,
 										private[this] val provider: BufferProvider)
-	extends RandomAccessBuffer {
+	extends RandomAccessBuffer with BaseBuffer {
 
 	private[niol] def this(writeBuff: ByteBuffer, parent: NiolBuffer, provider: BufferProvider) = {
 		this(writeBuff, writeBuff.duplicate(), parent, provider)

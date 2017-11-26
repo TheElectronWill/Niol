@@ -1,22 +1,22 @@
 package com.electronwill.niol.buffer.provider
 
-import com.electronwill.niol.buffer.RandomAccessBuffer
+import com.electronwill.niol.buffer.BaseBuffer
 
 /**
  * @author TheElectronWill
  */
 final class StageBufferPool private[provider](/** in asc capacity order */
 											  private[this] val stages: Array[PoolStage],
-											  private[this] val defaultHandler: Int => RandomAccessBuffer) extends BufferProvider {
+											  private[this] val defaultHandler: Int => BaseBuffer) extends BufferProvider {
 
-	override def getBuffer(minCapacity: Int): RandomAccessBuffer = {
+	override def getBuffer(minCapacity: Int): BaseBuffer = {
 		findStage(minCapacity) match {
 			case Some(stage) => stage.getBuffer()
 			case None => defaultHandler(minCapacity)
 		}
 	}
 
-	override def discard(buffer: RandomAccessBuffer): Unit = {
+	override def discard(buffer: BaseBuffer): Unit = {
 		buffer.clear()
 		findStage(buffer.capacity).flatMap(_.tryCache(buffer)).foreach(_.freeMemory())
 	}

@@ -1,14 +1,14 @@
 package com.electronwill.niol.buffer.provider
 
-import com.electronwill.niol.buffer.RandomAccessBuffer
+import com.electronwill.niol.buffer.BaseBuffer
 
 /**
  * @author TheElectronWill
  */
 trait BufferProvider {
-	def getBuffer(minCapacity: Int): RandomAccessBuffer
+	def getBuffer(minCapacity: Int): BaseBuffer
 
-	def discard(buffer: RandomAccessBuffer): Unit
+	def discard(buffer: BaseBuffer): Unit
 }
 object BufferProvider {
 	@volatile var DefaultOffHeapProvider: BufferProvider = DirectNioAllocator
