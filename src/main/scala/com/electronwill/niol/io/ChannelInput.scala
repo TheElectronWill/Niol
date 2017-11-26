@@ -20,12 +20,20 @@ final class ChannelInput(private[this] val channel: ScatteringByteChannel,
 						 bufferProvider: BufferProvider = BufferProvider.DefaultOffHeapProvider)
 	extends NiolInput with Closeable {
 
-	def this(fc: FileChannel, bufferProvider: BufferProvider = BufferProvider.DefaultOffHeapProvider) = {
+	def this(fc: FileChannel, bufferProvider: BufferProvider) = {
 		this(fc, Math.min(4096, fc.size.toInt), bufferProvider)
 	}
 
-	def this(path: Path, bufferProvider: BufferProvider = BufferProvider.DefaultOffHeapProvider) = {
+	def this(fc: FileChannel) = {
+		this(fc, BufferProvider.DefaultOffHeapProvider)
+	}
+
+	def this(path: Path, bufferProvider: BufferProvider) = {
 		this(FileChannel.open(path, StandardOpenOption.READ), bufferProvider)
+	}
+
+	def this(path: Path) = {
+		this(path, BufferProvider.DefaultOffHeapProvider)
 	}
 
 	private[this] val buffer: NiolBuffer = {
