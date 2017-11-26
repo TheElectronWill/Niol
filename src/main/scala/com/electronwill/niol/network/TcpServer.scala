@@ -6,8 +6,12 @@ import java.nio.channels.{SelectionKey, Selector, ServerSocketChannel, SocketCha
 import com.electronwill.niol.buffer.provider.BufferProvider
 
 /**
- * Base class for constructing TCP servers.
+ * Base class for constructing TCP servers. Only one thread is used to manage all the clients.
  *
+ * @param port           the server's port
+ * @param baseBufferSize the minimum size of the buffer to keep for each client.
+ * @param bufferProvider the BufferProvider used to get new buffers for the new clients or
+ *                       for the messages that are bigger than `baseBufferSize`.
  * @author TheElectronWill
  */
 abstract class TcpServer[A](val port: Int, private[network] val baseBufferSize: Int,
