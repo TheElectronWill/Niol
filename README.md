@@ -139,3 +139,14 @@ final class MyAttach[A](i:A, c: SocketChannel, s: TcpServer[A]) extends ClientAt
 }
 ```
 The type parameter `A` defines the additional informations carried by the `ClientAttach`, for instance a client ID.
+
+To send a message to the client, put it (the header + the data) in a buffer and call the `ClientAttach.write` method. You can add a `completionHandler` (in the form of a `Runnable`) that will be executed once the write operation is completed.
+
+```scala
+client.write(buffer) // Without completion handler
+client.write(buffer, () => {
+  // Reacts to the completion of the write operation
+})
+```
+
+The `write` methods are thread-safe and may be called from any thread.
