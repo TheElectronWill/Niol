@@ -38,8 +38,7 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
 			val serverChan = ServerSocketChannel.open()
 			serverChan.configureBlocking(false)
 			serverChan.bind(new InetSocketAddress(port))
-			val skey = serverChan.register(selector, SelectionKey.OP_ACCEPT)
-			serverChannelsInfos(port) = new ServerChannelInfos(skey, selector, l, serverChan, baseBufferSize, bufferProvider)
+			serverChannelsInfos(port) = new ServerChannelInfos(selector, l, serverChan, baseBufferSize, bufferProvider)
 			true
 		}
 	}
