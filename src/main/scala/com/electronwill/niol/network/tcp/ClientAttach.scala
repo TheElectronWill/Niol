@@ -1,6 +1,6 @@
-package com.electronwill.niol.network
+package com.electronwill.niol.network.tcp
 
-import java.nio.channels.{SelectionKey, SocketChannel}
+import java.nio.channels.{SelectionKey, Selector, SocketChannel}
 import java.util
 
 import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer, StraightBuffer}

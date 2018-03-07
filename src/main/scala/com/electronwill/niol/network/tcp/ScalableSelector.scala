@@ -1,4 +1,4 @@
-package com.electronwill.niol.network
+package com.electronwill.niol.network.tcp
 
 import java.net.InetSocketAddress
 import java.nio.channels.{SelectionKey, Selector, ServerSocketChannel, SocketChannel}

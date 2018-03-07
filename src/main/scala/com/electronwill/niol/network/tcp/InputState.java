@@ -1,4 +1,4 @@
-package com.electronwill.niol.network;
+package com.electronwill.niol.network.tcp;
 
 /**
  * Represents the state of a ClientAttach's input buffer. There are two possible states:
