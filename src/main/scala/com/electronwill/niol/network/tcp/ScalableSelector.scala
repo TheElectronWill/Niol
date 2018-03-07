@@ -141,7 +141,7 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
 	def isRunning: Boolean = _run
 
 	/** Accepts the client channel: make it non-blocking, call `onAccept` and register OP_READ */
-	private def accept(clientChannel: SocketChannel, serverChannel: ServerChannelInfos[_]): Unit = {
+	private def accept[A](clientChannel: SocketChannel, serverChannel: ServerChannelInfos[A]): Unit = {
 		clientChannel.configureBlocking(false)
 		val clientAttach = serverChannel.l.onAccept(clientChannel, serverChannel)
 		clientChannel.register(selector, SelectionKey.OP_READ, clientAttach)
