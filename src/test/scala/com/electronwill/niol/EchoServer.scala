@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import com.electronwill.niol.buffer.provider.{DirectNioAllocator, StageBufferPoolBuilder}
 import com.electronwill.niol.buffer.{NiolBuffer, StraightBuffer}
-import com.electronwill.niol.network.{ClientAttach, TcpServer}
+import com.electronwill.niol.network.tcp.{ClientAttach, ScalableSelector, ServerChannelInfos, TcpListener}
 
 /**
  * @author TheElectronWill
@@ -22,27 +22,30 @@ object EchoServer {
 		val poolBuilder = new StageBufferPoolBuilder
 		poolBuilder += (4000, 10, i => DirectNioAllocator.getBuffer(i))
 		val bufferPool = poolBuilder.build()
-		val server = new TcpServer[Int](port, 150, bufferPool) {
-			override def onAccept(clientChannel: SocketChannel): ClientAttach[Int] = {
+
+		val errorHandler = (e: Exception) => {
+			println(s"Error (see stack trace): $e")
+			e.printStackTrace()
+		}
+		val startHandler = () => {
+			println("Server started")
+			ClientB.start = System.nanoTime()
+		}
+		val stopHandler = () => {
+			println("Server stopped")
+		}
+		val selector = new ScalableSelector(errorHandler, startHandler, stopHandler)
+		selector.listen(port, 150, bufferPool, new TcpListener[Int] {
+			override def onAccept(clientChannel: SocketChannel, s: ServerChannelInfos[Int]): ClientAttach[Int] = {
 				println(s"Accepted client ${clientChannel.getLocalAddress}")
-				val attach = new Client(clientChannel, this)
+				val attach = new Client(s, clientChannel)
 				println(s"Assigned client to id ${attach.infos}")
 				attach
 			}
 			override def onDisconnect(clientAttach: ClientAttach[Int]): Unit = {
 				println(s"Client ${clientAttach.infos} disconnected")
 			}
-			override def onError(e: Exception): Unit = {
-				println(s"Error (see stack trace): $e")
-				e.printStackTrace()
-			}
-			override protected def onStarted(): Unit = {
-				println("Server started")
-			}
-			override protected def onStopped(): Unit = {
-				println("Server stopped")
-			}
-		}
+		})
 		val clientRun = new Runnable {
 			override def run(): Unit = {
 				val socket = new Socket("localhost", port)
@@ -74,15 +77,15 @@ object EchoServer {
 				}
 			}
 		}
-		server.start("Echo Server")
+		selector.start("Echo Server")
 		Thread.sleep(1000)
 		for (i <- 1 to 3) {
 			new Thread(clientRun).start()
 		}
 	}
 }
-class Client(chan: SocketChannel, server: TcpServer[Int])
-	extends ClientAttach[Int](Client.clientId.getAndIncrement(), chan, server) {
+class Client(serverInfos: ServerChannelInfos[Int], clientChannel: SocketChannel)
+	extends ClientAttach[Int](serverInfos, Client.clientId.getAndIncrement(), clientChannel) {
 
 	override def readHeader(buffer: NiolBuffer): Int = {
 		println(s"[S] available: ${buffer.readAvail}, write: ${buffer.writeAvail}")
