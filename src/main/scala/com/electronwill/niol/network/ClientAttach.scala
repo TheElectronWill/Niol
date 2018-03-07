@@ -22,7 +22,7 @@ import scala.annotation.tailrec
  *
  * @author TheElectronWill
  */
-abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server: TcpServer[A]) {
+abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, val channel: SocketChannel) {
 	// read infos
 	private[this] val baseReadBuffer = {
 		val lowLevelBuffer = server.bufferProvider.getBuffer(server.baseBufferSize)
@@ -31,7 +31,7 @@ abstract class ClientAttach[+A](val infos: A, val channel: SocketChannel, server
 	private[this] var readBuffer: NiolBuffer = baseReadBuffer
 	private[this] var state: InputState = InputState.READ_HEADER
 	private[this] var dataLength: Int = _
-	private[this] val key: SelectionKey = channel.register(server.selector, SelectionKey.OP_READ)
+	private[this] val key: SelectionKey = channel.register(server.s, SelectionKey.OP_READ)
 
 	@volatile
 	private[this] var eos: Boolean = false
