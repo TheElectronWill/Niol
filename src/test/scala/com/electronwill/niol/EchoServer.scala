@@ -26,6 +26,7 @@ object EchoServer {
 		val errorHandler = (e: Exception) => {
 			println(s"Error (see stack trace): $e")
 			e.printStackTrace()
+			Thread.sleep(1000)
 		}
 		val startHandler = () => {
 			println("Server started")

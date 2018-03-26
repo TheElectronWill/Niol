@@ -23,24 +23,29 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
 	/**
 	 * Starts a TCP [[ServerSocketChannel]] and registers it to the selector.
 	 *
-	 * @param port           the port to start the server on
-	 * @param baseBufferSize the minimum buffer size to use with the server's clients
-	 * @param bufferProvider the [[BufferProvider]] that provides the clients' buffers
-	 * @param l              the listener that will be called when some events (defined in the listener) related to the
-	 *                       ServerSocketChannel occur.
+	 * @param port the port to start the server on
+	 * @param l    the listener that will be called when some events (defined in the listener) related to the
+	 *             ServerSocketChannel occur.
 	 * @return true if the server has been started, false if there already is a ServerSocketChannel bound to the
 	 *         specified port and registered to this selector.
 	 */
-	def listen(port: Int, baseBufferSize: Int, bufferProvider: BufferProvider, l: TcpListener[_]): Boolean = {
+	def listen(port: Int, readBufferSize: Int, packetBufferBaseSize: Int,
+			   readBufferProvider: BufferProvider, packetBufferProvider: BufferProvider,
+			   l: TcpListener[_]): Boolean = {
 		if (serverChannelsInfos.contains(port)) {
 			false
 		} else {
 			val serverChan = ServerSocketChannel.open()
 			serverChan.configureBlocking(false)
 			serverChan.bind(new InetSocketAddress(port))
-			serverChannelsInfos(port) = new ServerChannelInfos(selector, l, serverChan, baseBufferSize, bufferProvider)
+			serverChannelsInfos(port) = new ServerChannelInfos(selector, l, serverChan,
+				readBufferSize, packetBufferBaseSize, readBufferProvider, packetBufferProvider)
 			true
 		}
+	}
+
+	def listen(port: Int, bufferBaseSize: Int, bufferProvider: BufferProvider, l: TcpListener[_]): Boolean = {
+		listen(port, bufferBaseSize, bufferBaseSize, bufferProvider, bufferProvider, l)
 	}
 
 	/**

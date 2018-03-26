@@ -1,8 +1,9 @@
 package com.electronwill.niol.network.tcp
 
-import java.nio.channels.{SelectionKey, Selector, SocketChannel}
+import java.nio.channels.{SelectionKey, SocketChannel}
 import java.util
 
+import com.electronwill.niol.buffer.provider.BufferProvider
 import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer, StraightBuffer}
 
 import scala.annotation.tailrec
@@ -22,15 +23,28 @@ import scala.annotation.tailrec
  *
  * @author TheElectronWill
  */
-abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, val channel: SocketChannel) {
+abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, val channel: SocketChannel,
+							   transformFunction: NiolBuffer => Unit = null) {
 	// read infos
-	private[this] val baseReadBuffer = {
-		val lowLevelBuffer = server.bufferProvider.getBuffer(server.baseBufferSize)
-		new CircularBuffer(lowLevelBuffer)
+	private[this] var _transform: NiolBuffer => Unit = transformFunction
+	private[this] var (readBuffer, packetBufferBase, packetBufferProvider): (NiolBuffer, NiolBuffer, BufferProvider) = {
+		if (_transform == null) {
+			val directBuff = server.readBufferProvider.getBuffer(server.packetBufferBaseSize)
+			val buff = new CircularBuffer(directBuff)
+			val prov = server.readBufferProvider
+			(null, buff, prov)
+		} else {
+			val directBuff = server.readBufferProvider.getBuffer(server.preTransformReadSize)
+			val heapBuff = server.postTransformBufferProvider.getBuffer(server.packetBufferBaseSize)
+			val baseBuff = new CircularBuffer(heapBuff)
+			val prov = server.postTransformBufferProvider
+			(directBuff, baseBuff, prov) // readBuffer is direct, packetBufferBase is heap-based
+		}
 	}
-	private[this] var readBuffer: NiolBuffer = baseReadBuffer
+
+	private[this] var packetBuffer: NiolBuffer = packetBufferBase
 	private[this] var state: InputState = InputState.READ_HEADER
-	private[this] var dataLength: Int = _
+	private[this] var packetLength: Int = _
 	private[this] val key: SelectionKey = channel.register(server.s, SelectionKey.OP_READ)
 
 	@volatile
@@ -44,28 +58,73 @@ abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, 
 	 */
 	private[this] val writeQueue = new util.ArrayDeque[(NiolBuffer, Runnable)]
 
+	def transform: Option[NiolBuffer => Unit] = Option(_transform)
+
+	def transform_=(f: NiolBuffer => Unit): Unit = {
+		val remove = (f == null) && (_transform != null)
+		val add = (f != null) && (_transform == null)
+		if (remove || add) {
+			val (newRead, newBase, newProvider): (NiolBuffer, NiolBuffer, BufferProvider) = {
+				if (remove) {
+					// Removing the transform, data can be read directly from the SocketChannel to the packetBuffer
+					val prov = server.readBufferProvider
+					val buff = new CircularBuffer(prov.getBuffer(server.packetBufferBaseSize))
+					(null, buff, prov)
+				} else {
+					// Adding the transform, data must be processed before being copied to the packetBuffer
+					val prov = server.postTransformBufferProvider
+					val base = new CircularBuffer(prov.getBuffer(server.packetBufferBaseSize))
+					val read = server.readBufferProvider.getBuffer(server.preTransformReadSize)
+					(read, base, prov)
+				}
+			}
+			// Copies the current data to the new packetBuffer
+			val additionalLength = packetLength - newBase.capacity
+			val newPacketBuffer =
+				if (additionalLength > 0) {
+					newBase + new StraightBuffer(newProvider.getBuffer(additionalLength))
+				} else {
+					newBase
+				}
+			packetBuffer >>: newPacketBuffer
+
+			// Updates the variables
+			readBuffer = newRead
+			packetBufferBase = newBase
+			packetBuffer = newPacketBuffer
+			packetBufferProvider = newProvider
+		}
+		_transform = f
+	}
+
 	/**
 	 * Reads more data from the SocketChannel.
 	 */
 	@tailrec
 	private[network] final def readMore(): Unit = {
-		eos = (channel >>: readBuffer)._2
+		if (_transform == null) {
+			eos = (channel >>: packetBuffer)._2
+		} else {
+			eos = (channel >>: readBuffer)._2
+			_transform(readBuffer)
+			readBuffer >>: packetBuffer
+		}
 		state match {
 			// First, the header must be read
 			case InputState.READ_HEADER =>
-				dataLength = readHeader(readBuffer)
-				if (dataLength >= 0) {
+				packetLength = readHeader(packetBuffer)
+				if (packetLength >= 0) {
 					state = InputState.READ_DATA
-					if (readBuffer.readAvail >= dataLength) {
+					if (packetBuffer.readAvail >= packetLength) {
 						// All the data is available => handle it
 						handleDataView()
-					} else if (readBuffer.capacity < dataLength) {
+					} else if (packetBuffer.capacity < packetLength) {
 						// The buffer is too small => create an additional buffer
-						val additional = dataLength - readBuffer.capacity
-						val additionalBuffer = server.bufferProvider.getBuffer(additional)
+						val additional = packetLength - packetBuffer.capacity
+						val additionalBuffer = packetBufferProvider.getBuffer(additional)
 						val additionalStraight = new StraightBuffer(additionalBuffer)
 						// Creates a CompositeBuffer without copying the data
-						readBuffer = baseReadBuffer + additionalStraight
+						packetBuffer = packetBufferBase + additionalStraight
 						// Attempts to fill the buffer -- tail recursive call!
 						readMore()
 					}
@@ -73,7 +132,7 @@ abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, 
 				}
 			// Then, the data must be read
 			case InputState.READ_DATA =>
-				if (readBuffer.readAvail >= dataLength) {
+				if (packetBuffer.readAvail >= packetLength) {
 					handleDataView()
 				}
 		}
@@ -140,7 +199,7 @@ abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, 
 	 */
 	private final def handleDataView(): Unit = {
 		// Isolates the packet
-		val dataView = readBuffer.subRead(maxLength = dataLength)
+		val dataView = packetBuffer.subRead(maxLength = packetLength)
 
 		try {
 			// Handles the packet
@@ -148,13 +207,13 @@ abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, 
 		} finally {
 			// Prepares for the next packet
 			state = InputState.READ_HEADER // switches the state
-			readBuffer.skipRead(dataLength) // marks the data as read
+			packetBuffer.skipRead(packetLength) // marks the data as read
 
 			// Discards the additional buffer, if any
-			if (readBuffer ne baseReadBuffer) {
-				readBuffer.discard()
-				baseReadBuffer.clear()
-				readBuffer = baseReadBuffer
+			if (packetBuffer ne packetBufferBase) {
+				packetBuffer.discard()
+				packetBufferBase.clear()
+				packetBuffer = packetBufferBase
 			}
 			// Discards the view buffer
 			dataView.discard()
