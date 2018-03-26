@@ -24,9 +24,9 @@ import scala.annotation.tailrec
  * @author TheElectronWill
  */
 abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, val channel: SocketChannel,
-							   transformFunction: NiolBuffer => Unit = null) {
+							   transformFunction: NiolBuffer => Array[Byte] = null) {
 	// read infos
-	private[this] var _transform: NiolBuffer => Unit = transformFunction
+	private[this] var _transform: NiolBuffer => Array[Byte] = transformFunction
 	private[this] var (readBuffer, packetBufferBase, packetBufferProvider): (NiolBuffer, NiolBuffer, BufferProvider) = {
 		if (_transform == null) {
 			val directBuff = server.readBufferProvider.getBuffer(server.packetBufferBaseSize)
@@ -58,9 +58,9 @@ abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, 
 	 */
 	private[this] val writeQueue = new util.ArrayDeque[(NiolBuffer, Runnable)]
 
-	def transform: Option[NiolBuffer => Unit] = Option(_transform)
+	def transform: Option[NiolBuffer => Array[Byte]] = Option(_transform)
 
-	def transform_=(f: NiolBuffer => Unit): Unit = {
+	def transform_=(f: NiolBuffer => Array[Byte]): Unit = {
 		val remove = (f == null) && (_transform != null)
 		val add = (f != null) && (_transform == null)
 		if (remove || add) {
@@ -106,8 +106,8 @@ abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, 
 			eos = (channel >>: packetBuffer)._2
 		} else {
 			eos = (channel >>: readBuffer)._2
-			_transform(readBuffer)
-			readBuffer >>: packetBuffer
+			val transformed = _transform(readBuffer)
+			transformed >>: packetBuffer
 		}
 		state match {
 			// First, the header must be read
