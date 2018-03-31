@@ -104,47 +104,64 @@ dup.discard() // discard the duplicate -> triggers memory cleanup (see below)
 // Both the original and the duplicate have been discarded, therefore the buffer's memory is released as soon as possible.
 ```
 
-## Non-blocking TCP Server
+## Non-blocking TCP Server on multiple ports
 
-The `network` package contains a few classes that allows you to quickly create a TCP server.
+The `ScalableSelector` allows you to quickly create a TCP server that handles multiple ports and clients simultaneously.
 
-### Features
+### Usage
 
-- Only one thread for all the connections, with the NIO `Selector`.
-- Reacts to events: client accepted, client disconnected, message received, message sent, etc.
-- Handles messages' headers and data separately.
-- Efficient buffer management that avoids copying the data.
-- Robust exception handling.
-
-### Glimpse
-
-The class `TcpServer` implements the core of the server. It is an abstract class, so you need to extend it to get a real server. The server associates each client to a `ClientAttach`, which contains the client's informations and the incoming and outcoming data.
+The class `ScalableSelector` uses the Java NIO Selector and ServerSocketChannels.
+First, create a selector with its basic handlers:
 ```scala
-final class MyServer[A] extends TcpServer[A](port, baseBufferSize, bufferProvider) {
-	override def onAccept(clientChannel: SocketChannel) = {
-      // Reacts to a new connection
-      // Returns a ClientAttach associated to the new client
-	}
-	override def onDisconnect(client: ClientAttach[A]): Unit = {
-      // Reacts to a disconnection
-	}
-	override def onError(e: Exception): Unit = {
-      // Reacts to an exception. You can decide to throw an exception to stop the server, or to continue.
-	}
-	// There are also onStart, onStarted, onStop and onStopped
+val errorHandler = (e: Exception) => {
+// Reacts to an exception. You can decide to throw an exception to stop the server, or to continue.
 }
-final class MyAttach[A](i: A, c: SocketChannel, s: TcpServer[A]) extends ClientAttach[A](i,c,s) {
+val startHandler = () => {
+// Called when the selector is started
+}
+val stopHandler = () => {
+// Called when the selector is stopped
+}
+val selector = new ScalableSelector(errorHandler, startHandler, stopHandler)
+```
+
+Get a `BufferProvider` that will create one message buffer per client. Here we'll use a `StageBufferPool` to avoid creating a new buffer each time we receive a packet.
+```scala
+val poolBuilder = new StageBufferPoolBuilder
+poolBuilder += (100, 100, DirectNioAllocator.getBuffer)
+poolBuilder += (5000, 100, DirectNioAllocator.getBuffer)
+val bufferPool = poolBuilder.build()
+```
+
+Then, create a subclass of `ClientAttach` to handle the server's clients. Each client has its instance of `ClientAttach`, which contains the client's informations and handles the incoming and outgoing messages.
+```scala
+final class MyAttach[A](val s: ServerChannelInfos[A], val i: A, val c: SocketChannel) extends ClientAttach[A](s,i,c) {
 	override def readHeader(buffer: NiolBuffer): Int = {
       // Parses the message's header
       // Returns the message's size
 	}
 	override def handleData(buffer: NiolBuffer): Unit = {
-      // Parses the message's data. You can decide to delegate it to another thread.
+      // Parses the message's data.
 	}
 }
 ```
 The type parameter `A` defines the additional informations carried by the `ClientAttach`, for instance a client ID.
 
+Finally, listen on the port you want by registering a `TcpListener` to the `ScalableSelector`.
+```scala
+selector.listen(port, 3000, bufferPool, new TcpListener[A] {
+	override def onAccept(clientChannel: SocketChannel, serverInfos: ServerChannelInfos[Int]): ClientAttach[Int] = {
+		// Creates a new ClientAttach for the newly connected client
+		new MyAttach(serverInfos, clientChannel)
+	}
+
+	override def onDisconnect(clientAttach: ClientAttach[Int]): Unit = {
+		// Called when a client disconnects
+	}
+})
+```
+
+### Sending messages to clients
 To send a message to the client, put it (the header + the data) in a buffer and call the `ClientAttach.write` method. You can add a `completionHandler` (in the form of a `Runnable`) that will be executed once the write operation is completed.
 
 ```scala
@@ -155,3 +172,11 @@ client.write(buffer, () => {
 ```
 
 The `write` methods are thread-safe and may be called from any thread.
+
+### Features
+
+- Only one thread for all the connections, with the NIO `Selector`.
+- Reacts to events: client accepted, client disconnected, message received, message sent, etc.
+- Handles messages' headers and data separately.
+- Efficient buffer management that avoids copying the data.
+- Robust exception handling.
