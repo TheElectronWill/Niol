@@ -5,18 +5,19 @@ import java.nio.channels.{SelectionKey, Selector, ServerSocketChannel}
 import com.electronwill.niol.buffer.provider.BufferProvider
 
 /**
- * Contains the informations attached to a ServerSocketChannel registered to an [[ScalableSelector]].
+ * Contains the informations attached to a ServerSocketChannel that is registered to a [[ScalableSelector]].
  *
- * @param s
- * @param l
- * @param ssc
- * @param preTransformReadSize
- * @param packetBufferBaseSize
- * @param readBufferProvider
- * @param postTransformBufferProvider
+ * @see [[ScalableSelector]]
+ * @param s                           the NIO Selector of the channel
+ * @param l                           the TcpListener assigned to the channel
+ * @param ssc                         the channel
+ * @param preTransformReadSize        the size of the read buffer, if there is a data transformation
+ * @param packetBufferBaseSize        the size of the packet buffer which, if there is no transformation, is also the read buffer
+ * @param readBufferProvider          the provider of the read buffer
+ * @param postTransformBufferProvider the provider of the packet buffer, if there is a data transformation
  * @tparam A
  */
-final class ServerChannelInfos[A](private[tcp] val s: Selector,
+final class ServerChannelInfos[A](s: Selector,
 								  private[tcp] val l: TcpListener[A],
 								  private[tcp] val ssc: ServerSocketChannel,
 								  private[tcp] val preTransformReadSize: Int,

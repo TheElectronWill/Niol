@@ -8,7 +8,32 @@ import com.electronwill.niol.buffer.provider.BufferProvider
 import scala.collection.mutable
 
 /**
- * Base class for constructing TCP servers. Only one thread is used to manage all the clients.
+ * A ScalableSelector uses one NIO Selector to handle the TCP connections on several ports with only one thread.
+ *
+ * ==Port listening==
+ * To start listening for connections on a port, call the [[listen()]] method. One (and only one) [[TcpListener]]
+ * is assigned for each port. When a new client connects to the port, the listener's [[TcpListener.onAccept()]]
+ * method is called and creates a [[ClientAttach]] object, unique to the new client. It is this [[ClientAttach]]
+ * that will handle the data sent by and to the client.
+ *
+ * ===Buffer providers and sizes===
+ * If there is no data transformation in the [[ClientAttach]], the incoming data will be read
+ * in a (generally) low-level off-heap buffer provided by the readBufferProvider. The minimum
+ * size of the buffer will be packetBufferBaseSize.
+ *
+ * If there is a data transformation in the [[ClientAttach]], the incoming data will still be
+ * read in a buffer provided by the readBufferProvider, but with a fixed size
+ * equal to preTransformReadSize. The read data is then transformed by the transformation
+ * function. Once the transformation is done, the packets are reconstructed in an other
+ * buffer of minimum size packetBufferBaseSize and provided by postTransformBufferProvider.
+ *
+ * ===The packet buffer's minimum size===
+ * The incoming packets arrive in several parts. One part can contain several packets, and
+ * one packet can be split into different parts. Therefore they need to be reconstructed in
+ * a packet buffer. To avoid the allocation of a new buffer each time some data is read, a
+ * minimum "base" buffer is kept during the while connection. When the incoming packet is
+ * larger than the base buffer, an additional buffer is allocated, providing the missing
+ * capacity. Once the big packet is handled, the additional buffer is discarded.
  *
  * @author TheElectronWill
  */
@@ -21,16 +46,22 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
 	@volatile private[this] var _run = false
 
 	/**
-	 * Starts a TCP [[ServerSocketChannel]] and registers it to the selector.
+	 * Starts a TCP [[ServerSocketChannel]] and registers it to the selector. If there already is a ServerSocketChannel
+	 * registered with the specified port, this methods doesn't start a new server but directly returns false.
 	 *
-	 * @param port the port to start the server on
-	 * @param l    the listener that will be called when some events (defined in the listener) related to the
-	 *             ServerSocketChannel occur.
+	 * @param port                        the port to start the server on
+	 * @param l                           the listener that will be called when some events (defined in the listener)
+	 *                                    related to the ServerSocketChannel occur.
+	 * @param preTransformReadSize        the size of the read buffer, if there is a data transformation
+	 * @param packetBufferBaseSize        the size of the packet buffer which, if there is no transformation,
+	 *                                    is also the read buffer
+	 * @param readBufferProvider          the provider of the read buffer
+	 * @param postTransformBufferProvider the provider of the packet buffer, if there is a data transformation
 	 * @return true if the server has been started, false if there already is a ServerSocketChannel bound to the
 	 *         specified port and registered to this selector.
 	 */
-	def listen(port: Int, readBufferSize: Int, packetBufferBaseSize: Int,
-			   readBufferProvider: BufferProvider, packetBufferProvider: BufferProvider,
+	def listen(port: Int, preTransformReadSize: Int, packetBufferBaseSize: Int,
+			   readBufferProvider: BufferProvider, postTransformBufferProvider: BufferProvider,
 			   l: TcpListener[_]): Boolean = {
 		if (serverChannelsInfos.contains(port)) {
 			false
@@ -39,7 +70,7 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
 			serverChan.configureBlocking(false)
 			serverChan.bind(new InetSocketAddress(port))
 			serverChannelsInfos(port) = new ServerChannelInfos(selector, l, serverChan,
-				readBufferSize, packetBufferBaseSize, readBufferProvider, packetBufferProvider)
+				preTransformReadSize, packetBufferBaseSize, readBufferProvider, postTransformBufferProvider)
 			true
 		}
 	}
@@ -172,6 +203,6 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
 	private def cancel[A](key: SelectionKey): Unit = {
 		key.cancel()
 		val attach = key.attachment().asInstanceOf[ClientAttach[A]]
-		attach.server.l.onDisconnect(attach)
+		attach.sci.l.onDisconnect(attach)
 	}
 }
