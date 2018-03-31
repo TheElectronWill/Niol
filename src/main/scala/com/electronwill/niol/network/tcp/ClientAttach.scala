@@ -23,21 +23,21 @@ import scala.annotation.tailrec
  *
  * @author TheElectronWill
  */
-abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, val channel: SocketChannel,
+abstract class ClientAttach[A](val sci: ServerChannelInfos[A], val infos: A, val channel: SocketChannel,
 							   transformFunction: NiolBuffer => Array[Byte] = null) {
 	// read infos
 	private[this] var _transform: NiolBuffer => Array[Byte] = transformFunction
 	private[this] var (readBuffer, packetBufferBase, packetBufferProvider): (NiolBuffer, NiolBuffer, BufferProvider) = {
 		if (_transform == null) {
-			val directBuff = server.readBufferProvider.getBuffer(server.packetBufferBaseSize)
+			val directBuff = sci.readBufferProvider.getBuffer(sci.packetBufferBaseSize)
 			val buff = new CircularBuffer(directBuff)
-			val prov = server.readBufferProvider
+			val prov = sci.readBufferProvider
 			(null, buff, prov)
 		} else {
-			val directBuff = server.readBufferProvider.getBuffer(server.preTransformReadSize)
-			val heapBuff = server.postTransformBufferProvider.getBuffer(server.packetBufferBaseSize)
+			val directBuff = sci.readBufferProvider.getBuffer(sci.preTransformReadSize)
+			val heapBuff = sci.postTransformBufferProvider.getBuffer(sci.packetBufferBaseSize)
 			val baseBuff = new CircularBuffer(heapBuff)
-			val prov = server.postTransformBufferProvider
+			val prov = sci.postTransformBufferProvider
 			(directBuff, baseBuff, prov) // readBuffer is direct, packetBufferBase is heap-based
 		}
 	}
@@ -45,7 +45,6 @@ abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, 
 	private[this] var packetBuffer: NiolBuffer = packetBufferBase
 	private[this] var state: InputState = InputState.READ_HEADER
 	private[this] var packetLength: Int = _
-	private[this] val key: SelectionKey = channel.register(server.s, SelectionKey.OP_READ)
 
 	@volatile
 	private[this] var eos: Boolean = false
@@ -58,8 +57,15 @@ abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, 
 	 */
 	private[this] val writeQueue = new util.ArrayDeque[(NiolBuffer, Runnable)]
 
+	/** @return the transformation function, if any */
 	def transform: Option[NiolBuffer => Array[Byte]] = Option(_transform)
 
+	/**
+	 * Sets the transformation function, which is applied to the received data just after its receipt. The function is
+	 * applied '''before''' the packets are reconstructed. To handle the packets, override the [[handleData()]] method.
+	 *
+	 * @param f the function
+	 */
 	def transform_=(f: NiolBuffer => Array[Byte]): Unit = {
 		val remove = (f == null) && (_transform != null)
 		val add = (f != null) && (_transform == null)
@@ -67,14 +73,14 @@ abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, 
 			val (newRead, newBase, newProvider): (NiolBuffer, NiolBuffer, BufferProvider) = {
 				if (remove) {
 					// Removing the transform, data can be read directly from the SocketChannel to the packetBuffer
-					val prov = server.readBufferProvider
-					val buff = new CircularBuffer(prov.getBuffer(server.packetBufferBaseSize))
+					val prov = sci.readBufferProvider
+					val buff = new CircularBuffer(prov.getBuffer(sci.packetBufferBaseSize))
 					(null, buff, prov)
 				} else {
 					// Adding the transform, data must be processed before being copied to the packetBuffer
-					val prov = server.postTransformBufferProvider
-					val base = new CircularBuffer(prov.getBuffer(server.packetBufferBaseSize))
-					val read = server.readBufferProvider.getBuffer(server.preTransformReadSize)
+					val prov = sci.postTransformBufferProvider
+					val base = new CircularBuffer(prov.getBuffer(sci.packetBufferBaseSize))
+					val read = sci.readBufferProvider.getBuffer(sci.preTransformReadSize)
 					(read, base, prov)
 				}
 			}
@@ -160,7 +166,7 @@ abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, 
 					return false
 				}
 			}
-			key.interestOps(SelectionKey.OP_READ) // Stop listening for OP_WRITE
+			sci.skey.interestOps(SelectionKey.OP_READ) // Stop listening for OP_WRITE
 			true
 		}
 	}
@@ -186,7 +192,7 @@ abstract class ClientAttach[A](val server: ServerChannelInfos[A], val infos: A, 
 				channel <<: buffer
 				if (buffer.readAvail > 0) {
 					writeQueue.offer((buffer, completionHandler))
-					key.interestOps(SelectionKey.OP_WRITE) // Continue to write later
+					sci.skey.interestOps(SelectionKey.OP_WRITE) // Continue to write later
 				}
 			} else {
 				writeQueue.offer((buffer, completionHandler))
