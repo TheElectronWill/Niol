@@ -3,8 +3,8 @@
 # Niol
 
 [![](https://jitpack.io/v/TheElectronWill/Niol.svg)](https://jitpack.io/#TheElectronWill/Niol)
-![](https://img.shields.io/github/commits-since/TheElectronWill/Niol/1.2.svg)
-![](https://img.shields.io/badge/scala%20version-2.12.4-dd0017.svg)
+![](https://img.shields.io/github/commits-since/TheElectronWill/Niol/1.4.svg)
+![](https://img.shields.io/badge/scala%20version-2.12.5-dd0017.svg)
 
 Niol is a NIO Library written in Scala and designed to make server programming easier.
 
