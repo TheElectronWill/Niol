@@ -44,6 +44,12 @@ trait NiolOutput {
 	}
 	final def putString(str: String, charset: Charset): Unit = charset.encode(str) >>: this
 
+	final def putVarstring(str: String, charset: Charset): Unit = {
+		val encoded = charset.encode(str)
+		putVarint(encoded.remaining())
+		putBytes(encoded)
+	}
+
 	// bulk put methods
 	def putBytes(src: Array[Byte]): Unit = putBytes(src, 0, src.length)
 	def putBytes(src: Array[Byte], offset: Int, length: Int): Unit
