@@ -14,8 +14,10 @@ import com.electronwill.niol.network.tcp.{ClientAttach, ScalableSelector, Server
  * @author TheElectronWill
  */
 object EchoServer {
-	val possibleMessages = Seq("Hello,world", "Hello,test", "this is a big message " +
-		(1 to 1000).toBuffer)
+	val possibleMessages = Seq("Hello,world",
+                             "Hello,test",
+                             "this is a big message " + (1 to 1000).toBuffer)
+
 	val counter = new AtomicInteger()
 	def main(args: Array[String]): Unit = {
 		val port = 3000
@@ -30,21 +32,20 @@ object EchoServer {
 		}
 		val startHandler = () => {
 			println("Server started")
-			ClientB.start = System.nanoTime()
 		}
 		val stopHandler = () => {
 			println("Server stopped")
 		}
 		val selector = new ScalableSelector(errorHandler, startHandler, stopHandler)
-		selector.listen(port, 150, bufferPool, new TcpListener[Int] {
-			override def onAccept(clientChannel: SocketChannel, s: ServerChannelInfos[Int]): ClientAttach[Int] = {
+		selector.listen(port, 150, bufferPool, new TcpListener[Client] {
+			override def onAccept(clientChannel: SocketChannel, s: ServerChannelInfos[Client]): Client = {
 				println(s"Accepted client ${clientChannel.getLocalAddress}")
 				val attach = new Client(s, clientChannel)
-				println(s"Assigned client to id ${attach.infos}")
+				println(s"Assigned client to id ${attach.clientId}")
 				attach
 			}
-			override def onDisconnect(clientAttach: ClientAttach[Int]): Unit = {
-				println(s"Client ${clientAttach.infos} disconnected")
+			override def onDisconnect(clientAttach: Client): Unit = {
+				println(s"Client ${clientAttach.clientId} disconnected")
 			}
 		})
 		val clientRun = new Runnable {
@@ -85,8 +86,10 @@ object EchoServer {
 		}
 	}
 }
-class Client(serverInfos: ServerChannelInfos[Int], clientChannel: SocketChannel)
-	extends ClientAttach[Int](serverInfos, Client.clientId.getAndIncrement(), clientChannel) {
+class Client(serverInfos: ServerChannelInfos[Client], clientChannel: SocketChannel)
+  extends ClientAttach(serverInfos, clientChannel) {
+
+  val clientId = Client.lastId.getAndIncrement()
 
 	override def readHeader(buffer: NiolBuffer): Int = {
 		println(s"[S] available: ${buffer.readAvail}, write: ${buffer.writeAvail}")
@@ -116,5 +119,5 @@ class Client(serverInfos: ServerChannelInfos[Int], clientChannel: SocketChannel)
 	}
 }
 object Client {
-	private val clientId = new AtomicInteger(0)
+	private val lastId = new AtomicInteger(0)
 }

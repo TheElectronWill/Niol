@@ -22,7 +22,7 @@ import scala.annotation.tailrec
  *
  * @author TheElectronWill
  */
-abstract class ClientAttach(val sci: ServerChannelInfos[_ >: this.type],
+abstract class ClientAttach(val sci: ServerChannelInfos[_],
                             val channel: SocketChannel,
                             transformFunction: NiolBuffer => Array[Byte] = null) {
   // read infos
