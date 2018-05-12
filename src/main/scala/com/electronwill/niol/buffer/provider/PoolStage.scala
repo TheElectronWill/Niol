@@ -7,7 +7,8 @@ import com.electronwill.niol.buffer.BaseBuffer
 /**
  * @author TheElectronWill
  */
-private[provider] final class PoolStage(val maxCapacity: Int, val maxCached: Int,
+private[provider] final class PoolStage(val maxCapacity: Int,
+                                        val maxCached: Int,
                                         val allocateFunction: Int => BaseBuffer) {
   private[this] val cachedBuffers = new ArrayBlockingQueue[BaseBuffer](maxCached)
 

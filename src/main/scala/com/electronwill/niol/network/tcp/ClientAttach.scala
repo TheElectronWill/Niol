@@ -27,7 +27,9 @@ abstract class ClientAttach(val sci: ServerChannelInfos[_],
                             transformFunction: NiolBuffer => Array[Byte] = null) {
   // read infos
   private[this] var _transform: NiolBuffer => Array[Byte] = transformFunction
-  private[this] var (readBuffer, packetBufferBase, packetBufferProvider): (NiolBuffer, NiolBuffer, BufferProvider) = {
+  private[this] var (readBuffer, packetBufferBase, packetBufferProvider): (NiolBuffer,
+                                                                           NiolBuffer,
+                                                                           BufferProvider) = {
     if (_transform == null) {
       val directBuff = sci.readBufferProvider.getBuffer(sci.packetBufferBaseSize)
       val buff = new CircularBuffer(directBuff)
@@ -158,23 +160,23 @@ abstract class ClientAttach(val sci: ServerChannelInfos[_],
   private[network] final def writeMore(): Boolean = {
     writeQueue.synchronized { // Sync protects the queue and the consistency of the interestOps
       var queued = writeQueue.peek() // the next element. null if the queue is empty
-                              while (queued ne null) {
-                                val buffer = queued._1
-                                channel <<: buffer
-                                if (buffer.readAvail == 0) {
-                                  writeQueue.poll()
-                                  val completionHandler = queued._2
-                                  if (completionHandler ne null) {
-                                    completionHandler.run()
-                                  }
-                                  queued = writeQueue.peek() // fetches the next element
-                                } else {
-                                  return false
-                                }
-                              }
-                              sci.skey.interestOps(SelectionKey.OP_READ) // Stop listening for OP_WRITE
-                              true
-                            }
+      while (queued ne null) {
+        val buffer = queued._1
+        channel <<: buffer
+        if (buffer.readAvail == 0) {
+          writeQueue.poll()
+          val completionHandler = queued._2
+          if (completionHandler ne null) {
+            completionHandler.run()
+          }
+          queued = writeQueue.peek() // fetches the next element
+        } else {
+          return false
+        }
+      }
+      sci.skey.interestOps(SelectionKey.OP_READ) // Stop listening for OP_WRITE
+      true
+    }
   }
 
   /**
@@ -196,16 +198,16 @@ abstract class ClientAttach(val sci: ServerChannelInfos[_],
    */
   final def write(buffer: NiolBuffer, completionHandler: Runnable): Unit = {
     writeQueue.synchronized { // Sync protects the queue and the consistency of the interestOps
-                              if (writeQueue.isEmpty) {
-                                channel <<: buffer
-                                if (buffer.readAvail > 0) {
-                                  writeQueue.offer((buffer, completionHandler))
-                                  sci.skey.interestOps(SelectionKey.OP_WRITE) // Continue to write later
-                                }
-                              } else {
-                                writeQueue.offer((buffer, completionHandler))
-                              }
-                            }
+      if (writeQueue.isEmpty) {
+        channel <<: buffer
+        if (buffer.readAvail > 0) {
+          writeQueue.offer((buffer, completionHandler))
+          sci.skey.interestOps(SelectionKey.OP_WRITE) // Continue to write later
+        }
+      } else {
+        writeQueue.offer((buffer, completionHandler))
+      }
+    }
   }
 
   /**

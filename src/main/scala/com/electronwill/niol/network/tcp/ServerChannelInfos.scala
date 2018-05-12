@@ -17,13 +17,14 @@ import com.electronwill.niol.buffer.provider.BufferProvider
  * @param postTransformBufferProvider the provider of the packet buffer, if there is a data transformation
  * @tparam A
  */
-final class ServerChannelInfos[A <: ClientAttach](s: Selector,
-                                                  private[tcp] val l: TcpListener[A],
-                                                  private[tcp] val ssc: ServerSocketChannel,
-                                                  private[tcp] val preTransformReadSize: Int,
-                                                  private[tcp] val packetBufferBaseSize: Int,
-                                                  private[tcp] val readBufferProvider: BufferProvider,
-                                                  private[tcp] val postTransformBufferProvider: BufferProvider) {
+final class ServerChannelInfos[A <: ClientAttach](
+    s: Selector,
+    private[tcp] val l: TcpListener[A],
+    private[tcp] val ssc: ServerSocketChannel,
+    private[tcp] val preTransformReadSize: Int,
+    private[tcp] val packetBufferBaseSize: Int,
+    private[tcp] val readBufferProvider: BufferProvider,
+    private[tcp] val postTransformBufferProvider: BufferProvider) {
   private[tcp] val skey: SelectionKey = {
     ssc.register(s, SelectionKey.OP_ACCEPT, this)
   }

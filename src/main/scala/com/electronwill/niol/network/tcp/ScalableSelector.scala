@@ -39,7 +39,8 @@ import scala.collection.mutable
  */
 final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
                              private[this] val startHandler: () => Unit,
-                             private[this] val stopHandler: () => Unit) extends Runnable {
+                             private[this] val stopHandler: () => Unit)
+    extends Runnable {
 
   private[this] val selector = Selector.open()
   private[this] val serverChannelsInfos = new mutable.LongMap[ServerChannelInfos[_]]
@@ -60,8 +61,11 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
    * @return true if the server has been started, false if there already is a ServerSocketChannel bound to the
    *         specified port and registered to this selector.
    */
-  def listen[A <: ClientAttach](port: Int, preTransformReadSize: Int, packetBufferBaseSize: Int,
-                                readBufferProvider: BufferProvider, postTransformBufferProvider: BufferProvider,
+  def listen[A <: ClientAttach](port: Int,
+                                preTransformReadSize: Int,
+                                packetBufferBaseSize: Int,
+                                readBufferProvider: BufferProvider,
+                                postTransformBufferProvider: BufferProvider,
                                 l: TcpListener[A]): Boolean = {
     if (serverChannelsInfos.contains(port)) {
       false
@@ -80,7 +84,10 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
     }
   }
 
-  def listen[A <: ClientAttach](port: Int, bufferBaseSize: Int, bufferProvider: BufferProvider, l: TcpListener[A]): Boolean = {
+  def listen[A <: ClientAttach](port: Int,
+                                bufferBaseSize: Int,
+                                bufferProvider: BufferProvider,
+                                l: TcpListener[A]): Boolean = {
     listen(port, bufferBaseSize, bufferBaseSize, bufferProvider, bufferProvider, l)
   }
 
@@ -91,10 +98,12 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
    * @param port the server's port
    */
   def unlisten(port: Int): Unit = {
-    serverChannelsInfos.remove(port).foreach(channelInfo => {
-      channelInfo.skey.cancel()
-      channelInfo.ssc.close()
-    })
+    serverChannelsInfos
+      .remove(port)
+      .foreach(channelInfo => {
+        channelInfo.skey.cancel()
+        channelInfo.ssc.close()
+      })
   }
 
   /**
@@ -183,7 +192,8 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
   }
 
   /** Accepts the client channel: make it non-blocking, call `onAccept` and register OP_READ */
-  private def accept[A <: ClientAttach](clientChannel: SocketChannel, serverChannel: ServerChannelInfos[A]): Unit = {
+  private def accept[A <: ClientAttach](clientChannel: SocketChannel,
+                                        serverChannel: ServerChannelInfos[A]): Unit = {
     clientChannel.configureBlocking(false)
     val clientAttach = serverChannel.l.onAccept(clientChannel, serverChannel)
     clientChannel.register(selector, SelectionKey.OP_READ, clientAttach)

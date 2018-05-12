@@ -88,8 +88,9 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
 
   /** Concatenates two buffers without copying their content. */
   def concat(buffer: NiolBuffer): NiolBuffer = {
-    if (this.capacity == 0) {if (buffer.capacity == 0) EmptyBuffer else buffer.duplicate}
-    else if (buffer.capacity == 0) {
+    if (this.capacity == 0) {
+      if (buffer.capacity == 0) EmptyBuffer else buffer.duplicate
+    } else if (buffer.capacity == 0) {
       this.duplicate
     } else {
       val res = new CompositeBuffer(this)
@@ -102,8 +103,9 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
   def concatCopy(buffer: NiolBuffer): NiolBuffer = {
     val availableThis = this.readAvail
     val availableBuff = buffer.readAvail
-    if (availableThis == 0) {if (availableBuff == 0) EmptyBuffer else buffer.copyRead}
-    else if (availableBuff == 0) {
+    if (availableThis == 0) {
+      if (availableBuff == 0) EmptyBuffer else buffer.copyRead
+    } else if (availableBuff == 0) {
       this.copyRead
     } else {
       val copy = HeapNioAllocator.getBuffer(availableThis + availableBuff)

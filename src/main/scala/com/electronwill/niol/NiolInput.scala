@@ -45,8 +45,7 @@ trait NiolInput {
       read = getByte()
       result |= ((read & 0x7F) << shift)
       if (shift > maxShift) {
-        throw new RuntimeException(
-                                    s"VarInt too big: it should take at most $maxBytes bytes")
+        throw new RuntimeException(s"VarInt too big: it should take at most $maxBytes bytes")
       }
       shift += 7
     } while ((read & 0x80) != 0)
@@ -64,8 +63,7 @@ trait NiolInput {
       read = getByte()
       result |= ((read & 0x7F) << shift)
       if (shift > maxShift) {
-        throw new RuntimeException(
-                                    s"VarLong too big: it should take at most $maxBytes bytes")
+        throw new RuntimeException(s"VarLong too big: it should take at most $maxBytes bytes")
       }
       shift += 7
     } while ((read & 0x80) != 0)

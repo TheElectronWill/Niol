@@ -18,7 +18,8 @@ import com.electronwill.niol.{InputType, NiolInput}
 final class ChannelInput(private[this] val channel: ScatteringByteChannel,
                          bufferCapacity: Int = 4096,
                          bufferProvider: BufferProvider = BufferProvider.DefaultOffHeapProvider)
-  extends NiolInput with Closeable {
+    extends NiolInput
+    with Closeable {
 
   def this(fc: FileChannel, bufferProvider: BufferProvider) = {
     this(fc, Math.min(4096, fc.size.toInt), bufferProvider)

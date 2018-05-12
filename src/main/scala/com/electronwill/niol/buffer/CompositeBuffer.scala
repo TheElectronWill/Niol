@@ -8,7 +8,7 @@ import com.electronwill.niol.InputType
 /**
  * @author TheElectronWill
  */
-final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffer {
+final class CompositeBuffer private (h: Node, r: Node, w: Node) extends NiolBuffer {
   private def this(firstNode: Node) = {
     this(firstNode, firstNode, firstNode)
   }
@@ -55,8 +55,7 @@ final class CompositeBuffer private(h: Node, r: Node, w: Node) extends NiolBuffe
   private def headNode: Node = head
 
   override def concat(buffer: NiolBuffer): NiolBuffer = {
-    if (this.capacity == 0) {if (buffer.capacity == 0) EmptyBuffer else buffer.duplicate}
-    else if (buffer.capacity == 0) {
+    if (this.capacity == 0) { if (buffer.capacity == 0) EmptyBuffer else buffer.duplicate } else if (buffer.capacity == 0) {
       this.duplicate
     } else {
       val res = new CompositeBuffer()
