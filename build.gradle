@@ -7,8 +7,8 @@ repositories {
 	mavenCentral()
 }
 dependencies {
-	compile 'org.scala-lang:scala-library:2.12.5'
-	testCompile 'org.junit.jupiter:junit-jupiter-api:5.1.1'
+	compile 'org.scala-lang:scala-library:2.12.6'
+	testCompile 'org.junit.jupiter:junit-jupiter-api:5.2.0'
 }
 tasks.withType(ScalaCompile) {
 	scalaCompileOptions.additionalParameters = ["-opt:l:inline", "-opt:copy-propagation"]

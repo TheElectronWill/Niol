@@ -13,5 +13,5 @@ package com.electronwill.niol.network.tcp;
  * @author TheElectronWill
  */
 enum InputState {
-	READ_HEADER, READ_DATA
+  READ_HEADER, READ_DATA
 }

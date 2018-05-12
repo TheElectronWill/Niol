@@ -8,8 +8,9 @@ import com.electronwill.niol.buffer.{BaseBuffer, NioBaseBuffer}
  * @author TheElectronWill
  */
 object DirectNioAllocator extends BufferProvider {
-	override def getBuffer(minCapacity: Int): BaseBuffer = {
-		new NioBaseBuffer(ByteBuffer.allocateDirect(minCapacity), null, this)
-	}
-	override def discard(buffer: BaseBuffer): Unit = buffer.freeMemory()
+  override def getBuffer(minCapacity: Int): BaseBuffer = {
+    new NioBaseBuffer(ByteBuffer.allocateDirect(minCapacity), null, this)
+  }
+
+  override def discard(buffer: BaseBuffer): Unit = buffer.freeMemory()
 }
