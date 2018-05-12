@@ -21,11 +21,15 @@ trait NiolOutput {
 
   def putShort(s: Short): Unit
 
+  final def putShort(i: Int): Unit = putShort(i.toShort)
+
   def putInt(i: Int): Unit
 
   def putLong(l: Long): Unit
 
   def putFloat(f: Float): Unit
+
+  final def putFloat(d: Double): Unit = putFloat(d.toFloat)
 
   def putDouble(d: Double): Unit
 

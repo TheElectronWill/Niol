@@ -3,7 +3,7 @@ plugins {
 }
 
 description = 'NIO Library for lightweight networking'
-version = '1.5'
+version = '1.5.1'
 
 apply plugin: 'scala'
 apply plugin: 'scalafmt'
