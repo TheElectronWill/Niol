@@ -135,27 +135,29 @@ val bufferPool = poolBuilder.build()
 
 Then, create a subclass of `ClientAttach` to handle the server's clients. Each client has its instance of `ClientAttach`, which contains the client's informations and handles the incoming and outgoing messages.
 ```scala
-final class MyAttach[A](val s: ServerChannelInfos[A], val i: A, val c: SocketChannel) extends ClientAttach[A](s,i,c) {
-	override def readHeader(buffer: NiolBuffer): Int = {
-      // Parses the message's header
-      // Returns the message's size
+final class MyAttach(val server: ServerChannelInfos[MyAttach],
+                     val clientChannel: SocketChannel)
+  extends ClientAttach(server, clientChannel) {
+
+  override def readHeader(buffer: NiolBuffer): Int = {
+    // Parses the message's header
+    // Returns the message's size
 	}
 	override def handleData(buffer: NiolBuffer): Unit = {
-      // Parses the message's data.
+    // Parses the message's data.
 	}
 }
 ```
-The type parameter `A` defines the additional informations carried by the `ClientAttach`, for instance a client ID.
 
 Finally, listen on the port you want by registering a `TcpListener` to the `ScalableSelector`.
 ```scala
-selector.listen(port, 3000, bufferPool, new TcpListener[A] {
-	override def onAccept(clientChannel: SocketChannel, serverInfos: ServerChannelInfos[Int]): ClientAttach[Int] = {
-		// Creates a new ClientAttach for the newly connected client
-		new MyAttach(serverInfos, clientChannel)
+selector.listen(port, 3000, bufferPool, new TcpListener[MyAttach] {
+	override def onAccept(clientChannel: SocketChannel, server: ServerChannelInfos[MyAttach]): MyAttach = {
+    // Creates a new ClientAttach for the newly connected client
+    new MyAttach(server, clientChannel)
 	}
 
-	override def onDisconnect(clientAttach: ClientAttach[Int]): Unit = {
+	override def onDisconnect(clientAttach: MyAttach): Unit = {
 		// Called when a client disconnects
 	}
 })
