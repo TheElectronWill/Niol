@@ -1,22 +1,27 @@
+plugins {
+  id "cz.alenkacz.gradle.scalafmt" version "1.6.0"
+}
+
 description = 'NIO Library for lightweight networking'
 version = '1.4'
 
 apply plugin: 'scala'
+apply plugin: 'scalafmt'
 
 repositories {
-	mavenCentral()
+  mavenCentral()
 }
 dependencies {
-	compile 'org.scala-lang:scala-library:2.12.6'
-	testCompile 'org.junit.jupiter:junit-jupiter-api:5.2.0'
+  compile 'org.scala-lang:scala-library:2.12.6'
+  testCompile 'org.junit.jupiter:junit-jupiter-api:5.2.0'
 }
 tasks.withType(ScalaCompile) {
-	scalaCompileOptions.additionalParameters = ["-opt:l:inline", "-opt:copy-propagation"]
+  scalaCompileOptions.additionalParameters = ["-opt:l:inline", "-opt:copy-propagation"]
 }
 task sourcesJar(type: Jar, dependsOn: classes) {
-	classifier = 'sources'
-	from sourceSets.main.allSource
+  classifier = 'sources'
+  from sourceSets.main.allSource
 }
 artifacts {
-	archives sourcesJar
+  archives sourcesJar
 }
