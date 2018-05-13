@@ -33,6 +33,17 @@ class StraightBufferTest {
     assertContent(copy)
   }
 
+  @Test
+  def varintTest(): Unit = {
+    val buff = new StraightBuffer(HeapNioAllocator.getBuffer(256))
+    val value = 117
+    buff.putVarint(value)
+    assert(buff.getVarint() == value)
+
+    buff.putVarlong(value)
+    assert(buff.getVarlong() == value)
+  }
+
   private def assertContent(buff: NiolBuffer): Unit = {
     printBuffer(buff)
     assert(buff.getBool())
