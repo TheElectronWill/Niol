@@ -38,7 +38,7 @@ trait NiolInput {
 
   final def getVarint(maxBytes: Int): Int = {
     val maxShift = maxBytes * 7
-    var shift: Int = 7
+    var shift: Int = 0
     var result: Int = 0
     var read: Byte = 0
     do {
@@ -56,7 +56,7 @@ trait NiolInput {
 
   final def getVarlong(maxBytes: Int): Long = {
     val maxShift = maxBytes * 7
-    var shift: Int = 7
+    var shift: Int = 0
     var result: Long = 0
     var read: Byte = 0
     do {
