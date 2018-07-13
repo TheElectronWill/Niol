@@ -12,11 +12,11 @@ import scala.annotation.tailrec
  * Stores data associated to a unique TCP client. This abstract class provides basic reading and
  * writing functionnality. Additionnal information and features may be added by the subclasses.
  *
- * == Thread-safety ==
- * - The public methods of ClientAttach may be called from any thread without problem.
- * - The others are always called from the Selector thread. In particular, [[readHeader()]] and
+ * ==Thread-safety==
+ *  - The public methods of ClientAttach may be called from any thread without problem.
+ *  - The others are always called from the Selector thread. In particular, [[readHeader()]] and
  * [[handleData()]] don't need to be thread-safe.
- * - The completion handlers are run on the Selector thread. Therefore they should NOT perform
+ *  - The completion handlers are run on the Selector thread. Therefore they should NOT perform
  * long computations. If you have long computations to do, send them to an ExecutorService or
  * something similar.
  *
