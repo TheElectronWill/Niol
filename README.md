@@ -2,7 +2,7 @@
 
 # Niol
 
-[![Maven Central](https://img.shields.io/maven-central/v/com.electronwill/niol_2.12.svg)](https://search.maven.org/#search%7Cga%7C1%7Cg%3A%22com.electronwill.niol%22)
+[![Maven Central](https://img.shields.io/maven-central/v/com.electronwill/niol_2.12.svg)](https://search.maven.org/#search%7Cga%7C1%7Ccom.electronwill.niol)
 [![](https://jitpack.io/v/TheElectronWill/Niol.svg)](https://jitpack.io/#TheElectronWill/Niol)
 [![](https://img.shields.io/github/commits-since/TheElectronWill/Niol/1.5.svg)](https://github.com/TheElectronWill/Night-Config/compare/1.5...master)
 
