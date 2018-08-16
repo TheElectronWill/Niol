@@ -5,7 +5,7 @@ package com.electronwill.niol
  *
  * @tparam A the result type
  */
-trait Reader[A] {
+trait Reader[+A] {
   /**
    * Reads an object.
    *
