@@ -7,7 +7,7 @@ package com.electronwill.niol
  */
 trait Writer[-A] {
   /**
-   * Reads an object.
+   * Writes an object.
    *
    * @param to the output to write to
    */
