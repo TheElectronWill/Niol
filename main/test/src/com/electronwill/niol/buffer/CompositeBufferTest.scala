@@ -36,7 +36,7 @@ class CompositeBufferTest {
     printContent(read2)
   }
 
-  private def populate(buff: NiolBuffer, k: Int) = {
+  private def populate(buff: NiolBuffer, k: Int): Unit = {
     true >>: buff
     (k + 10).toByte >>: buff
     (k + 11).toShort >>: buff
@@ -59,13 +59,13 @@ class CompositeBufferTest {
   }
 
   private def read(buff: NiolBuffer): Unit = {
-    println(buff.getBool)
-    println(buff.getByte)
-    println(buff.getShort)
-    println(buff.getInt)
-    println(buff.getLong)
-    println(buff.getFloat)
-    println(buff.getDouble)
+    println(buff.getBool())
+    println(buff.getByte())
+    println(buff.getShort())
+    println(buff.getInt())
+    println(buff.getLong())
+    println(buff.getFloat())
+    println(buff.getDouble())
     println(buff.getString(5, StandardCharsets.UTF_8))
   }
 }
