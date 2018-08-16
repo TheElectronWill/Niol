@@ -14,7 +14,7 @@ trait JUnitTesting extends TestModule {// JUnit 5 tests
 object main extends ScalaModule with JUnitTesting with PublishModule {
   def scalaVersion = "2.12.6"
   def artifactName = "niol"
-  def publishVersion = "1.5.2"
+  def publishVersion = "1.5.3"
   
   def pomSettings = PomSettings(
     description = "Lightweight network library for Scala",
