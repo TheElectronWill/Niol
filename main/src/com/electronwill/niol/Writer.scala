@@ -5,11 +5,11 @@ package com.electronwill.niol
  *
  * @tparam A the object type
  */
-trait Writer[A] {
+trait Writer[-A] {
   /**
    * Reads an object.
    *
    * @param to the output to write to
    */
-  def write(data: A, to: NiolOutput): A
+  def write(data: A, to: NiolOutput): Unit
 }
