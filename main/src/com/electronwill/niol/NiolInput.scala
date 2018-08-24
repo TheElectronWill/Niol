@@ -3,6 +3,7 @@ package com.electronwill.niol
 import java.nio.ByteBuffer
 import java.nio.channels.GatheringByteChannel
 import java.nio.charset.Charset
+import java.util.UUID
 
 import com.electronwill.niol.buffer.NiolBuffer
 
@@ -83,6 +84,8 @@ trait NiolInput {
     val size = getVarint()
     getString(size, charset)
   }
+
+  final def getUUID(): UUID = new UUID(getLong(), getLong())
 
   // bulk get methods
   def getBytes(count: Int): Array[Byte] = {

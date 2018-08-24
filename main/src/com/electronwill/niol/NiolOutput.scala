@@ -3,6 +3,7 @@ package com.electronwill.niol
 import java.nio.ByteBuffer
 import java.nio.channels.ScatteringByteChannel
 import java.nio.charset.Charset
+import java.util.UUID
 
 /**
  * @author TheElectronWill
@@ -63,6 +64,11 @@ trait NiolOutput {
     val encoded = charset.encode(str)
     putVarint(encoded.remaining())
     putBytes(encoded)
+  }
+
+  final def putUUID(uuid: UUID): Unit = {
+    putLong(uuid.getMostSignificantBits)
+    putLong(uuid.getLeastSignificantBits)
   }
 
   // bulk put methods
