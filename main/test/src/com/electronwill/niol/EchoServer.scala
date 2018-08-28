@@ -6,7 +6,7 @@ import java.nio.channels.{SelectionKey, SocketChannel}
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicInteger
 
-import com.electronwill.niol.buffer.provider.{DirectNioAllocator, StageBufferPoolBuilder}
+import com.electronwill.niol.buffer.provider.{DirectNioAllocator, HeapNioAllocator, StageBufferPoolBuilder}
 import com.electronwill.niol.buffer.{NiolBuffer, StraightBuffer}
 import com.electronwill.niol.network.tcp.{ServerChannelInfos => SCI, _}
 
@@ -26,6 +26,7 @@ object EchoServer {
     // Create a buffer pool
     val poolBuilder = new StageBufferPoolBuilder
     poolBuilder.addStage(4000, 10, DirectNioAllocator.get)
+    poolBuilder.defaultHandler(HeapNioAllocator.get)
     val bufferPool = poolBuilder.build()
 
     // Create a ScalableSelector
