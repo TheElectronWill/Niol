@@ -18,9 +18,7 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
   def capacity: Int
 
   /** @return true iff readAvail > 0 */
-  override def canRead: Boolean = {
-    readAvail > 0
-  }
+  override def canRead: Boolean = readAvail > 0
 
   /** @return the available space to write. */
   def writeAvail: Int
@@ -53,9 +51,7 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
    * - readAvail = capacity = thisBuffer.readAvail
    * - writeAvail = 0
    */
-  def subRead: NiolBuffer = {
-    subRead(readAvail)
-  }
+  def subRead: NiolBuffer = subRead(readAvail)
 
   /**
    * Creates a limited view of the buffer's readable data.
@@ -73,9 +69,7 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
    * - writeAvail = capacity = thisBuffer.writeAvail
    * - readAvail = 0
    */
-  def subWrite: NiolBuffer = {
-    subWrite(writeAvail)
-  }
+  def subWrite: NiolBuffer = subWrite(writeAvail)
 
   /**
    * Creates a limited view of the buffer's writeable space.
@@ -146,25 +140,16 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
 
   // shortcuts
   /** Concatenates two buffers without copying their content. */
-  @inline final def +(buffer: NiolBuffer): NiolBuffer = {
-    concat(buffer)
-  }
+  @inline final def +(buffer: NiolBuffer): NiolBuffer = concat(buffer)
 
   /** Concatenates two buffers by copying them to a new buffer. */
-  @inline final def +++(buffer: NiolBuffer): NiolBuffer = {
-    concatCopy(buffer)
-  }
+  @inline final def +++(buffer: NiolBuffer): NiolBuffer = concatCopy(buffer)
 
   // overrides
-  override def putBytes(src: NiolInput): Unit = {
-    src.getBytes(this)
-  }
+  override def putBytes(src: NiolInput): Unit = src.getBytes(this)
 
   /** @return a String containing the informations about the state of this buffer. */
   override def toString: String = {
-    s"""${getClass.getSimpleName}(
- capacity=$capacity;
- writeAvail=$writeAvail;
- readAvail=$readAvail)""".stripMargin
+    s"${getClass.getSimpleName}(capacity=$capacity; writeAvail=$writeAvail; readAvail=$readAvail)"
   }
 }
