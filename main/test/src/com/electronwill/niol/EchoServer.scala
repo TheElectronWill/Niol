@@ -119,7 +119,7 @@ class EchoAttach(serverInfos: ServerChannelInfos[EchoAttach], clientChannel: Soc
     assert(EchoServer.possibleMessages.contains(message))
 
     val sizeBuffer = new StraightBuffer(DirectNioAllocator.getBuffer(2))
-    response.readAvail.toShort >>: sizeBuffer
+    sizeBuffer.putShort(response.readAvail)
     println(s"[S] sizeBuffer.readAvail: ${sizeBuffer.readAvail}")
     write(sizeBuffer)
     write(response)

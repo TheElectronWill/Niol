@@ -1,7 +1,5 @@
 package com.electronwill.niol.buffer
 
-import java.nio.charset.StandardCharsets
-
 import com.electronwill.niol.buffer.provider.HeapNioAllocator
 import org.junit.jupiter.api.Test
 
@@ -19,14 +17,14 @@ class StraightBufferTest {
     assert(buff.readLimit == 0 && buff.writeLimit == cap)
     assert(buff.readAvail == 0 && buff.writeAvail == cap)
 
-    true >>: buff
-    10.toByte >>: buff
-    11.toShort >>: buff
-    12 >>: buff
-    13l >>: buff
-    14f >>: buff
-    15d >>: buff
-    ("test", StandardCharsets.UTF_8) >>: buff
+    buff.putBool(true)
+    buff.putByte(10)
+    buff.putShort(11)
+    buff.putInt(12)
+    buff.putLong(13l)
+    buff.putFloat(14f)
+    buff.putDouble(15d)
+    buff.putString("test")
 
     val copy = buff.copyRead
     assertContent(buff)
@@ -53,7 +51,7 @@ class StraightBufferTest {
     assert(buff.getLong() == 13l)
     assert(buff.getFloat() == 14f)
     assert(buff.getDouble() == 15d)
-    assert(buff.getString(4, StandardCharsets.UTF_8) == "test")
+    assert(buff.getString(4) == "test")
     printBuffer(buff)
   }
 

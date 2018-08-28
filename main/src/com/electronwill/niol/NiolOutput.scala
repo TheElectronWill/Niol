@@ -108,39 +108,13 @@ trait NiolOutput {
   def putDoubles(src: Array[Double], offset: Int, length: Int): Unit
 
   // shortcuts
-  @inline final def >>:(bool: Boolean): Unit = putBool(bool)
+  @inline final def >>:(src: Array[Byte]): Unit = putBytes(src)
 
-  @inline final def >>:(b: Byte): Unit = putByte(b)
+  @inline final def >>:(src: (Array[Byte], Int, Int)): Unit = putBytes(src._1, src._2, src._3)
 
-  @inline final def >>:(s: Short): Unit = putShort(s)
+  @inline final def >>:(src: NiolInput): Unit = putBytes(src)
 
-  @inline final def >>:(i: Int): Unit = putInt(i)
+  @inline final def >>:(src: ByteBuffer): Unit = putBytes(src)
 
-  @inline final def >>:(l: Long): Unit = putLong(l)
-
-  @inline final def >>:(f: Float): Unit = putFloat(f)
-
-  @inline final def >>:(d: Double): Unit = putDouble(d)
-
-  @inline final def >>:(t: (String, Charset)): Unit = putString(t._1, t._2)
-
-  @inline final def >>:(array: Array[Byte]): Unit = putBytes(array)
-
-  @inline final def >>:(t: (Array[Byte], Int, Int)): Unit = putBytes(t._1, t._2, t._3)
-
-  @inline final def >>:(array: Array[Short]): Unit = putShorts(array)
-
-  @inline final def >>:(array: Array[Int]): Unit = putInts(array)
-
-  @inline final def >>:(array: Array[Long]): Unit = putLongs(array)
-
-  @inline final def >>:(array: Array[Float]): Unit = putFloats(array)
-
-  @inline final def >>:(array: Array[Double]): Unit = putDoubles(array)
-
-  @inline final def >>:(input: NiolInput): Unit = putBytes(input)
-
-  @inline final def >>:(bb: ByteBuffer): Unit = putBytes(bb)
-
-  @inline final def >>:(chan: ScatteringByteChannel): (Int, Boolean) = putBytes(chan)
+  @inline final def >>:(src: ScatteringByteChannel): (Int, Boolean) = putBytes(src)
 }

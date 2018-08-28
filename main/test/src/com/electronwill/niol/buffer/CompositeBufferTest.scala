@@ -37,14 +37,14 @@ class CompositeBufferTest {
   }
 
   private def populate(buff: NiolBuffer, k: Int): Unit = {
-    true >>: buff
-    (k + 10).toByte >>: buff
-    (k + 11).toShort >>: buff
-    (k + 12).toInt >>: buff
-    (k + 13).toLong >>: buff
-    (k + 14).toFloat >>: buff
-    (k + 15).toDouble >>: buff
-    ("test" + k, StandardCharsets.UTF_8) >>: buff
+    buff.putBool(true)
+    buff.putByte(k + 10)
+    buff.putShort(k + 11)
+    buff.putInt(k + 12)
+    buff.putLong(k + 13)
+    buff.putFloat(k + 14)
+    buff.putDouble(k + 15)
+    buff.putString("test" + k)
   }
 
   private def printContent(composite: NiolBuffer): Unit = {

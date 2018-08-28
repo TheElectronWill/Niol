@@ -152,17 +152,7 @@ trait NiolInput {
   // shortcuts
   @inline final def <<:(dest: Array[Byte]): Unit = getBytes(dest)
 
-  @inline final def <<:(t: (Array[Byte], Int, Int)): Unit = getBytes(t._1, t._2, t._3)
-
-  @inline final def <<:(array: Array[Short]): Unit = getShorts(array)
-
-  @inline final def <<:(array: Array[Int]): Unit = getInts(array)
-
-  @inline final def <<:(array: Array[Long]): Unit = getLongs(array)
-
-  @inline final def <<:(array: Array[Float]): Unit = getFloats(array)
-
-  @inline final def <<:(array: Array[Double]): Unit = getDoubles(array)
+  @inline final def <<:(dest: (Array[Byte], Int, Int)): Unit = getBytes(dest._1, dest._2, dest._3)
 
   @inline final def <<:(dest: ByteBuffer): Unit = getBytes(dest)
 
