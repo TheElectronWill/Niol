@@ -11,9 +11,9 @@ import java.util.UUID
  */
 trait NiolOutput {
   // put methods
-  def putBoolean(boolean: Boolean) = putBool(boolean, 1, 0)
+  def putBoolean(boolean: Boolean): Unit = putBool(boolean, 1, 0)
 
-  def putBool(bool: Boolean) = putBool(bool, 1, 0)
+  def putBool(bool: Boolean): Unit = putBool(bool, 1, 0)
 
   def putBool(bool: Boolean, trueValue: Byte, falseValue: Byte): Unit = {
     putByte(if (bool) trueValue else falseValue)

@@ -19,7 +19,7 @@ final case class BufferSettings(
   }
 }
 object BufferSettings {
-  def apply(baseBufferSize: Int, bufferProvider: BufferProvider) = {
+  def apply(baseBufferSize: Int, bufferProvider: BufferProvider):BufferSettings = {
     apply(baseBufferSize, baseBufferSize, bufferProvider, bufferProvider)
   }
 }
