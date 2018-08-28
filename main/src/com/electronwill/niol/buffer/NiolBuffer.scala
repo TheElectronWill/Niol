@@ -134,16 +134,11 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
    * rarely necessary because creating, duplicating or subviewing a buffer automatically
    * increases the use count.
    */
-  def markUsed(): Unit = {
-    useCount.getAndIncrement()
-  }
+  def markUsed(): Unit = useCount.getAndIncrement()
 
   // shortcuts
   /** Concatenates two buffers without copying their content. */
   @inline final def +(buffer: NiolBuffer): NiolBuffer = concat(buffer)
-
-  /** Concatenates two buffers by copying them to a new buffer. */
-  @inline final def +++(buffer: NiolBuffer): NiolBuffer = concatCopy(buffer)
 
   // overrides
   override def putBytes(src: NiolInput): Unit = src.getBytes(this)

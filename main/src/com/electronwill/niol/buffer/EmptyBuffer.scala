@@ -19,9 +19,7 @@ object EmptyBuffer extends NiolBuffer {
   override def readAvail = 0
 
   // buffer operations
-  override def duplicate: NiolBuffer = {
-    EmptyBuffer
-  }
+  override def duplicate: NiolBuffer = EmptyBuffer
 
   override def compact(): Unit = {}
 
@@ -44,9 +42,7 @@ object EmptyBuffer extends NiolBuffer {
   override def clear(): Unit = {}
 
   // get methods
-  override def getByte(): Byte = {
-    !!
-  }
+  override def getByte(): Byte = !!
 
   override def getShort(): Short = !!
 
@@ -79,9 +75,7 @@ object EmptyBuffer extends NiolBuffer {
   override def getDoubles(array: Array[Double], offset: Int, length: Int): Unit = !!
 
   // put methods
-  override def putByte(b: Byte): Unit = {
-    !!
-  }
+  override def putByte(b: Byte): Unit = !!
 
   override def putShort(s: Short): Unit = !!
 

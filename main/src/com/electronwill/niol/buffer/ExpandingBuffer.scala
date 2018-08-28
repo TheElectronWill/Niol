@@ -11,10 +11,11 @@ import com.electronwill.niol.buffer.provider.BufferProvider
  *
  * @author TheElectronWill
  */
-final class ExpandingBuffer(minCapacityIncrement: Int,
-                            maxCapacity: Int,
-                            private[this] val bufferProvider: BufferProvider)
-    extends NiolBuffer {
+final class ExpandingBuffer(
+    minCapacityIncrement: Int,
+    maxCapacity: Int,
+    private[this] val bufferProvider: BufferProvider)
+  extends NiolBuffer {
   private[this] val minIncrement = Math.max(minCapacityIncrement, 32)
   private[this] var buff: NiolBuffer = new CompositeBuffer()
 

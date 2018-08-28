@@ -30,9 +30,9 @@ abstract class HAttach[A <: HAttach[A]] (
 
   def listener: TcpListener[A] = sci.listener
 
-  def transformation: Option[NiolBuffer => Array[Byte]] = Option(transform)
+  def readTransformation: Option[NiolBuffer => Array[Byte]] = Option(transform)
 
-  final def transformation_=(f: NiolBuffer => Array[Byte]): Unit = {
+  final def readTransformation_=(f: NiolBuffer => Array[Byte]): Unit = {
     val add = (f != null) && (transform == null)
     val remove = (f == null) && (transform != null)
     if (add || remove) {

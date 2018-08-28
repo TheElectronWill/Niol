@@ -14,6 +14,7 @@ final case class BufferSettings(
     packetBufferBaseSize: Int,
     readBufferProvider: BufferProvider,
     postTransformBufferProvider: BufferProvider) {
+
   def this(baseBufferSize: Int, bufferProvider: BufferProvider) = {
     this(baseBufferSize, baseBufferSize, bufferProvider, bufferProvider)
   }

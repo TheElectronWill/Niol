@@ -13,11 +13,12 @@ import com.electronwill.niol.{InputType, NiolInput, NiolOutput}
  *
  * @author TheElectronWill
  */
-final class ChannelOutput(private[this] val channel: GatheringByteChannel,
-                          bufferCapacity: Int = 4096,
-                          directBuffer: Boolean = true)
-    extends NiolOutput
-    with Closeable {
+final class ChannelOutput(
+    private[this] val channel: GatheringByteChannel,
+    bufferCapacity: Int = 4096,
+    directBuffer: Boolean = true)
+  extends NiolOutput
+  with Closeable {
 
   def this(path: Path, bufferCapacity: Int, directBuffer: Boolean) = {
     this(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE),

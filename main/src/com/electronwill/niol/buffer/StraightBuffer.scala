@@ -48,9 +48,7 @@ final class StraightBuffer(private[this] val buff: RandomAccessBuffer) extends R
   override def skipRead(n: Int): Unit = readPos(readPos + n)
 
   // buffer operations
-  override def copy(begin: Int, end: Int): RandomAccessBuffer = {
-    buff.copy(begin, end)
-  }
+  override def copy(begin: Int, end: Int): RandomAccessBuffer = buff.copy(begin, end)
 
   override def subRead(maxLength: Int): RandomAccessBuffer = buff.subRead(maxLength)
 
@@ -73,9 +71,7 @@ final class StraightBuffer(private[this] val buff: RandomAccessBuffer) extends R
   override protected[niol] def freeMemory(): Unit = buff.freeMemory()
 
   // get methods
-  override def getByte(): Byte = {
-    buff.getByte()
-  }
+  override def getByte(): Byte = buff.getByte()
 
   override def getShort(): Short = buff.getShort()
 

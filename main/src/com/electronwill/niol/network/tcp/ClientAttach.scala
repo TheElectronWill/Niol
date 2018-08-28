@@ -32,11 +32,11 @@ trait ClientAttach[A <: ClientAttach[A]] {
   def listener: TcpListener[A]
 
   /**
-   * Returns the function that transforms the incoming data.
+   * Returns the function that transforms the received data.
    *
    * @return the transformation function, if any
    */
-  def transformation: Option[NiolBuffer => Array[Byte]]
+  def readTransformation: Option[NiolBuffer => Array[Byte]]
 
   /**
    * Sets the transformation function, which is applied to the received data just after its receipt.
@@ -46,7 +46,7 @@ trait ClientAttach[A <: ClientAttach[A]] {
    *
    * @param f the function
    */
-  def transformation_=(f: NiolBuffer => Array[Byte]): Unit
+  def readTransformation_=(f: NiolBuffer => Array[Byte]): Unit
 
   /**
    * Writes some data to the client. The data isn't written immediately but at some time in the

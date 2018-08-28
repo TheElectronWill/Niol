@@ -53,9 +53,7 @@ abstract class RandomAccessBuffer extends NiolBuffer {
   override def skipRead(n: Int): Unit = readPos(readPos + n)
 
   // buffer operations
-  def copyRead: RandomAccessBuffer = {
-    copy(readPos, readLimit)
-  }
+  def copyRead: RandomAccessBuffer = copy(readPos, readLimit)
 
   /**
    * Copies a portion of this buffer in a new buffer.
@@ -108,12 +106,12 @@ abstract class RandomAccessBuffer extends NiolBuffer {
 
   override def toString: String = {
     s"""${getClass.getSimpleName}(
- capacity=$capacity;
- writePos=$writePos,
- writeLimit=$writeLimit,
- writeAvail=$writeAvail;
- readPos=$readPos,
- readLimit=$readLimit,
- readAvail=$readAvail)""".stripMargin
+        | capacity=$capacity;
+        | writePos=$writePos,
+        | writeLimit=$writeLimit,
+        | writeAvail=$writeAvail;
+        | readPos=$readPos,
+        | readLimit=$readLimit,
+        | readAvail=$readAvail)""".stripMargin
   }
 }
