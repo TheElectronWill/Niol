@@ -15,12 +15,16 @@ final class StageBufferPoolBuilder {
     stages += new PoolStage(maxCapacity, maxCached, allocator)
   }
 
-  def addStage(maxCapacity: Int, maxCached: Int): Unit = {
-    stages += new PoolStage(maxCapacity, maxCached, DirectNioAllocator.get)
+  def addStage(maxCapacity: Int, maxCached: Int, provider: BufferProvider): Unit = {
+    stages += new PoolStage(maxCapacity, maxCached, provider.get)
   }
 
-  def defaultHandler(handler: Int => BaseBuffer): Unit = {
+  def setDefault(handler: Int => BaseBuffer): Unit = {
     defaultHandler = handler
+  }
+
+  def setDefault(handler: BufferProvider): Unit = {
+    defaultHandler = handler.get
   }
 
   def build(): StageBufferPool = {

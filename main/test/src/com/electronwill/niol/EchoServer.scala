@@ -25,8 +25,8 @@ object EchoServer {
 
     // Create a buffer pool
     val poolBuilder = new StageBufferPoolBuilder
-    poolBuilder.addStage(4000, 10, DirectNioAllocator.get)
-    poolBuilder.defaultHandler(HeapNioAllocator.get)
+    poolBuilder.addStage(4000, 10, DirectNioAllocator)
+    poolBuilder.setDefault(HeapNioAllocator)
     val bufferPool = poolBuilder.build()
 
     // Create a ScalableSelector
