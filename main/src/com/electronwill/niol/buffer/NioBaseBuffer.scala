@@ -26,9 +26,7 @@ final class NioBaseBuffer private[niol] (
     readBuffer.limit(writeBuffer.position())
   }
 
-  def this(writeBuffer: ByteBuffer) = this(writeBuffer, null, null)
-
-  def this(writeBuffer: ByteBuffer, readBuffer: ByteBuffer) = this(writeBuffer, readBuffer, null, null)
+  def this(buffer: ByteBuffer) = this(buffer, null, null)
 
   // buffer state
   override def capacity = writeBuffer.capacity()
@@ -143,10 +141,10 @@ final class NioBaseBuffer private[niol] (
 
   override def discard(): Unit = {
     if (useCount.decrementAndGet() == 0) {
-      if (parent ne null) {
+      if (parent != null) {
         parent.discard()
       }
-      if (provider ne null) {
+      if (provider != null) {
         provider.discard(this)
       }
     }
@@ -159,9 +157,7 @@ final class NioBaseBuffer private[niol] (
   }
 
   // get methods
-  override def getByte() = {
-    readBuffer.get()
-  }
+  override def getByte() = readBuffer.get()
 
   override def getShort() = readBuffer.getShort()
 
@@ -206,9 +202,7 @@ final class NioBaseBuffer private[niol] (
   }
 
   // put methods
-  override def putByte(b: Byte): Unit = {
-    writeBuffer.put(b)
-  }
+  override def putByte(b: Byte): Unit = writeBuffer.put(b)
 
   override def putShort(s: Short): Unit = writeBuffer.putShort(s)
 
