@@ -8,6 +8,8 @@ import java.nio.ByteBuffer
  * @author TheElectronWill
  */
 trait BaseBuffer extends RandomAccessBuffer {
+  override final def isBase = true
+
   /**
    * Returns a read-only view of this BaseBuffer as a Java ByteBuffer. The returned ByteBuffer
    * shares its content with the BaseBuffer.

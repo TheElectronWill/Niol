@@ -14,6 +14,9 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
   protected[this] val useCount = new AtomicInteger(1)
 
   // buffer state
+  /** @return true if this buffer is a [[com.electronwill.niol.buffer.BaseBuffer]] */
+  def isBase: Boolean = false
+
   /** @return the buffer's capacity */
   def capacity: Int
 
