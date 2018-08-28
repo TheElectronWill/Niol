@@ -3,7 +3,6 @@ package com.electronwill.niol.buffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 import java.nio.{BufferOverflowException, ByteBuffer}
 
-import com.electronwill.niol.InputType
 import com.electronwill.niol.buffer.provider.BufferProvider
 
 /**
@@ -20,7 +19,6 @@ final class ExpandingBuffer(
   private[this] var buff: NiolBuffer = new CompositeBuffer()
 
   override val capacity: Int = maxCapacity
-  override protected[niol] val inputType: InputType = InputType.SPECIAL_BUFFER
 
   override def readAvail: Int = buff.readAvail
 

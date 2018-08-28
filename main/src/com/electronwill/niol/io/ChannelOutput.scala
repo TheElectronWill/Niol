@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
 import java.nio.file.{Path, StandardOpenOption}
 
-import com.electronwill.niol.{InputType, NiolInput, NiolOutput}
+import com.electronwill.niol.{NiolInput, NiolOutput}
 
 /**
  * A NiolOutput based on a ByteChannel. The channel must be in blocking mode for the ChannelOutput
@@ -92,15 +92,16 @@ final class ChannelOutput(
   }
 
   override def putBytes(src: NiolInput): Unit = {
-    if (src.inputType == InputType.FILE_CHANNEL) {
-      src.asInstanceOf[ChannelInput].fileTransfer(channel)
-    } else {
-      do {
-        if (!buffer.hasRemaining) {
-          flush()
-        }
-        src.getBytes(buffer)
-      } while (src.canRead)
+    src match {
+      case input: ChannelInput =>
+        input.fileTransfer(channel)
+      case _ =>
+        do {
+          if (!buffer.hasRemaining) {
+            flush()
+          }
+          src.getBytes(buffer)
+        } while (src.canRead)
     }
   }
 

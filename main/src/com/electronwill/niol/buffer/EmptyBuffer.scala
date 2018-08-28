@@ -3,15 +3,13 @@ package com.electronwill.niol.buffer
 import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
-import com.electronwill.niol.{InputType, NiolInput}
+import com.electronwill.niol.NiolInput
 
 /**
  * @author TheElectronWill
  */
 object EmptyBuffer extends NiolBuffer {
   // buffer state
-  override protected[niol] val inputType: InputType = InputType.SPECIAL_BUFFER
-
   override def capacity: Int = 0
 
   override def writeAvail = 0

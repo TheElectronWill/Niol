@@ -14,8 +14,6 @@ final class CircularBuffer(private[niol] val buff: RandomAccessBuffer) extends N
   buff.markUsed()
 
   // buffer state
-  override protected[niol] val inputType: InputType = InputType.SPECIAL_BUFFER
-
   override def capacity: Int = buff.capacity
 
   private[buffer] def writePos: Int = buff.writePos

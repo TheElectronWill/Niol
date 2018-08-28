@@ -3,8 +3,6 @@ package com.electronwill.niol.buffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 import java.nio.{BufferOverflowException, BufferUnderflowException, ByteBuffer}
 
-import com.electronwill.niol.InputType
-
 /**
  * @author TheElectronWill
  */
@@ -66,8 +64,6 @@ final class CompositeBuffer private (h: Node, r: Node, w: Node) extends NiolBuff
   }
 
   // buffer state
-  override protected[niol] val inputType = InputType.SPECIAL_BUFFER
-
   override def capacity: Int = currentCapacity
 
   override def readAvail: Int = currentRead.data.readAvail + readAvailNext

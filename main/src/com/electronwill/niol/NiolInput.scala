@@ -12,9 +12,6 @@ import com.electronwill.niol.buffer.NiolBuffer
  * @author TheElectronWill
  */
 trait NiolInput {
-  // input infos
-  protected[niol] val inputType: InputType
-
   def canRead: Boolean
 
   // get methods

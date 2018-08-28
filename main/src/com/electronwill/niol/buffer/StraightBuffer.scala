@@ -3,8 +3,6 @@ package com.electronwill.niol.buffer
 import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
-import com.electronwill.niol.InputType
-
 /**
  * A straight buffer enforcing 0 <= readPos < readLimit = writePos < writeLimit
  *
@@ -15,8 +13,6 @@ final class StraightBuffer(private[this] val buff: RandomAccessBuffer) extends R
   buff.markUsed()
 
   // buffer state
-  override protected[niol] val inputType: InputType = InputType.SPECIAL_BUFFER
-
   override def capacity: Int = buff.capacity
 
   override def writePos: Int = buff.writePos

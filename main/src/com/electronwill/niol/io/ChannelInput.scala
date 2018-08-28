@@ -5,9 +5,9 @@ import java.nio.ByteBuffer
 import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
 import java.nio.file.{Path, StandardOpenOption}
 
+import com.electronwill.niol.NiolInput
 import com.electronwill.niol.buffer.provider.BufferProvider
 import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer}
-import com.electronwill.niol.{InputType, NiolInput}
 
 /**
  * A NiolInput based on a ByteChannel. The channel must be in blocking mode for the ChannelInput
@@ -36,15 +36,6 @@ final class ChannelInput(
 
   def this(path: Path) = {
     this(path, BufferProvider.DefaultOffHeapProvider)
-  }
-
-  private[this] val buffer: NiolBuffer = {
-    new CircularBuffer(bufferProvider.getBuffer(bufferCapacity))
-  }
-  private[this] var notEnded = true
-
-  override protected[niol] val inputType: InputType = {
-    if (channel.isInstanceOf[FileChannel]) InputType.FILE_CHANNEL else InputType.OTHER_CHANNEL
   }
 
   override def canRead: Boolean = notEnded
@@ -139,7 +130,7 @@ final class ChannelInput(
   }
 
   override def getBytes(dest: GatheringByteChannel): Int = {
-    if (inputType == InputType.FILE_CHANNEL && dest.isInstanceOf[FileChannel]) {
+    if (channel.isInstanceOf[FileChannel] && dest.isInstanceOf[FileChannel]) {
       fileTransfer(dest).toInt
     } else {
       var count = 0

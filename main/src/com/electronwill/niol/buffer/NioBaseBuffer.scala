@@ -3,7 +3,6 @@ package com.electronwill.niol.buffer
 import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
-import com.electronwill.niol.InputType
 import com.electronwill.niol.buffer.provider.{BufferProvider, HeapNioAllocator}
 import sun.nio.ch.DirectBuffer
 
@@ -28,8 +27,6 @@ final class NioBaseBuffer private[niol] (
   }
 
   // buffer state
-  override protected[niol] val inputType: InputType = InputType.NIO_BUFFER
-
   override def capacity = writeBuffer.capacity()
 
   override def writePos = writeBuffer.position()
