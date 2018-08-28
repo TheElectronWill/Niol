@@ -103,13 +103,10 @@ final class ScalableSelector(
             iter.remove()
 
             if ((ops & SelectionKey.OP_ACCEPT) != 0) { // New client -> accept
-              val serverChan = key.channel().asInstanceOf[ServerSocketChannel]
-              val infos = key.attachment().asInstanceOf[ServerChannelInfos[ClientAttach[_]]]
-              val clientChan = serverChan.accept()
-              accept(clientChan, infos)
+              accept(key)
+            } else {
               // Don't try to read/write from/to a new client, since they
               // haven't been registered for OP_READ nor OP_WRITE operations yet.
-            } else {
               if (key.isValid) {
                 if ((ops & SelectionKey.OP_READ) != 0) { // Data available -> read
                   val endOfStream = read(key)
@@ -174,11 +171,20 @@ final class ScalableSelector(
     selector.wakeup()
   }
 
-  /** Accepts the client channel: make it non-blocking, call `onAccept` and register OP_READ */
-  private def accept[A <: ClientAttach[A]](client: SocketChannel, server: ServerChannelInfos[A]): Unit = {
-    client.configureBlocking(false)
-    val clientAttach = server.listener.onAccept(client, server)
-    client.register(selector, SelectionKey.OP_READ, clientAttach)
+  /**
+   * Accepts a new client: make its SocketChannel non-blocking, call [[TcpListener.onAccept]]
+   * and register [[SelectionKey.OP_READ]].
+   *
+   * @param key the SelectionKey corresponding to the new client
+   * @tparam A the client's attach type
+   */
+  private def accept[A <: ClientAttach[A]](key: SelectionKey): Unit = {
+    val sci = key.attachment().asInstanceOf[ServerChannelInfos[A]]
+    val clientChannel = key.channel().asInstanceOf[ServerSocketChannel].accept()
+
+    clientChannel.configureBlocking(false)
+    val clientAttach = sci.listener.onAccept(clientChannel, sci)
+    clientChannel.register(selector, SelectionKey.OP_READ, clientAttach)
   }
 
   /**
