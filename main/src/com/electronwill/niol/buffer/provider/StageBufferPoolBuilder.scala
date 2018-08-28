@@ -9,7 +9,7 @@ import scala.collection.mutable.ArrayBuffer
  */
 final class StageBufferPoolBuilder {
   private[this] val stages = new ArrayBuffer[PoolStage]
-  private[this] var defaultHandler: Int => BaseBuffer = _
+  private[this] var defaultHandler: Int => BaseBuffer = StageBufferPoolBuilder.ExceptionDefault
 
   def addStage(maxCapacity: Int, maxCached: Int, allocator: Int => BaseBuffer): Unit = {
     stages += new PoolStage(maxCapacity, maxCached, allocator)
@@ -30,5 +30,12 @@ final class StageBufferPoolBuilder {
   def build(): StageBufferPool = {
     val array = stages.sortWith(_.maxCapacity < _.maxCapacity).toArray
     new StageBufferPool(array, defaultHandler)
+  }
+}
+object StageBufferPoolBuilder {
+  private final val ExceptionDefault: (Int => BaseBuffer) = {
+    capacity =>
+      val msg = s"Cannot provide a buffer of size $capacity: no corresponding stage"
+      throw new NoCorrespondingPoolStageException(msg)
   }
 }

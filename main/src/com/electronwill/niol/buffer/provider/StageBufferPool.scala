@@ -20,7 +20,7 @@ final class StageBufferPool private[provider] (
 
   override def discard(buffer: BaseBuffer): Unit = {
     buffer.clear()
-    findStage(buffer.capacity).flatMap(_.tryCache(buffer)).foreach(_.freeMemory())
+    findStage(buffer.capacity).flatMap(_.cacheOrGetBack(buffer)).foreach(_.freeMemory())
   }
 
   private def findStage(capacity: Int): Option[PoolStage] = {
