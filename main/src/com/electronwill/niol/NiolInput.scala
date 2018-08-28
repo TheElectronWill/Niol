@@ -17,6 +17,8 @@ trait NiolInput {
   // get methods
   def getByte(): Byte
 
+  final def getBoolean(): Boolean = getBool()
+
   final def getBool(trueValue: Byte = 1): Boolean = getByte() == trueValue
 
   def getShort(): Short
