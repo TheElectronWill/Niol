@@ -1,7 +1,7 @@
 package com.electronwill.niol.buffer
 
 import com.electronwill.niol.buffer.provider.HeapNioAllocator
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.{Assertions, Test}
 
 /**
  * @author TheElectronWill
@@ -64,13 +64,13 @@ class CircularBufferTest {
 
   private def putInts(v: Int, n: Int, dest: NiolBuffer): Unit = {
     for (i <- 1 to n) {
-      dest.putInt(i)
+      dest.putInt(v)
     }
   }
 
   private def readInts(v: Int, n: Int, src: NiolBuffer): Unit = {
     for (i <- 1 to n) {
-      assert(src.getInt() == v)
+      Assertions.assertEquals(v, src.getInt())
     }
   }
 }
