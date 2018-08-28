@@ -53,7 +53,9 @@ final class NioBaseBuffer private[niol] (
 
   override def resetReadPos() = readBuffer.reset()
 
-  private[niol] def asReadByteBuffer: ByteBuffer = readBuffer
+  override def readBB = readBuffer
+
+  override def writeBB = writeBuffer
 
   // buffer operations
   override def duplicate: RandomAccessBuffer = {

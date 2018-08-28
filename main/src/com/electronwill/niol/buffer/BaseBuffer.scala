@@ -1,9 +1,26 @@
 package com.electronwill.niol.buffer
 
+import java.nio.ByteBuffer
+
 /**
- * Buffers implement this trait to show that they are a basic data container that serves as a
- * base for the other buffers, without any "special" functionality.
+ * Traits for basic data containers without any "special" functionality.
  *
  * @author TheElectronWill
  */
-trait BaseBuffer extends RandomAccessBuffer {}
+trait BaseBuffer extends RandomAccessBuffer {
+  /**
+   * Returns a read-only view of this BaseBuffer as a Java ByteBuffer. The returned ByteBuffer
+   * shares its content with the BaseBuffer.
+   *
+   * @return a read-only ByteBuffer view
+   */
+  def readBB: ByteBuffer
+
+  /**
+   * Returns a write-only view of this BaseBuffer as a Java ByteBuffer. The returned ByteBuffer
+   * shares its content with the BaseBuffer.
+   *
+   * @return a write-only ByteBuffer view
+   */
+  def writeBB: ByteBuffer
+}
