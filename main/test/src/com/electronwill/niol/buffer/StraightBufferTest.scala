@@ -10,7 +10,7 @@ class StraightBufferTest {
   @Test
   def test(): Unit = {
     val cap = 512
-    val buff = new StraightBuffer(HeapNioAllocator.getBuffer(cap))
+    val buff = new StraightBuffer(HeapNioAllocator.get(cap))
     println(buff)
     assert(buff.capacity == cap)
     assert(buff.readPos == 0 && buff.writePos == 0)
@@ -33,7 +33,7 @@ class StraightBufferTest {
 
   @Test
   def varintTest(): Unit = {
-    val buff = new StraightBuffer(HeapNioAllocator.getBuffer(256))
+    val buff = new StraightBuffer(HeapNioAllocator.get(256))
     val value = 117
     buff.putVarint(value)
     assert(buff.getVarint() == value)
@@ -58,7 +58,7 @@ class StraightBufferTest {
   @Test
   def bulkTest(): Unit = {
     val length = 500
-    val buff = new StraightBuffer(HeapNioAllocator.getBuffer(length))
+    val buff = new StraightBuffer(HeapNioAllocator.get(length))
     val array = new Array[Byte](length)
     array >>: buff
     assert(buff.readAvail == array.length)

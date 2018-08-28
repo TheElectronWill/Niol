@@ -82,7 +82,7 @@ final class CircularBuffer(private[niol] val buff: RandomAccessBuffer) extends N
 
   // buffer operations
   override def copyRead: NiolBuffer = {
-    val copy = HeapNioAllocator.getBuffer(readAvail)
+    val copy = HeapNioAllocator.get(readAvail)
     if (readPos >= writePos) {
       sub(readPos, capacity) >>: copy
       sub(0, writePos) >>: copy

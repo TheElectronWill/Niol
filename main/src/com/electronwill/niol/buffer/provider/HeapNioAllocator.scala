@@ -8,7 +8,7 @@ import com.electronwill.niol.buffer.{BaseBuffer, NioBaseBuffer}
  * @author TheElectronWill
  */
 object HeapNioAllocator extends BufferProvider {
-  override def getBuffer(minCapacity: Int): BaseBuffer = {
+  override def get(minCapacity: Int): BaseBuffer = {
     new NioBaseBuffer(ByteBuffer.allocate(minCapacity), null, null)
   }
 

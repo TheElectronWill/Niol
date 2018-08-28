@@ -22,6 +22,9 @@ final class ChannelInput(
   extends NiolInput
   with Closeable {
 
+  private[this] var notEnded = true
+  private[this] val buffer: NiolBuffer = new CircularBuffer(bufferProvider.get(bufferCapacity))
+
   def this(fc: FileChannel, bufferProvider: BufferProvider) = {
     this(fc, Math.min(4096, fc.size.toInt), bufferProvider)
   }

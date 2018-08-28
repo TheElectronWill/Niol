@@ -12,8 +12,8 @@ class CompositeBufferTest {
   @Test
   def test(): Unit = {
     val cap = 512
-    val buffA = new StraightBuffer(HeapNioAllocator.getBuffer(cap))
-    val buffB = new StraightBuffer(HeapNioAllocator.getBuffer(cap))
+    val buffA = new StraightBuffer(HeapNioAllocator.get(cap))
+    val buffB = new StraightBuffer(HeapNioAllocator.get(cap))
     populate(buffA, 0)
     populate(buffB, 1)
 

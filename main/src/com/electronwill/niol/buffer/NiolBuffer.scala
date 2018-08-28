@@ -102,7 +102,7 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
     } else if (availableBuff == 0) {
       this.copyRead
     } else {
-      val copy = HeapNioAllocator.getBuffer(availableThis + availableBuff)
+      val copy = HeapNioAllocator.get(availableThis + availableBuff)
       this.duplicate >>: copy
       buffer.duplicate >>: copy
       copy

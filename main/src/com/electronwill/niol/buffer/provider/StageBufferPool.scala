@@ -11,7 +11,7 @@ final class StageBufferPool private[provider] (
     private[this] val defaultHandler: Int => BaseBuffer)
   extends BufferProvider {
 
-  override def getBuffer(minCapacity: Int): BaseBuffer = {
+  override def get(minCapacity: Int): BaseBuffer = {
     findStage(minCapacity) match {
       case Some(stage) => stage.getBuffer()
       case None => defaultHandler(minCapacity)

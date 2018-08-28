@@ -64,7 +64,7 @@ final class NioBaseBuffer private[niol] (
 
   override def copy(begin: Int, end: Int): RandomAccessBuffer = {
     val length = end - begin
-    val copy = HeapNioAllocator.getBuffer(length)
+    val copy = HeapNioAllocator.get(length)
     bbView(begin, end) >>: copy
     copy.readLimit(length)
     copy

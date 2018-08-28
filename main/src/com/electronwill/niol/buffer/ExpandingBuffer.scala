@@ -100,7 +100,7 @@ final class ExpandingBuffer(
       if (increment + buff.capacity > maxCapacity) {
         throw new BufferOverflowException
       }
-      buff += bufferProvider.getBuffer(increment)
+      buff += bufferProvider.get(increment)
     }
   }
 

@@ -25,7 +25,7 @@ object EchoServer {
 
     // Create a buffer pool
     val poolBuilder = new StageBufferPoolBuilder
-    poolBuilder.addStage(4000, 10, DirectNioAllocator.getBuffer)
+    poolBuilder.addStage(4000, 10, DirectNioAllocator.get)
     val bufferPool = poolBuilder.build()
 
     // Create a ScalableSelector
@@ -118,7 +118,7 @@ class EchoAttach(serverInfos: ServerChannelInfos[EchoAttach], clientChannel: Soc
     println(s"[S] *available: ${buffer.readAvail}, *response.available: ${response.readAvail}")
     assert(EchoServer.possibleMessages.contains(message))
 
-    val sizeBuffer = new StraightBuffer(DirectNioAllocator.getBuffer(2))
+    val sizeBuffer = new StraightBuffer(DirectNioAllocator.get(2))
     sizeBuffer.putShort(response.readAvail)
     println(s"[S] sizeBuffer.readAvail: ${sizeBuffer.readAvail}")
     write(sizeBuffer)

@@ -43,7 +43,7 @@ abstract class HAttach[A <: HAttach[A]] (
       val additionalLength = packetLength - newBase.capacity
       val newPacketBuffer =
         if (additionalLength > 0) {
-          newBase + new StraightBuffer(newProvider.getBuffer(additionalLength))
+          newBase + new StraightBuffer(newProvider.get(additionalLength))
         } else {
           newBase
         }
@@ -63,13 +63,13 @@ abstract class HAttach[A <: HAttach[A]] (
     if (withTransform) {
       // With a transformation, data is processed before being copied to the packetBuffer
       val prov = s.postTransformBufferProvider
-      val base = new CircularBuffer(prov.getBuffer(s.packetBufferBaseSize))
-      val read = s.readBufferProvider.getBuffer(s.preTransformReadSize)
+      val base = new CircularBuffer(prov.get(s.packetBufferBaseSize))
+      val read = s.readBufferProvider.get(s.preTransformReadSize)
       (read, base, prov)
     } else {
       // Without a transformation, data is read directly from the SocketChannel to the packetBuffer
       val prov = s.readBufferProvider
-      val buff = new CircularBuffer(prov.getBuffer(s.packetBufferBaseSize))
+      val buff = new CircularBuffer(prov.get(s.packetBufferBaseSize))
       (null, buff, prov)
     }
   }
@@ -95,7 +95,7 @@ abstract class HAttach[A <: HAttach[A]] (
           } else if (packetBuffer.capacity < packetLength) {
             // The buffer is too small => create an additional buffer
             val additional = packetLength - packetBuffer.capacity
-            val additionalBuffer = packetBufferProvider.getBuffer(additional)
+            val additionalBuffer = packetBufferProvider.get(additional)
             val additionalStraight = new StraightBuffer(additionalBuffer)
             // Creates a CompositeBuffer without copying the data
             packetBuffer = packetBufferBase + additionalStraight
