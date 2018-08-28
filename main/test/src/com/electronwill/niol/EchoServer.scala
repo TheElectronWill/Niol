@@ -95,7 +95,7 @@ object EchoServer {
   }
 }
 class EchoAttach(serverInfos: ServerChannelInfos[EchoAttach], clientChannel: SocketChannel)
-  extends HAttach(serverInfos, clientChannel) {
+  extends HAttach[EchoAttach](serverInfos, clientChannel) {
 
   val clientId = EchoAttach.lastId.getAndIncrement()
 
