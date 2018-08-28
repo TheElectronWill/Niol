@@ -11,11 +11,11 @@ final class StageBufferPoolBuilder {
   private[this] val stages = new ArrayBuffer[PoolStage]
   private[this] var defaultHandler: Int => BaseBuffer = _
 
-  def +=(maxCapacity: Int, maxCached: Int, allocator: Int => BaseBuffer): Unit = {
+  def addStage(maxCapacity: Int, maxCached: Int, allocator: Int => BaseBuffer): Unit = {
     stages += new PoolStage(maxCapacity, maxCached, allocator)
   }
 
-  def +=(maxCapacity: Int, maxCached: Int): Unit = {
+  def addStage(maxCapacity: Int, maxCached: Int): Unit = {
     stages += new PoolStage(maxCapacity, maxCached, DirectNioAllocator.getBuffer)
   }
 

@@ -3,6 +3,7 @@ package com.electronwill.niol
 import java.nio.ByteBuffer
 import java.nio.channels.ScatteringByteChannel
 import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.UUID
 
 /**
@@ -10,8 +11,10 @@ import java.util.UUID
  */
 trait NiolOutput {
   // put methods
-  def putBool(bool: Boolean): Unit = {
-    putByte(if (bool) 1 else 0)
+  def putBool(bool: Boolean) = putBool(bool, 1, 0)
+
+  def putBool(bool: Boolean, trueValue: Byte, falseValue: Byte): Unit = {
+    putByte(if (bool) trueValue else falseValue)
   }
 
   def putByte(b: Byte): Unit
@@ -58,9 +61,9 @@ trait NiolOutput {
     } while (value != 0)
   }
 
-  final def putString(str: String, charset: Charset): Unit = charset.encode(str) >>: this
+  final def putString(str: String, charset: Charset = UTF_8): Unit = putBytes(charset.encode(str))
 
-  final def putVarstring(str: String, charset: Charset): Unit = {
+  final def putVarstring(str: String, charset: Charset= UTF_8): Unit = {
     val encoded = charset.encode(str)
     putVarint(encoded.remaining())
     putBytes(encoded)
@@ -72,9 +75,7 @@ trait NiolOutput {
   }
 
   // bulk put methods
-  def putBytes(src: Array[Byte]): Unit = {
-    putBytes(src, 0, src.length)
-  }
+  def putBytes(src: Array[Byte]): Unit = putBytes(src, 0, src.length)
 
   def putBytes(src: Array[Byte], offset: Int, length: Int): Unit
 
@@ -105,9 +106,7 @@ trait NiolOutput {
   def putDoubles(src: Array[Double], offset: Int, length: Int): Unit
 
   // shortcuts
-  @inline final def >>:(bool: Boolean): Unit = {
-    putBool(bool)
-  }
+  @inline final def >>:(bool: Boolean): Unit = putBool(bool)
 
   @inline final def >>:(b: Byte): Unit = putByte(b)
 

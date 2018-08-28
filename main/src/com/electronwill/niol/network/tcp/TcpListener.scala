@@ -2,7 +2,7 @@ package com.electronwill.niol.network.tcp
 
 import java.nio.channels.SocketChannel
 
-trait TcpListener[A <: ClientAttach] {
+trait TcpListener[A <: ClientAttach[A]] {
 
   /**
    * Called when a new TCP client connects to the server. Returns an object ClientAttach that

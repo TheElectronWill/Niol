@@ -12,7 +12,7 @@ import javax.crypto.Cipher
  * @param inPlace true to use the same array as the input and output of the cipher's update method.
  */
 final class DecipherTransform(private[this] val cipher: Cipher, private[this] val inPlace: Boolean)
-    extends (NiolBuffer => Array[Byte]) {
+    extends NiolBuffer => Array[Byte] {
 
   /**
    * Creates a new DecipherTransform with a new Cipher instance created in decryption mode.

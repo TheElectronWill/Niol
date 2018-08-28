@@ -8,13 +8,16 @@ import com.electronwill.niol.buffer.provider.BufferProvider
 import scala.collection.mutable
 
 /**
- * A ScalableSelector uses one NIO Selector to handle the TCP connections on several ports with only one thread.
+ * A ScalableSelector uses one NIO Selector to handle many TCP connections on several ports
+ * with only one thread.
  *
  * ==Port listening==
- * To start listening for connections on a port, call the [[listen()]] method. One (and only one) [[TcpListener]]
- * is assigned for each port. When a new client connects to the port, the listener's [[TcpListener.onAccept()]]
- * method is called and creates a [[ClientAttach]] object, unique to the new client. It is this [[ClientAttach]]
- * that will handle the data sent by and to the client.
+ * To start listening for connections on a port, call the [[ScalableSelector.listen]] method.
+ *
+ * One (and only one) [[TcpListener]] is assigned for each port.
+ * When a new client connects to the port, the listener's [[TcpListener.onAccept]] method is called.
+ * It creates an instance of [[ClientAttach]] for the new client. The [[ClientAttach]] will handle
+ * the data received from the client and sent to the client.
  *
  * ===Buffer providers and sizes===
  * If there is no data transformation in the [[ClientAttach]], the incoming data will be read
@@ -37,73 +40,51 @@ import scala.collection.mutable
  *
  * @author TheElectronWill
  */
-final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
-                             private[this] val startHandler: () => Unit,
-                             private[this] val stopHandler: () => Unit)
-    extends Runnable {
+final class ScalableSelector(
+    private[this] val startHandler: () => Unit,
+    private[this] val stopHandler: () => Unit,
+    private[this] val errorHandler: Exception => Unit)
+  extends Runnable {
 
   private[this] val selector = Selector.open()
   private[this] val serverChannelsInfos = new mutable.LongMap[ServerChannelInfos[_]]
   @volatile private[this] var _run = false
 
   /**
-   * Starts a TCP [[ServerSocketChannel]] and registers it to the selector. If there already is a ServerSocketChannel
-   * registered with the specified port, this methods doesn't start a new server but directly returns false.
+   * Starts a TCP [[ServerSocketChannel]] and registers it to the selector. If there already is a
+   * ServerSocketChannel registered with the specified port, this methods returns `false` without
+   * starting a new server.
    *
-   * @param port                        the port to start the server on
-   * @param l                           the listener that will be called when some events (defined in the listener)
-   *                                    related to the ServerSocketChannel occur.
-   * @param preTransformReadSize        the size of the read buffer, if there is a data transformation
-   * @param packetBufferBaseSize        the size of the packet buffer which, if there is no transformation,
-   *                                    is also the read buffer
-   * @param readBufferProvider          the provider of the read buffer
-   * @param postTransformBufferProvider the provider of the packet buffer, if there is a data transformation
+   * @param port     the server's port
+   * @param settings the settings to apply to the channel's clients
+   * @param listener the listener that will be called when some events (defined in the listener)
+   *                 related to the ServerSocketChannel occur.
    * @return true if the server has been started, false if there already is a ServerSocketChannel bound to the
    *         specified port and registered to this selector.
    */
-  def listen[A <: ClientAttach](port: Int,
-                                preTransformReadSize: Int,
-                                packetBufferBaseSize: Int,
-                                readBufferProvider: BufferProvider,
-                                postTransformBufferProvider: BufferProvider,
-                                l: TcpListener[A]): Boolean = {
+  def listen[A <: ClientAttach[A]](port: Int, settings: BufferSettings, listener: TcpListener[A]): Boolean = {
     if (serverChannelsInfos.contains(port)) {
       false
     } else {
-      val serverChan = ServerSocketChannel.open()
-      serverChan.configureBlocking(false)
-      serverChan.bind(new InetSocketAddress(port))
-      serverChannelsInfos(port) = new ServerChannelInfos(selector,
-                                                         l,
-                                                         serverChan,
-                                                         preTransformReadSize,
-                                                         packetBufferBaseSize,
-                                                         readBufferProvider,
-                                                         postTransformBufferProvider)
+      val ssc = ServerSocketChannel.open()
+      ssc.configureBlocking(false)
+      ssc.bind(new InetSocketAddress(port))
+      serverChannelsInfos(port) = new ServerChannelInfos(ssc, selector, settings, listener)
       true
     }
   }
 
-  def listen[A <: ClientAttach](port: Int,
-                                bufferBaseSize: Int,
-                                bufferProvider: BufferProvider,
-                                l: TcpListener[A]): Boolean = {
-    listen(port, bufferBaseSize, bufferBaseSize, bufferProvider, bufferProvider, l)
-  }
-
   /**
-   * Stops the [[ServerSocketChannel]] that has been registered with [[listen()]] for the specified port, and
-   * unregisters it from the selector.
+   * Stops a [[ServerSocketChannel]] that has been registered with [[listen]].
    *
    * @param port the server's port
    */
   def unlisten(port: Int): Unit = {
-    serverChannelsInfos
-      .remove(port)
-      .foreach(channelInfo => {
-        channelInfo.skey.cancel()
-        channelInfo.ssc.close()
-      })
+    serverChannelsInfos.remove(port)
+                       .foreach(channelInfo => {
+                         channelInfo.selectionKey.cancel()
+                         channelInfo.serverChannel.close()
+                       })
   }
 
   /**
@@ -123,7 +104,7 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
 
             if ((ops & SelectionKey.OP_ACCEPT) != 0) { // New client -> accept
               val serverChan = key.channel().asInstanceOf[ServerSocketChannel]
-              val infos = key.attachment().asInstanceOf[ServerChannelInfos[ClientAttach]]
+              val infos = key.attachment().asInstanceOf[ServerChannelInfos[ClientAttach[_]]]
               val clientChan = serverChan.accept()
               accept(clientChan, infos)
               // Don't try to read/write from/to a new client, since they
@@ -154,6 +135,13 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
   }
 
   /**
+   * Checks if the selector is running.
+   *
+   * @return true if this selector is running
+   */
+  def isRunning: Boolean = _run
+
+  /**
    * Starts the ScalableSelector in a new thread. This method may be called at most once, any further invocation
    * will throw [[IllegalStateException]]. The state of the selector can be checked with [[isRunning]].
    *
@@ -177,8 +165,8 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
     _run = false
     try {
       for (infos <- serverChannelsInfos.values) {
-        infos.skey.cancel()
-        infos.ssc.close()
+        infos.selectionKey.cancel()
+        infos.serverChannel.close()
       }
     } catch {
       case e: Exception => errorHandler(e)
@@ -186,17 +174,11 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
     selector.wakeup()
   }
 
-  /** @return true iff this selector is running */
-  def isRunning: Boolean = {
-    _run
-  }
-
   /** Accepts the client channel: make it non-blocking, call `onAccept` and register OP_READ */
-  private def accept[A <: ClientAttach](clientChannel: SocketChannel,
-                                        serverChannel: ServerChannelInfos[A]): Unit = {
-    clientChannel.configureBlocking(false)
-    val clientAttach = serverChannel.l.onAccept(clientChannel, serverChannel)
-    clientChannel.register(selector, SelectionKey.OP_READ, clientAttach)
+  private def accept[A <: ClientAttach[A]](client: SocketChannel, server: ServerChannelInfos[A]): Unit = {
+    client.configureBlocking(false)
+    val clientAttach = server.listener.onAccept(client, server)
+    client.register(selector, SelectionKey.OP_READ, clientAttach)
   }
 
   /**
@@ -205,22 +187,21 @@ final class ScalableSelector(private[this] val errorHandler: Exception => Unit,
    * @return true iff the end of the stream has been reached, false otherwise.
    */
   private def read(key: SelectionKey): Boolean = {
-    val attach = key.attachment().asInstanceOf[ClientAttach]
+    val attach = key.attachment().asInstanceOf[ClientAttach[_]]
     attach.readMore()
     attach.streamEnded
   }
 
   /** Write more data to the client channel */
   private def write(key: SelectionKey): Boolean = {
-    val attach = key.attachment().asInstanceOf[ClientAttach]
+    val attach = key.attachment().asInstanceOf[ClientAttach[_]]
     attach.writeMore()
   }
 
   /** Cancels a key and call `onDisconnect` */
-  private def cancel[A <: ClientAttach](key: SelectionKey): Unit = {
+  private def cancel[A <: ClientAttach[A]](key: SelectionKey): Unit = {
     key.cancel()
     val attach = key.attachment().asInstanceOf[A]
-    val listener = attach.sci.l.asInstanceOf[TcpListener[A]]
-    listener.onDisconnect(attach)
+    attach.listener.onDisconnect(attach)
   }
 }

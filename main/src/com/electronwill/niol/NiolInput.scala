@@ -3,6 +3,7 @@ package com.electronwill.niol
 import java.nio.ByteBuffer
 import java.nio.channels.GatheringByteChannel
 import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.UUID
 
 import com.electronwill.niol.buffer.NiolBuffer
@@ -19,9 +20,7 @@ trait NiolInput {
   // get methods
   def getByte(): Byte
 
-  def getBool(): Boolean = getByte() == 1
-
-  final def getBool(trueValue: Byte): Boolean = getByte() == trueValue
+  final def getBool(trueValue: Byte = 1): Boolean = getByte() == trueValue
 
   def getShort(): Short
 
@@ -35,9 +34,7 @@ trait NiolInput {
 
   def getDouble(): Double
 
-  final def getVarint(): Int = getVarint(5)
-
-  final def getVarint(maxBytes: Int): Int = {
+  final def getVarint(maxBytes: Int = 5): Int = {
     val maxShift = maxBytes * 7
     var shift: Int = 0
     var result: Int = 0
@@ -53,9 +50,7 @@ trait NiolInput {
     result
   }
 
-  final def getVarlong(): Long = getVarlong(10)
-
-  final def getVarlong(maxBytes: Int): Long = {
+  final def getVarlong(maxBytes: Int = 10): Long = {
     val maxShift = maxBytes * 7
     var shift: Int = 0
     var result: Long = 0
@@ -75,12 +70,12 @@ trait NiolInput {
 
   final def getUnsignedShort(): Int = getShort() & 0xFFFF
 
-  final def getString(bytesLength: Int, charset: Charset): String = {
+  final def getString(bytesLength: Int, charset: Charset = UTF_8): String = {
     val buff = ByteBuffer.wrap(getBytes(bytesLength))
     charset.decode(buff).toString
   }
 
-  final def getVarstring(charset: Charset): String = {
+  final def getVarstring(charset: Charset = UTF_8): String = {
     val size = getVarint()
     getString(size, charset)
   }
@@ -88,7 +83,7 @@ trait NiolInput {
   final def getUUID(): UUID = new UUID(getLong(), getLong())
 
   // bulk get methods
-  def getBytes(count: Int): Array[Byte] = {
+  final def getBytes(count: Int): Array[Byte] = {
     val array = new Array[Byte](count)
     getBytes(array, 0, count)
     array
@@ -155,9 +150,7 @@ trait NiolInput {
   }
 
   // shortcuts
-  @inline final def <<:(dest: Array[Byte]): Unit = {
-    getBytes(dest)
-  }
+  @inline final def <<:(dest: Array[Byte]): Unit = getBytes(dest)
 
   @inline final def <<:(t: (Array[Byte], Int, Int)): Unit = getBytes(t._1, t._2, t._3)
 

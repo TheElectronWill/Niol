@@ -3,17 +3,18 @@ package com.electronwill.niol.buffer.provider
 import com.electronwill.niol.buffer.BaseBuffer
 
 /**
+ * @param stages The pool stages, in ordered by ascending capacity
  * @author TheElectronWill
  */
-final class StageBufferPool private[provider] ( /** in asc capacity order */
-                                               private[this] val stages: Array[PoolStage],
-                                               private[this] val defaultHandler: Int => BaseBuffer)
-    extends BufferProvider {
+final class StageBufferPool private[provider] (
+    private[this] val stages: Array[PoolStage],
+    private[this] val defaultHandler: Int => BaseBuffer)
+  extends BufferProvider {
 
   override def getBuffer(minCapacity: Int): BaseBuffer = {
     findStage(minCapacity) match {
       case Some(stage) => stage.getBuffer()
-      case None        => defaultHandler(minCapacity)
+      case None => defaultHandler(minCapacity)
     }
   }
 
