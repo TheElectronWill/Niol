@@ -20,11 +20,15 @@ final class NioBaseBuffer private[niol] (
   extends RandomAccessBuffer
   with BaseBuffer {
 
-  private[niol] def this(writeBuff: ByteBuffer, parent: NiolBuffer, provider: BufferProvider) = {
-    this(writeBuff, writeBuff.duplicate(), parent, provider)
+  private[niol] def this(writeBuffer: ByteBuffer, parent: NiolBuffer, provider: BufferProvider) = {
+    this(writeBuffer, writeBuffer.duplicate(), parent, provider)
     readBuffer.position(0)
-    readBuffer.limit(writeBuff.position())
+    readBuffer.limit(writeBuffer.position())
   }
+
+  def this(writeBuffer: ByteBuffer) = this(writeBuffer, null, null)
+
+  def this(writeBuffer: ByteBuffer, readBuffer: ByteBuffer) = this(writeBuffer, readBuffer, null, null)
 
   // buffer state
   override def capacity = writeBuffer.capacity()
