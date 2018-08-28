@@ -12,7 +12,7 @@ import scala.annotation.tailrec
 abstract class HAttach[A <: HAttach[A]] (
     private[this] val sci: ServerChannelInfos[A],
     private[this] val channel: SocketChannel,
-    private[this] var transform: NiolBuffer => Array[Byte] = null)
+    private[this] val selectionKey: SelectionKey,
     private[this] var rTransform: BufferTransform = null,
     private[this] var wTransform: BufferTransform = null)
   extends ClientAttach[A] {
@@ -82,8 +82,7 @@ abstract class HAttach[A <: HAttach[A]] (
       transformed >>: packetBuffer
     }
     state match {
-      // First, the header must be read
-      case InputState.READ_HEADER => {
+      case InputState.READ_HEADER =>
         packetLength = readHeader(packetBuffer)
         if (packetLength >= 0) {
           state = InputState.READ_DATA
@@ -102,13 +101,10 @@ abstract class HAttach[A <: HAttach[A]] (
           }
           // Unlike a StraightBuffer, a CircularBuffer doesn't need to be compacted.
         }
-      }
-      // Then, the data must be read
-      case InputState.READ_DATA => {
+      case InputState.READ_DATA =>
         if (packetBuffer.readAvail >= packetLength) {
           handleDataView()
         }
-      }
     }
   }
 
@@ -137,7 +133,7 @@ abstract class HAttach[A <: HAttach[A]] (
           return false
         }
       }
-      sci.selectionKey.interestOps(SelectionKey.OP_READ) // Stop listening for OP_WRITE
+      selectionKey.interestOps(SelectionKey.OP_READ) // Stop listening for OP_WRITE
       true
     }
   }
@@ -148,9 +144,7 @@ abstract class HAttach[A <: HAttach[A]] (
    *
    * @param buffer the data to write
    */
-  final def write(buffer: NiolBuffer): Unit = {
-    write(buffer, null)
-  }
+  final def write(buffer: NiolBuffer): Unit = write(buffer, null)
 
   /**
    * Asynchronously writes some data to the client, and executes the given completion handler
@@ -178,7 +172,8 @@ abstract class HAttach[A <: HAttach[A]] (
         channel <<: finalBuffer
         if (finalBuffer.readAvail > 0) {
           // Uncomplete write => continue the operation as soon as possible
-          sci.selectionKey.interestOps(SelectionKey.OP_WRITE) // Continue to write later
+          writeQueue.offer((finalBuffer, completionHandler))
+          selectionKey.interestOps(selectionKey.interestOps | SelectionKey.OP_WRITE)
         }
       } else {
         writeQueue.offer((finalBuffer, completionHandler))

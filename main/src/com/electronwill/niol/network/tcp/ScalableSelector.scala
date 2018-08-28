@@ -38,17 +38,20 @@ import scala.collection.mutable
  * larger than the base buffer, an additional buffer is allocated, providing the missing
  * capacity. Once the big packet is handled, the additional buffer is discarded.
  *
+ * @param startHandler the function to call when the Selector's thread starts
+ * @param stopHandler  the function to call when the Selector's thread stops
+ * @param errorHandler handles errors, returns false to stop the Selector's execution
  * @author TheElectronWill
  */
 final class ScalableSelector(
     private[this] val startHandler: () => Unit,
     private[this] val stopHandler: () => Unit,
-    private[this] val errorHandler: Exception => Unit)
+    private[this] val errorHandler: Exception => Boolean)
   extends Runnable {
 
   private[this] val selector = Selector.open()
   private[this] val serverChannelsInfos = new mutable.LongMap[ServerChannelInfos[_]]
-  @volatile private[this] var _run = false
+  @volatile private[this] var running = false
 
   /**
    * Starts a TCP [[ServerSocketChannel]] and registers it to the selector. If there already is a
@@ -91,11 +94,15 @@ final class ScalableSelector(
    * Executes the selector loop.
    */
   override def run(): Unit = {
+    if (running) {
+      throw new IllegalStateException("This selector is already running! Don't call run() by hand.")
+    }
+    running = true
     startHandler()
-    while (_run) {
+    while (running) {
       try {
         selector.select() // Blocking selection
-        if (_run) { // Don't process the keys if the server has been stopped
+        if (running) { // Don't process the keys if the server has been stopped
           val iter = selector.selectedKeys().iterator()
           while (iter.hasNext) {
             val key = iter.next()
@@ -124,7 +131,11 @@ final class ScalableSelector(
           }
         }
       } catch {
-        case e: Exception => errorHandler(e)
+        case e: Exception =>
+          val continue = errorHandler(e)
+          if (!continue) {
+            stop()
+          }
       }
     }
     selector.close()
@@ -136,20 +147,21 @@ final class ScalableSelector(
    *
    * @return true if this selector is running
    */
-  def isRunning: Boolean = _run
+  def isRunning: Boolean = running
 
   /**
-   * Starts the ScalableSelector in a new thread. This method may be called at most once, any further invocation
-   * will throw [[IllegalStateException]]. The state of the selector can be checked with [[isRunning]].
+   * Starts the ScalableSelector in a new thread. This method may be called at most once,
+   * any further invocation will throw [[IllegalStateException]].
+   *
+   * The state of the selector can be checked with [[isRunning]].
    *
    * @param threadName the thread's name
    * @return the newly created Thread
    */
   def start(threadName: String): Thread = {
-    if (_run) {
+    if (running) {
       throw new IllegalStateException("This selector is already running!")
     }
-    _run = true
     val t = new Thread(this, threadName)
     t.start()
     t
@@ -159,7 +171,7 @@ final class ScalableSelector(
    * Stops the Selector's thread and all registered ServerSocketChannels.
    */
   def stop(): Unit = {
-    _run = false
+    running = false
     try {
       for (infos <- serverChannelsInfos.values) {
         infos.selectionKey.cancel()
@@ -173,18 +185,20 @@ final class ScalableSelector(
 
   /**
    * Accepts a new client: make its SocketChannel non-blocking, call [[TcpListener.onAccept]]
-   * and register [[SelectionKey.OP_READ]].
+   * and register the channel with [[SelectionKey.OP_READ]].
    *
    * @param key the SelectionKey corresponding to the new client
    * @tparam A the client's attach type
+   * @return the client's SelectionKey
    */
   private def accept[A <: ClientAttach[A]](key: SelectionKey): Unit = {
     val sci = key.attachment().asInstanceOf[ServerChannelInfos[A]]
     val clientChannel = key.channel().asInstanceOf[ServerSocketChannel].accept()
 
     clientChannel.configureBlocking(false)
-    val clientAttach = sci.listener.onAccept(clientChannel, sci)
-    clientChannel.register(selector, SelectionKey.OP_READ, clientAttach)
+    val selectionKey = clientChannel.register(selector, SelectionKey.OP_READ)
+    val clientAttach = sci.listener.onAccept(sci, clientChannel, selectionKey)
+    selectionKey.attach(clientAttach)
   }
 
   /**

@@ -2,20 +2,20 @@ package com.electronwill.niol
 
 import java.io.{DataInputStream, DataOutputStream}
 import java.net.Socket
-import java.nio.channels.SocketChannel
+import java.nio.channels.{SelectionKey, SocketChannel}
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicInteger
 
 import com.electronwill.niol.buffer.provider.{DirectNioAllocator, StageBufferPoolBuilder}
 import com.electronwill.niol.buffer.{NiolBuffer, StraightBuffer}
-import com.electronwill.niol.network.tcp._
+import com.electronwill.niol.network.tcp.{ServerChannelInfos => SCI, _}
 
 /**
  * @author TheElectronWill
  */
 object EchoServer {
   val possibleMessages =
-    Seq("Hello,world", "Hello,test", "this is a big message " + (1 to 1000).toBuffer)
+    Seq("Hello,world", "Hello,test", "this is a big message " + "$" * 16000)
 
   val counter = new AtomicInteger()
 
@@ -35,14 +35,15 @@ object EchoServer {
       println(s"Error (see stack trace): $e")
       e.printStackTrace()
       Thread.sleep(1000)
+      true
     }
     val selector = new ScalableSelector(startHandler, stopHandler, errorHandler)
 
     // Create a TcpListener and starts a TCP Server on the port
     val listener = new TcpListener[EchoAttach] {
-      override def onAccept(clientChannel: SocketChannel, s: ServerChannelInfos[EchoAttach]) = {
-        println(s"Accepted client ${clientChannel.getLocalAddress}")
-        val attach = new EchoAttach(s, clientChannel)
+      override def onAccept(sci: SCI[EchoAttach], c: SocketChannel, k: SelectionKey): EchoAttach = {
+        println(s"Accepted client ${c.getLocalAddress}")
+        val attach = new EchoAttach(sci, c, k)
         println(s"Assigned client to id ${attach.clientId}")
         attach
       }
@@ -94,8 +95,8 @@ object EchoServer {
     }
   }
 }
-class EchoAttach(serverInfos: ServerChannelInfos[EchoAttach], clientChannel: SocketChannel)
-  extends HAttach[EchoAttach](serverInfos, clientChannel) {
+class EchoAttach(sci: SCI[EchoAttach], chan: SocketChannel, key: SelectionKey)
+  extends HAttach[EchoAttach](sci, chan, key) {
 
   val clientId = EchoAttach.lastId.getAndIncrement()
 

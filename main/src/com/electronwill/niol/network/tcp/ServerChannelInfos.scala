@@ -9,7 +9,7 @@ import java.nio.channels.{SelectionKey, Selector, ServerSocketChannel}
  *
  * @see [[ScalableSelector]]
  * @constructor Creates a ServerChannelInfos and registers the channel with the given Selector.
- * @param serverChannel            the NIO server channel
+ * @param serverChannel  the NIO server channel
  * @param selector       thr NIO Selector
  * @param bufferSettings the settings to apply to the channel's clients
  * @param listener       the TcpListener assigned to the channel
