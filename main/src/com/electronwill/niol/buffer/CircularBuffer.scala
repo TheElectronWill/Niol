@@ -3,7 +3,6 @@ package com.electronwill.niol.buffer
 import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
-import com.electronwill.niol.InputType
 import com.electronwill.niol.buffer.provider.HeapNioAllocator
 
 /**
