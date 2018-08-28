@@ -4,7 +4,7 @@ import java.nio.channels.{SelectionKey, SocketChannel}
 import java.util
 
 import com.electronwill.niol.buffer.provider.BufferProvider
-import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer, StraightBuffer}
+import com.electronwill.niol.buffer.{BaseBuffer, CircularBuffer, NiolBuffer, StraightBuffer}
 
 import scala.annotation.tailrec
 
@@ -13,31 +13,32 @@ abstract class HAttach[A <: HAttach[A]] (
     private[this] val sci: ServerChannelInfos[A],
     private[this] val channel: SocketChannel,
     private[this] var transform: NiolBuffer => Array[Byte] = null)
+    private[this] var rTransform: BufferTransform = null,
+    private[this] var wTransform: BufferTransform = null)
   extends ClientAttach[A] {
   /**
    * The queue that contains the data waiting for being written.
    */
   private[this] val writeQueue = new util.ArrayDeque[(NiolBuffer, Runnable)]
-
-  private[this] var (readBuffer, packetBufferBase, packetBufferProvider) = createBuffers(transform != null)
+  private[this] var (readBuffer, packetBufferBase, packetBufferProvider) = createReadBuffers(rTransform != null)
   private[this] var packetBuffer: NiolBuffer = packetBufferBase
   private[this] var state = InputState.READ_HEADER
   private[this] var packetLength = -1
   @volatile
   private[this] var eos: Boolean = false
 
-  def streamEnded: Boolean = eos
+  final def streamEnded: Boolean = eos
 
-  def listener: TcpListener[A] = sci.listener
+  final def listener: TcpListener[A] = sci.listener
 
-  def readTransformation: Option[NiolBuffer => Array[Byte]] = Option(transform)
+  final def readTransform = Option(rTransform)
 
-  final def readTransformation_=(f: NiolBuffer => Array[Byte]): Unit = {
-    val add = (f != null) && (transform == null)
-    val remove = (f == null) && (transform != null)
+  final def readTransform_=(f: BufferTransform): Unit = {
+    val add = (f != null) && (rTransform == null)
+    val remove = (f == null) && (rTransform != null)
     if (add || remove) {
       // Creates new buffers
-      val (newRead, newBase, newProvider) = createBuffers(add)
+      val (newRead, newBase, newProvider) = createReadBuffers(add)
 
       // Copies the current data to the new buffers
       val additionalLength = packetLength - newBase.capacity
@@ -54,33 +55,30 @@ abstract class HAttach[A <: HAttach[A]] (
       packetBufferBase = newBase
       packetBuffer = newPacketBuffer
       packetBufferProvider = newProvider
-      transform = f
+      rTransform = f
     }
   }
 
-  private def createBuffers(withTransform: Boolean): (NiolBuffer, NiolBuffer, BufferProvider) = {
+  private def createReadBuffers(hasTransform: Boolean): (BaseBuffer, NiolBuffer, BufferProvider) = {
     val s = sci.bufferSettings
-    if (withTransform) {
-      // With a transformation, data is processed before being copied to the packetBuffer
-      val prov = s.postTransformBufferProvider
-      val base = new CircularBuffer(prov.get(s.packetBufferBaseSize))
-      val read = s.readBufferProvider.get(s.preTransformReadSize)
-      (read, base, prov)
-    } else {
-      // Without a transformation, data is read directly from the SocketChannel to the packetBuffer
-      val prov = s.readBufferProvider
-      val buff = new CircularBuffer(prov.get(s.packetBufferBaseSize))
-      (null, buff, prov)
-    }
+    val readBuff = if (hasTransform) s.readBufferProvider.get(s.readBufferSize) else null
+    val prov = s.packetBufferProvider
+    val packetBuff = new CircularBuffer(prov.get(s.packetBufferBaseSize))
+    (readBuff, packetBuff, prov)
   }
+
+
+  final def writeTransform: Option[BufferTransform] = Option(wTransform)
+
+  final def writeTransform_=(t: BufferTransform): Unit = wTransform = t
 
   @tailrec
   protected[network] final def readMore(): Unit = {
-    if (transform == null) {
+    if (rTransform == null) {
       eos = (channel >>: packetBuffer)._2
     } else {
       eos = (channel >>: readBuffer)._2
-      val transformed = transform(readBuffer)
+      val transformed = rTransform(readBuffer)
       transformed >>: packetBuffer
     }
     state match {
@@ -162,15 +160,28 @@ abstract class HAttach[A <: HAttach[A]] (
    * @param completionHandler the handler to execute after the operation
    */
   final def write(buffer: NiolBuffer, completionHandler: Runnable): Unit = {
+    val finalBuffer =
+      if (wTransform == null) {
+        // No transformation => use the buffer as is
+        buffer
+      } else if(buffer.isBase) {
+        // The buffer is a BaseBuffer => transform it directly
+        wTransform(buffer.asInstanceOf[BaseBuffer])
+      } else {
+        // The buffer isn't a BaseBuffer => copy its content to a BaseBuffer and transform it
+        val baseBuffer = BufferProvider.DefaultInHeapProvider.get(buffer.readAvail)
+        buffer >>: baseBuffer
+        wTransform(baseBuffer)
+      }
     writeQueue.synchronized { // Sync protects the queue and the consistency of the interestOps
       if (writeQueue.isEmpty) {
-        channel <<: buffer
-        if (buffer.readAvail > 0) {
-          writeQueue.offer((buffer, completionHandler))
+        channel <<: finalBuffer
+        if (finalBuffer.readAvail > 0) {
+          // Uncomplete write => continue the operation as soon as possible
           sci.selectionKey.interestOps(SelectionKey.OP_WRITE) // Continue to write later
         }
       } else {
-        writeQueue.offer((buffer, completionHandler))
+        writeQueue.offer((finalBuffer, completionHandler))
       }
     }
   }

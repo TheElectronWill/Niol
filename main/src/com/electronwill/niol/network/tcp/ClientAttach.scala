@@ -34,19 +34,33 @@ trait ClientAttach[A <: ClientAttach[A]] {
   /**
    * Returns the function that transforms the received data.
    *
-   * @return the transformation function, if any
+   * @return the function, if any
    */
-  def readTransformation: Option[NiolBuffer => Array[Byte]]
+  def readTransform: Option[BufferTransform]
 
   /**
-   * Sets the transformation function, which is applied to the received data just after its receipt.
+   * Sets the function that is applied to the received data just after its receipt.
    * The function is applied '''before''' the packets are reconstructed.
    *
    * To handle the packets, override the [[ClientAttach.handleData]] method.
    *
-   * @param f the function
+   * @param t the function
    */
-  def readTransformation_=(f: NiolBuffer => Array[Byte]): Unit
+  def readTransform_=(t: BufferTransform): Unit
+
+  /**
+   * Returns the function that transforms the outgoing data.
+   *
+   * @return the function, if any
+   */
+  def writeTransform: Option[BufferTransform]
+
+  /**
+   * Sets the function that is applied to the outgoing data just before its sending.
+   *
+   * @param t the function
+   */
+  def writeTransform_=(t: BufferTransform): Unit
 
   /**
    * Writes some data to the client. The data isn't written immediately but at some time in the
