@@ -20,6 +20,14 @@ final class ChannelOutput(
   extends NiolOutput
   with Closeable {
 
+  private[this] val buffer: ByteBuffer = {
+    if (directBuffer) {
+      ByteBuffer.allocateDirect(bufferCapacity)
+    } else {
+      ByteBuffer.allocate(bufferCapacity)
+    }
+  }
+
   def this(path: Path, bufferCapacity: Int, directBuffer: Boolean) = {
     this(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE),
          bufferCapacity,
@@ -32,14 +40,6 @@ final class ChannelOutput(
 
   def this(path: Path) = {
     this(path, 4096, true)
-  }
-
-  private[this] val buffer: ByteBuffer = {
-    if (directBuffer) {
-      ByteBuffer.allocateDirect(bufferCapacity)
-    } else {
-      ByteBuffer.allocate(bufferCapacity)
-    }
   }
 
   private def ensureAvailable(min: Int): Unit = {
@@ -122,13 +122,12 @@ final class ChannelOutput(
 
   override def putBytes(src: ScatteringByteChannel): (Int, Boolean) = {
     src match {
-      case fc: FileChannel => {
+      case fc: FileChannel =>
         flush()
         val pos = fc.position()
         val count = fc.size() - pos
         (fc.transferTo(pos, count, channel).toInt, false)
-      }
-      case _ => {
+      case _ =>
         var read = 1
         var totalRead = 0
         var eos = false
@@ -144,7 +143,6 @@ final class ChannelOutput(
           }
         } while (read > 0)
         (totalRead, eos)
-      }
     }
   }
 

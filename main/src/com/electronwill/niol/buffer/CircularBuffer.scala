@@ -12,6 +12,13 @@ final class CircularBuffer(private[niol] val buff: RandomAccessBuffer) extends N
   require(buff.capacity > 0)
   buff.markUsed()
 
+  /**
+   * Used when readPos == writePos to differentiate between the situation where everything has
+   * been read (allRead = true, readAvail = 0) and the situation where everything has been written
+   * (allRead = false, writeAvail = 0).
+   */
+  private[this] var allRead = true
+
   // buffer state
   override def capacity: Int = buff.capacity
 
@@ -32,13 +39,6 @@ final class CircularBuffer(private[niol] val buff: RandomAccessBuffer) extends N
       writePos(readPos + n)
     }
   }
-
-  /**
-   * Used when readPos == writePos to differentiate between the situation where everything has
-   * been read (allRead = true, readAvail = 0) and the situation where everything has been written
-   * (allRead = false, writeAvail = 0).
-   */
-  private[this] var allRead = true
 
   private[buffer] def readPos: Int = buff.readPos
 

@@ -11,7 +11,6 @@ import com.electronwill.niol.NiolInput
  * @param source the NiolInput to wrap
  */
 final class NiolToDataInput(private[this] val source: NiolInput) extends DataInput {
-
   override def readFully(bytes: Array[Byte]): Unit = source.getBytes(bytes)
 
   override def readFully(bytes: Array[Byte], offset: Int, length: Int): Unit = {

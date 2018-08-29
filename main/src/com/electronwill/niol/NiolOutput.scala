@@ -29,6 +29,8 @@ trait NiolOutput {
 
   final def putShort(i: Int): Unit = putShort(i.toShort)
 
+  def putChar(c: Char): Unit = putShort(c.toShort)
+
   def putInt(i: Int): Unit
 
   def putLong(l: Long): Unit

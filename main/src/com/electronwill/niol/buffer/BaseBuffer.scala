@@ -12,7 +12,8 @@ trait BaseBuffer extends RandomAccessBuffer {
 
   /**
    * Returns a read-only view of this BaseBuffer as a Java ByteBuffer. The returned ByteBuffer
-   * shares its content with the BaseBuffer.
+   * shares its content with the BaseBuffer. [[readBB]] and [[writeBB]] are guaranteed to return
+   * different objects.
    *
    * @return a read-only ByteBuffer view
    */
@@ -20,7 +21,8 @@ trait BaseBuffer extends RandomAccessBuffer {
 
   /**
    * Returns a write-only view of this BaseBuffer as a Java ByteBuffer. The returned ByteBuffer
-   * shares its content with the BaseBuffer.
+   * shares its content with the BaseBuffer. [[readBB]] and [[writeBB]] are guaranteed to return
+   * different objects.
    *
    * @return a write-only ByteBuffer view
    */

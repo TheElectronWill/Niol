@@ -11,7 +11,7 @@ private[provider] final class PoolStage(
     val maxCapacity: Int,
     val maxCached: Int,
     val allocateFunction: Int => BaseBuffer) {
-  private[this] val cachedBuffers = new ArrayBlockingQueue[BaseBuffer](maxCached)
+  private[this] val cache = new ArrayBlockingQueue[BaseBuffer](maxCached)
 
   /**
    * Returns an empty buffer with a capacity of [[PoolStage.maxCapacity]]. If possible, the buffer
@@ -20,7 +20,7 @@ private[provider] final class PoolStage(
    * @return an empty buffer
    */
   def getBuffer(): BaseBuffer = {
-    var buff = cachedBuffers.poll()
+    var buff = cache.poll()
     if (buff eq null) {
       buff = allocateFunction(maxCapacity)
     }
@@ -40,7 +40,7 @@ private[provider] final class PoolStage(
         s"is too big for this stage (maxCapacity = $maxCapacity)"
       throw new IllegalArgumentException(msg)
     }
-    cachedBuffers.offer(buffer)
+    cache.offer(buffer)
   }
 
   /**

@@ -22,7 +22,7 @@ abstract class HAttach[A <: HAttach[A]] (
   private[this] val writeQueue = new util.ArrayDeque[(NiolBuffer, Runnable)]
   private[this] var (readBuffer, packetBufferBase, packetBufferProvider) = createReadBuffers(rTransform != null)
   private[this] var packetBuffer: NiolBuffer = packetBufferBase
-  private[this] var state = InputState.READ_HEADER
+  private[this] var state = HInputState.READ_HEADER
   private[this] var packetLength = -1
   @volatile
   private[this] var eos: Boolean = false
@@ -82,10 +82,10 @@ abstract class HAttach[A <: HAttach[A]] (
       transformed >>: packetBuffer
     }
     state match {
-      case InputState.READ_HEADER =>
+      case HInputState.READ_HEADER =>
         packetLength = readHeader(packetBuffer)
         if (packetLength >= 0) {
-          state = InputState.READ_DATA
+          state = HInputState.READ_DATA
           if (packetBuffer.readAvail >= packetLength) {
             // All the data is available => handle it
             handleDataView()
@@ -101,7 +101,7 @@ abstract class HAttach[A <: HAttach[A]] (
           }
           // Unlike a StraightBuffer, a CircularBuffer doesn't need to be compacted.
         }
-      case InputState.READ_DATA =>
+      case HInputState.READ_DATA =>
         if (packetBuffer.readAvail >= packetLength) {
           handleDataView()
         }
@@ -158,7 +158,7 @@ abstract class HAttach[A <: HAttach[A]] (
       if (wTransform == null) {
         // No transformation => use the buffer as is
         buffer
-      } else if(buffer.isBase) {
+      } else if (buffer.isBase) {
         // The buffer is a BaseBuffer => transform it directly
         wTransform(buffer.asInstanceOf[BaseBuffer])
       } else {
@@ -193,7 +193,7 @@ abstract class HAttach[A <: HAttach[A]] (
       handleData(dataView)
     } finally {
       // Prepares for the next packet
-      state = InputState.READ_HEADER // switches the state
+      state = HInputState.READ_HEADER // switches the state
       packetBuffer.skipRead(packetLength) // marks the data as read
 
       // Discards the additional buffer, if any
