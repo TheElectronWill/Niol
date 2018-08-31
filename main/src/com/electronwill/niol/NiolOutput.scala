@@ -32,6 +32,7 @@ abstract class NiolOutput {
    */
   def canWrite: Boolean = (writeAvail >= 0)
 
+
   // --------------------------------
   // ----- Protected operations -----
   /** Implements put without necessarily checking for available space. */
@@ -68,6 +69,7 @@ abstract class NiolOutput {
   protected[this] def checkComplete(expected: Int, actual: Int, v: String = "value"): Unit = {
     if (actual != expected) throw new IncompletePutException(expected, actual, v)
   }
+
 
   // ---------------------------------------------
   // ----- Primitive single-value operations -----
@@ -370,6 +372,7 @@ abstract class NiolOutput {
     putLong(uuid.getLeastSignificantBits)
   }
 
+
   // -----------------------------------------------
   // ----- Variable-length integers operations -----
   /**
@@ -421,6 +424,7 @@ abstract class NiolOutput {
    * @param n the value to write
    */
   final def putSVarLongZigZag(n: Long): Unit = putVarLong((n << 1) ^ (n >> 63))
+
 
   // ----------------------------------------------
   // ----- String and CharSequence operations -----
@@ -491,6 +495,7 @@ abstract class NiolOutput {
     _put(bytes, rem)
   }
 
+
   // ----------------------------------------
   // ----- Put operations for channels -----
   /**
@@ -525,6 +530,7 @@ abstract class NiolOutput {
     read
   }
 
+
   // ---------------------------------------
   // ----- Put operations for streams -----
   /**
@@ -558,8 +564,9 @@ abstract class NiolOutput {
     read
   }
 
-  // --------------------------------------
-  // ----- Put operations for inputs -----
+
+  // -----------------------------------------
+  // ----- Put operations for NiolInputs -----
   /**
    * Writes exactly `length` bytes from `src`.
    * Throws an exception if there isn't enough space for the data or if there isn't enough data.
@@ -591,8 +598,9 @@ abstract class NiolOutput {
     read
   }
 
+
   // -------------------------------------------
-  // ----- Put operations for ByteBuffers -----
+  // ----- Put operations for ByteBuffers ------
   /**
    * Writes all of the given ByteBuffer.
    * Throws an exception if there isn't enough space for the data.
@@ -613,8 +621,9 @@ abstract class NiolOutput {
    */
   def putSome(src: ByteBuffer): Unit
 
+
   // -------------------------------------------
-  // ----- Put operations for NiolBuffers -----
+  // ----- Put operations for NiolBuffers ------
   /**
    * Writes all of the given ByteBuffer.
    * Throws an exception if there isn't enough space for the data.
@@ -638,6 +647,7 @@ abstract class NiolOutput {
       putByte(src.get())
     }
   }
+
 
   // ----------------------------------------------
   // ----- Put operations for arrays of bytes -----
@@ -682,14 +692,16 @@ abstract class NiolOutput {
    * @return the number of bytes written
    */
   def putSome(src: Array[Byte], offset: Int, length: Int): Int = {
+    val length = Math.min(writeAvail, length)
     var i = offset
     val l = offset + length
     while (i < l) {
-      putByte(src(i))
+      _put(src(i))
       i += 1
     }
     i - offset
   }
+
 
   // ----------------------------------------------
   // ----- Put operations for boolean arrays -----
@@ -734,6 +746,7 @@ abstract class NiolOutput {
    * @return the number of booleans written
    */
   def putSomeBooleans(src: Array[Boolean], offset: Int, length: Int): Int = {
+    val length = Math.min(writeAvail, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -742,6 +755,7 @@ abstract class NiolOutput {
     }
     i - offset
   }
+
 
   // -----------------------------------------------
   // ----- Put operations for arrays of shorts -----
@@ -790,6 +804,7 @@ abstract class NiolOutput {
    * @return the number of shorts written
    */
   def putSomeShorts(src: Array[Short], offset: Int, length: Int): Int = {
+    val length = Math.min(writeAvail/2, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -844,6 +859,7 @@ abstract class NiolOutput {
    * @return the number of shorts written
    */
   def putSomeShortsLE(src: Array[Short], offset: Int, length: Int): Int = {
+    val length = Math.min(writeAvail/2, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -852,6 +868,7 @@ abstract class NiolOutput {
     }
     i - offset
   }
+
 
   // ---------------------------------------------
   // ----- Put operations for arrays of ints -----
@@ -900,6 +917,7 @@ abstract class NiolOutput {
    * @return the number of ints written
    */
   def putSomeInts(src: Array[Int], offset: Int, length: Int): Int = {
+    val length = Math.min(writeAvail/4, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -954,6 +972,7 @@ abstract class NiolOutput {
    * @return the number of ints written
    */
   def putSomeIntsLE(src: Array[Int], offset: Int, length: Int): Int = {
+    val length = Math.min(writeAvail/4, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -1011,6 +1030,7 @@ abstract class NiolOutput {
    * @return the number of longs written
    */
   def putSomeLongs(src: Array[Long], offset: Int, length: Int): Int = {
+    val length = Math.min(writeAvail/8, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -1065,6 +1085,7 @@ abstract class NiolOutput {
    * @return the number of longs written
    */
   def putSomeLongsLE(src: Array[Long], offset: Int, length: Int): Int = {
+    val length = Math.min(writeAvail/8, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -1073,7 +1094,8 @@ abstract class NiolOutput {
     }
     i - offset
   }
-  
+
+
   // -----------------------------------------------
   // ----- Put operations for arrays of floats -----
   /**
@@ -1121,6 +1143,7 @@ abstract class NiolOutput {
    * @return the number of floats written
    */
   def putSomeFloats(src: Array[Float], offset: Int, length: Int): Int = {
+    val length = Math.min(writeAvail/4, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -1175,6 +1198,7 @@ abstract class NiolOutput {
    * @return the number of floats written
    */
   def putSomeFloatsLE(src: Array[Float], offset: Int, length: Int): Int = {
+    val length = Math.min(writeAvail/4, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -1232,6 +1256,7 @@ abstract class NiolOutput {
    * @return the number of doubles written
    */
   def putSomeDoubles(src: Array[Double], offset: Int, length: Int): Int = {
+    val length = Math.min(writeAvail/8, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -1286,6 +1311,7 @@ abstract class NiolOutput {
    * @return the number of doubles written
    */
   def putSomeDoublesLE(src: Array[Double], offset: Int, length: Int): Int = {
+    val length = Math.min(writeAvail/8, length)
     var i = offset
     val l = offset + length
     while (i < l) {
