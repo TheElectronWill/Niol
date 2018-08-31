@@ -27,20 +27,20 @@ abstract class NiolInput {
 
   // --------------------------------
   // ----- Protected operations -----
-  /** Implements get without necessarily checking for available data. */
-  protected[this] def _get(): Byte
+  /** Implements read without necessarily checking for available data. */
+  protected[this] def _read(): Byte
 
   /** Throws an exception if the operation is incomplete */
   protected[this] def checkComplete(expected: Int, actual: Int, v: String = "value"): Unit = {
-    if (actual != expected) throw new IncompleteGetException(expected, actual, v)
+    if (actual != expected) throw new IncompleteReadException(expected, actual, v)
   }
 
 
   // ---------------------------------------------
   // ----- Primitive single-value operations -----
   /** Reads a byte */
-  def get(): Byte = {
-    if (canRead) _get()
+  def read(): Byte = {
+    if (canRead) _read()
     else throw new NotEnoughDataException(1, 0)
   }
 
@@ -50,113 +50,113 @@ abstract class NiolInput {
    *
    * @return the byte value in range 0-255, or -1 if the input is empty
    */
-  def tryGet(): Int = {
+  def tryRead(): Int = {
     if (canRead) {
-      _get().toInt
+      _read().toInt
     } else {
       -1
     }
   }
 
   /** Reads a boolean */
-  def getBoolean(): Boolean = getBoolF(0)
+  def readBoolean(): Boolean = readBoolF(0)
 
   /** Reads a boolean. */
-  def getBool(): Boolean = getBoolean()
+  def readBool(): Boolean = readBoolean()
 
   /** Reads one byte and returns true if it's equal to the given value, false otherwise. */
-  def getBoolT(trueValue: Byte): Boolean = get() == trueValue
+  def readBoolT(trueValue: Byte): Boolean = read() == trueValue
 
   /** Reads one byte and returns false if it's equal to the given value, true otherwise. */
-  def getBoolF(falseValue: Byte): Boolean = get() != falseValue
+  def readBoolF(falseValue: Byte): Boolean = read() != falseValue
 
   /** Reads a byte */
-  final def getByte(): Byte = get()
+  final def readByte(): Byte = read()
 
   /** Reads a big-endian short */
-  def getShort(): Short = (getByte() << 8 | getByte()).toShort
+  def readShort(): Short = (readByte() << 8 | readByte()).toShort
 
   /** Reads a little-endian short */
-  def getShortLE(): Short = (getByte() | getByte() << 8).toShort
+  def readShortLE(): Short = (readByte() | readByte() << 8).toShort
 
   /** Reads a big-endian char */
-  def getChar(): Char = getUnsignedShort().toChar
+  def readChar(): Char = readUnsignedShort().toChar
 
   /** Reads a little-endian char */
-  def getCharLE(): Char = getUnsignedShortLE().toChar
+  def readCharLE(): Char = readUnsignedShortLE().toChar
 
   /** Reads a big-endian 3-bytes integer */
-  def getMedium(): Int = getByte() << 16 | getByte() << 8 | getByte()
+  def readMedium(): Int = readByte() << 16 | readByte() << 8 | readByte()
 
   /** Reads a little-endian 3-bytes integer */
-  def getMediumLE(): Int = getByte() | getByte() << 8 | getByte() << 16
+  def readMediumLE(): Int = readByte() | readByte() << 8 | readByte() << 16
 
   /** Reads a big-endian 4-bytes integer */
-  def getInt(): Int = getByte() << 24 | getByte() << 16 | getByte() << 8 | getByte()
+  def readInt(): Int = readByte() << 24 | readByte() << 16 | readByte() << 8 | readByte()
 
   /** Reads a little-endian 4-bytes integer */
-  def getIntLE(): Int = getByte() | getByte() << 8 | getByte() << 16 | getByte() << 24
+  def readIntLE(): Int = readByte() | readByte() << 8 | readByte() << 16 | readByte() << 24
 
   /** Reads a big-endian 8-bytes integer */
-  def getLong(): Long = {
-    val b = getBytes(8)
+  def readLong(): Long = {
+    val b = readBytes(8)
     b(0) << 56 | b(1) << 48 | b(2) << 40 | b(3) << 32 | b(4) << 24 | b(5) << 16 | b(6) << 8 | b(7)
   }
 
   /** Reads a little-endian 8-bytes integer */
-  def getLongLE(): Long = {
-    val b = getBytes(8)
+  def readLongLE(): Long = {
+    val b = readBytes(8)
     b(0) | b(1) << 8 | b(2) << 16 | b(3) << 24 | b(4) << 32 | b(5) << 40 | b(6) << 48 | b(7) << 56
   }
 
   /** Reads a big-endian 4-bytes float */
-  def getFloat(): Float = java.lang.Float.intBitsToFloat(getInt())
+  def readFloat(): Float = java.lang.Float.intBitsToFloat(readInt())
 
   /** Reads a little-endian 4-bytes float */
-  def getFloatLE(): Float = java.lang.Float.intBitsToFloat(getIntLE())
+  def readFloatLE(): Float = java.lang.Float.intBitsToFloat(readIntLE())
 
   /** Reads a big-endian 8-bytes double */
-  def getDouble(): Double = java.lang.Double.longBitsToDouble(getLong())
+  def readDouble(): Double = java.lang.Double.longBitsToDouble(readLong())
 
   /** Reads a little-endian 8-bytes double */
-  def getDoubleLE(): Double = java.lang.Double.longBitsToDouble(getLongLE())
+  def readDoubleLE(): Double = java.lang.Double.longBitsToDouble(readLongLE())
 
   /** Reads an unsigned byte as an int */
-  final def getUnsignedByte(): Int = getByte() & 0xFF
+  final def readUnsignedByte(): Int = readByte() & 0xFF
 
   /** Reads a big-endian unsigned short as an int */
-  final def getUnsignedShort(): Int = getShort() & 0xFFFF
+  final def readUnsignedShort(): Int = readShort() & 0xFFFF
 
   /** Reads a little-endian unsigned short as an int */
-  final def getUnsignedShortLE(): Int = getShortLE() & 0xFFFF
+  final def readUnsignedShortLE(): Int = readShortLE() & 0xFFFF
 
   /** Reads a big-endian unsigned medium as an int */
-  final def getUnsignedMedium(): Int = getMedium() & 0xFFFFFF
+  final def readUnsignedMedium(): Int = readMedium() & 0xFFFFFF
 
   /** Reads a little-endian unsigned medium as an int */
-  final def getUnsignedMediumLE(): Int = getMediumLE() & 0xFFFFFF
+  final def readUnsignedMediumLE(): Int = readMediumLE() & 0xFFFFFF
 
   /** Reads a big-endian unsigned int as a long */
-  final def getUnsignedInt(): Long = getInt() & 0xFFFFFFFF
+  final def readUnsignedInt(): Long = readInt() & 0xFFFFFFFF
 
   /** Reads a little-endian unsigned int as a long */
-  final def getUnsignedIntLE(): Long = getIntLE() & 0xFFFFFFFF
+  final def readUnsignedIntLE(): Long = readIntLE() & 0xFFFFFFFF
 
   /** Reads a big-endian 16-bytes UUID */
-  final def getUUID(): UUID = new UUID(getLong(), getLong())
+  final def readUUID(): UUID = new UUID(readLong(), readLong())
 
 
   // -----------------------------------------------
   // ----- Variable-length integers operations -----
   /** Reads a variable-length int using the normal/unsigned encoding. */
-  def getVarInt(maxBytes: Int = 5): Int = {
+  def readVarInt(maxBytes: Int = 5): Int = {
     val maxShift = maxBytes * 7
     var shift: Int = 0
     var result: Int = 0
     var read: Int = 0xFF
     while ((read & 0x80) != 0 && shift < maxShift) {
-      if (!canRead) throw new IncompleteGetException(1, "VarLong")
-      read = _get()
+      if (!canRead) throw new IncompleteReadException(1, "VarLong")
+      read = _read()
       result |= ((read & 0x7F) << shift)
       shift += 7
     }
@@ -164,14 +164,14 @@ abstract class NiolInput {
   }
 
   /** Reads a variable-length long using the normal/unsigned encoding. */
-  def getVarLong(maxBytes: Int = 10): Long = {
+  def readVarLong(maxBytes: Int = 10): Long = {
     val maxShift = maxBytes * 7
     var shift: Int = 0
     var result: Long = 0
     var read: Int = 0xFF
     while ((read & 0x80) != 0 && shift < maxShift) {
-      if (!canRead) throw new IncompleteGetException(1, "VarLong")
-      read = _get()
+      if (!canRead) throw new IncompleteReadException(1, "VarLong")
+      read = _read()
       result |= ((read & 0x7F) << shift)
       shift += 7
     }
@@ -179,60 +179,60 @@ abstract class NiolInput {
   }
 
   /** Reads a variable-length int using the signed/zig-zag encoding. */
-  final def getSVarIntZigZag(maxBytes: Int = 5): Int = {
-    val n = getVarInt(maxBytes)
+  final def readSVarIntZigZag(maxBytes: Int = 5): Int = {
+    val n = readVarInt(maxBytes)
     (n >> 1) ^ -(n & 1)
   }
 
   /** Reads a variable-length long using the signed/zig-zag encoding. */
-  final def getSVarLongZigZag(maxBytes: Int = 10): Long = {
-    val n = getVarLong(maxBytes)
+  final def readSVarLongZigZag(maxBytes: Int = 10): Long = {
+    val n = readVarLong(maxBytes)
     (n >> 1) ^ -(n & 1)
   }
 
   /** Reads the next `bytesLength` bytes as a String encoded with the given charset. */
-  final def getString(bytesLength: Int, charset: Charset = UTF_8): String = {
-    getCharSequence(bytesLength, charset).toString
+  final def readString(bytesLength: Int, charset: Charset = UTF_8): String = {
+    readCharSequence(bytesLength, charset).toString
   }
 
   /** Reads a VarInt to determine the string's length, then reads the string. */
-  final def getVarString(charset: Charset = UTF_8): String = {
-    getVarCharSequence(charset).toString
+  final def readVarString(charset: Charset = UTF_8): String = {
+    readVarCharSequence(charset).toString
   }
 
   /** Reads a big-endian unsigned short to determine the string's length, then reads it. */
-  final def getShortString(charset: Charset = UTF_8): String = {
-    getShortCharSequence(charset).toString
+  final def readShortString(charset: Charset = UTF_8): String = {
+    readShortCharSequence(charset).toString
   }
 
   /** Reads a little-endian unsigned short to determine the string's length, then reads it. */
-  final def getShortStringLE(charset: Charset = UTF_8): String = {
-    getShortCharSequenceLE(charset).toString
+  final def readShortStringLE(charset: Charset = UTF_8): String = {
+    readShortCharSequenceLE(charset).toString
   }
 
   /** Reads the next `bytesLength` bytes as a CharSequence encoded with the given charset. */
-  final def getCharSequence(bytesLength: Int, charset: Charset = UTF_8): CharSequence = {
-    charset.decode(ByteBuffer.wrap(getBytes(bytesLength)))
+  final def readCharSequence(bytesLength: Int, charset: Charset = UTF_8): CharSequence = {
+    charset.decode(ByteBuffer.wrap(readBytes(bytesLength)))
   }
 
   /** Reads a VarInt to determine the sequence's length, then reads the CharSequence. */
-  final def getVarCharSequence(charset: Charset = UTF_8): CharSequence = {
-    getCharSequence(getVarInt(), charset)
+  final def readVarCharSequence(charset: Charset = UTF_8): CharSequence = {
+    readCharSequence(readVarInt(), charset)
   }
 
   /** Reads a big-endian unsigned short to determine the sequence's length, then reads it. */
-  final def getShortCharSequence(charset: Charset = UTF_8): CharSequence = {
-    getCharSequence(getUnsignedShort(), charset)
+  final def readShortCharSequence(charset: Charset = UTF_8): CharSequence = {
+    readCharSequence(readUnsignedShort(), charset)
   }
 
   /** Reads a little-endian unsigned short to determine the sequence's length, then reads it. */
-  final def getShortCharSequenceLE(charset: Charset = UTF_8): CharSequence = {
-    getCharSequence(getUnsignedShortLE(), charset)
+  final def readShortCharSequenceLE(charset: Charset = UTF_8): CharSequence = {
+    readCharSequence(readUnsignedShortLE(), charset)
   }
 
 
   // ---------------------------------------
-  // ----- Get operations for channels -----
+  // ----- Read operations for channels -----
   /**
    * Reads exactly `length` bytes and put them into `dst`.
    * Throws an exception if there isn't enough data available.
@@ -240,8 +240,8 @@ abstract class NiolInput {
    * @param dst the destination
    * @param length the number of bytes to read
    */
-  def get(dst: GatheringByteChannel, length: Int): Unit = {
-    val actual = getSome(dst, length)
+  def read(dst: GatheringByteChannel, length: Int): Unit = {
+    val actual = readSome(dst, length)
     checkComplete(length, actual, "byte")
   }
 
@@ -252,11 +252,11 @@ abstract class NiolInput {
    * @param dst the channel to write to
    * @return the number of bytes read from this NiolInput and written to the channel
    */
-  def getSome(dst: GatheringByteChannel, maxBytes: Int = 4096): Int
+  def readSome(dst: GatheringByteChannel, maxBytes: Int = 4096): Int
 
 
   // --------------------------------------
-  // ----- Get operations for streams -----
+  // ----- Read operations for streams -----
   /**
    * Reads exactly `length` bytes and put them into `dst`.
    * Throws an exception if there isn't enough data available.
@@ -264,8 +264,8 @@ abstract class NiolInput {
    * @param dst the destination
    * @param length the number of bytes to read
    */
-  def get(dst: OutputStream, length: Int): Unit = {
-    val actual = getSome(dst, length)
+  def read(dst: OutputStream, length: Int): Unit = {
+    val actual = readSome(dst, length)
     checkComplete(length, actual, "byte")
   }
 
@@ -276,11 +276,11 @@ abstract class NiolInput {
    * @param dst the stream to write to
    * @return the number of bytes read from this NiolInput and written to the stream
    */
-  def getSome(dst: OutputStream, maxLength: Int = 4096): Int
+  def readSome(dst: OutputStream, maxLength: Int = 4096): Int
 
 
   // ------------------------------------------
-  // ----- Get operations for NiolOutputs -----
+  // ----- Read operations for NiolOutputs -----
   /**
    * Reads exactly `length` bytes and put them into `dst`.
    * Throws an exception if there isn't enough data available.
@@ -288,7 +288,7 @@ abstract class NiolInput {
    * @param dst the destination
    * @param length the number of bytes to read
    */
-  def get(dst: NiolOutput, length: Int): Unit = dst.put(this, length)
+  def read(dst: NiolOutput, length: Int): Unit = dst.put(this, length)
 
   /**
    * Reads at most `maxLength` bytes and put them into `dst`.
@@ -297,7 +297,7 @@ abstract class NiolInput {
    * @param dst the stream to write to
    * @return the number of bytes read from this NiolInput and written to the stream
    */
-  def getSome(dst: NiolOutput, maxLength: Int = 4096): Int = dst.putSome(this, maxLength)
+  def readSome(dst: NiolOutput, maxLength: Int = 4096): Int = dst.putSome(this, maxLength)
 
 
   // -------------------------------------------
@@ -308,7 +308,7 @@ abstract class NiolInput {
    *
    * @param dst the buffer to fill
    */
-  def get(dst: ByteBuffer): Unit
+  def read(dst: ByteBuffer): Unit
 
   /**
    * Reads at most `dst.remaining()` bytes into `dst`.
@@ -316,7 +316,7 @@ abstract class NiolInput {
    *
    * @param dst the buffer to fill
    */
-  def getSome(dst: ByteBuffer): Unit
+  def readSome(dst: ByteBuffer): Unit
 
 
   // -------------------------------------------
@@ -327,7 +327,7 @@ abstract class NiolInput {
    *
    * @param dst the buffer to fill
    */
-  def get(dst: NiolBuffer): Unit
+  def read(dst: NiolBuffer): Unit
 
   /**
    * Reads at most `dst.readAvail` bytes into `dst`.
@@ -335,20 +335,20 @@ abstract class NiolInput {
    *
    * @param dst the buffer to fill
    */
-  def getSome(dst: NiolBuffer): Unit
+  def readSome(dst: NiolBuffer): Unit
 
 
   // ----------------------------------------------
-  // ----- Get operations for arrays of bytes -----
+  // ----- Read operations for arrays of bytes -----
   /**
    * Reads the next `n` bytes.
    * Throws an Exception if there isn't enough data available.
    *
    * @param n the number of bytes to read
    */
-  def getBytes(n: Int): Array[Byte] = {
+  def readBytes(n: Int): Array[Byte] = {
     val array = new Array[Byte](n)
-    getBytes(array, 0, n)
+    readBytes(array, 0, n)
     array
   }
 
@@ -358,7 +358,7 @@ abstract class NiolInput {
    *
    * @param dst the array to fill
    */
-  def getBytes(dst: Array[Byte]): Unit = getBytes(dst, 0, dst.length)
+  def readBytes(dst: Array[Byte]): Unit = readBytes(dst, 0, dst.length)
 
   /**
    * Reads the next `length` bytes and put them into `dst` at the given offset.
@@ -368,11 +368,11 @@ abstract class NiolInput {
    * @param offset the first index to use
    * @param length the number of bytes to read
    */
-  def getBytes(dst: Array[Byte], offset: Int, length: Int): Unit = {
+  def readBytes(dst: Array[Byte], offset: Int, length: Int): Unit = {
     var i = offset
     val l = offset + length
     while (i < l) {
-      dst(i) = get()
+      dst(i) = read()
       i += 1
     }
   }
@@ -384,7 +384,7 @@ abstract class NiolInput {
    * @param dst the array to fill
    * @return the number of bytes read
    */
-  def getSomeBytes(dst: Array[Byte]): Int = getSomeBytes(dst, 0, dst.length)
+  def readSomeBytes(dst: Array[Byte]): Int = readSomeBytes(dst, 0, dst.length)
 
   /**
    * Reads at most `length` bytes and put them into `dst` at the given offset.
@@ -395,11 +395,11 @@ abstract class NiolInput {
    * @param length the maximum number of bytes to read
    * @return the number of bytes read
    */
-  def getSomeBytes(dst: Array[Byte], offset: Int, length: Int): Int = {
+  def readSomeBytes(dst: Array[Byte], offset: Int, length: Int): Int = {
     var i = offset
     val l = offset + length
     while (i < l && canRead) {
-      dst(i) = _get()
+      dst(i) = _read()
       i += 1
     }
     i - offset
@@ -407,7 +407,7 @@ abstract class NiolInput {
 
 
   // -----------------------------------------------
-  // ----- Get operations for arrays of shorts -----
+  // ----- Read operations for arrays of shorts -----
   /**
    * Reads the next `n` shorts.
    * Uses big-endian for each value.
@@ -415,9 +415,9 @@ abstract class NiolInput {
    *
    * @param n the number of shorts to read
    */
-  def getShorts(n: Int): Array[Short] = {
+  def readShorts(n: Int): Array[Short] = {
     val array = new Array[Short](n)
-    getShorts(array, 0, n)
+    readShorts(array, 0, n)
     array
   }
 
@@ -428,7 +428,7 @@ abstract class NiolInput {
    *
    * @param dst the array to fill
    */
-  def getShorts(dst: Array[Short]): Unit = getShorts(dst, 0, dst.length)
+  def readShorts(dst: Array[Short]): Unit = readShorts(dst, 0, dst.length)
 
   /**
    * Reads the next `length` shorts and put them into `dst` at the given offset.
@@ -439,8 +439,8 @@ abstract class NiolInput {
    * @param offset the first index to use
    * @param length the number of shorts to read
    */
-  def getShorts(dst: Array[Short], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 2)
+  def readShorts(dst: Array[Short], offset: Int, length: Int): Unit = {
+    val bytes = readBytes(length * 2)
     ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(dst, offset, length)
   }
 
@@ -451,9 +451,9 @@ abstract class NiolInput {
    *
    * @param n the number of shorts to read
    */
-  def getShortsLE(n: Int): Array[Short] = {
+  def readShortsLE(n: Int): Array[Short] = {
     val array = new Array[Short](n)
-    getShortsLE(array, 0, n)
+    readShortsLE(array, 0, n)
     array
   }
 
@@ -464,7 +464,7 @@ abstract class NiolInput {
    *
    * @param dst the array to fill
    */
-  def getShortsLE(dst: Array[Short]): Unit = getShortsLE(dst, 0, dst.length)
+  def readShortsLE(dst: Array[Short]): Unit = readShortsLE(dst, 0, dst.length)
 
   /**
    * Reads the next `length` shorts and put them into `dst` at the given offset.
@@ -475,14 +475,14 @@ abstract class NiolInput {
    * @param offset the first index to use
    * @param length the number of shorts to read
    */
-  def getShortsLE(dst: Array[Short], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 2)
+  def readShortsLE(dst: Array[Short], offset: Int, length: Int): Unit = {
+    val bytes = readBytes(length * 2)
     ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(dst, offset, length)
   }
 
 
   // ---------------------------------------------
-  // ----- Get operations for arrays of ints -----
+  // ----- Read operations for arrays of ints -----
   /**
    * Reads the next `n` ints.
    * Uses big-endian for each value.
@@ -490,9 +490,9 @@ abstract class NiolInput {
    *
    * @param n the number of ints to read
    */
-  def getInts(n: Int): Array[Int] = {
+  def readInts(n: Int): Array[Int] = {
     val array = new Array[Int](n)
-    getInts(array, 0, n)
+    readInts(array, 0, n)
     array
   }
 
@@ -503,7 +503,7 @@ abstract class NiolInput {
    *
    * @param dst the array to fill
    */
-  def getInts(dst: Array[Int]): Unit = getInts(dst, 0, dst.length)
+  def readInts(dst: Array[Int]): Unit = readInts(dst, 0, dst.length)
 
   /**
    * Reads the next `length` ints and put them into `dst` at the given offset.
@@ -514,8 +514,8 @@ abstract class NiolInput {
    * @param offset the first index to use
    * @param length the number of ints to read
    */
-  def getInts(dst: Array[Int], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 2)
+  def readInts(dst: Array[Int], offset: Int, length: Int): Unit = {
+    val bytes = readBytes(length * 2)
     ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN).asIntBuffer().get(dst, offset, length)
   }
 
@@ -526,9 +526,9 @@ abstract class NiolInput {
    *
    * @param n the number of ints to read
    */
-  def getIntsLE(n: Int): Array[Int] = {
+  def readIntsLE(n: Int): Array[Int] = {
     val array = new Array[Int](n)
-    getIntsLE(array, 0, n)
+    readIntsLE(array, 0, n)
     array
   }
 
@@ -539,7 +539,7 @@ abstract class NiolInput {
    *
    * @param dst the array to fill
    */
-  def getIntsLE(dst: Array[Int]): Unit = getIntsLE(dst, 0, dst.length)
+  def readIntsLE(dst: Array[Int]): Unit = readIntsLE(dst, 0, dst.length)
 
   /**
    * Reads the next `length` ints and put them into `dst` at the given offset.
@@ -550,14 +550,14 @@ abstract class NiolInput {
    * @param offset the first index to use
    * @param length the number of ints to read
    */
-  def getIntsLE(dst: Array[Int], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 2)
+  def readIntsLE(dst: Array[Int], offset: Int, length: Int): Unit = {
+    val bytes = readBytes(length * 2)
     ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer().get(dst, offset, length)
   }
 
 
   // ----------------------------------------------
-  // ----- Get operations for arrays of longs -----
+  // ----- Read operations for arrays of longs -----
   /**
    * Reads the next `n` longs.
    * Uses big-endian for each value.
@@ -565,9 +565,9 @@ abstract class NiolInput {
    *
    * @param n the number of longs to read
    */
-  def getLongs(n: Int): Array[Long] = {
+  def readLongs(n: Int): Array[Long] = {
     val array = new Array[Long](n)
-    getLongs(array, 0, n)
+    readLongs(array, 0, n)
     array
   }
 
@@ -578,7 +578,7 @@ abstract class NiolInput {
    *
    * @param dst the array to fill
    */
-  def getLongs(dst: Array[Long]): Unit = getLongs(dst, 0, dst.length)
+  def readLongs(dst: Array[Long]): Unit = readLongs(dst, 0, dst.length)
 
   /**
    * Reads the next `length` longs and put them into `dst` at the given offset.
@@ -589,8 +589,8 @@ abstract class NiolInput {
    * @param offset the first index to use
    * @param length the number of longs to read
    */
-  def getLongs(dst: Array[Long], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 2)
+  def readLongs(dst: Array[Long], offset: Int, length: Int): Unit = {
+    val bytes = readBytes(length * 2)
     ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN).asLongBuffer().get(dst, offset, length)
   }
 
@@ -601,9 +601,9 @@ abstract class NiolInput {
    *
    * @param n the number of longs to read
    */
-  def getLongsLE(n: Int): Array[Long] = {
+  def readLongsLE(n: Int): Array[Long] = {
     val array = new Array[Long](n)
-    getLongsLE(array, 0, n)
+    readLongsLE(array, 0, n)
     array
   }
 
@@ -614,7 +614,7 @@ abstract class NiolInput {
    *
    * @param dst the array to fill
    */
-  def getLongsLE(dst: Array[Long]): Unit = getLongsLE(dst, 0, dst.length)
+  def readLongsLE(dst: Array[Long]): Unit = readLongsLE(dst, 0, dst.length)
 
   /**
    * Reads the next `length` longs and put them into `dst` at the given offset.
@@ -625,14 +625,14 @@ abstract class NiolInput {
    * @param offset the first index to use
    * @param length the number of longs to read
    */
-  def getLongsLE(dst: Array[Long], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 2)
+  def readLongsLE(dst: Array[Long], offset: Int, length: Int): Unit = {
+    val bytes = readBytes(length * 2)
     ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asLongBuffer().get(dst, offset, length)
   }
 
 
   // -----------------------------------------------
-  // ----- Get operations for arrays of floats -----
+  // ----- Read operations for arrays of floats -----
   /**
    * Reads the next `n` floats.
    * Uses big-endian for each value.
@@ -640,9 +640,9 @@ abstract class NiolInput {
    *
    * @param n the number of floats to read
    */
-  def getFloats(n: Int): Array[Float] = {
+  def readFloats(n: Int): Array[Float] = {
     val array = new Array[Float](n)
-    getFloats(array, 0, n)
+    readFloats(array, 0, n)
     array
   }
 
@@ -653,7 +653,7 @@ abstract class NiolInput {
    *
    * @param dst the array to fill
    */
-  def getFloats(dst: Array[Float]): Unit = getFloats(dst, 0, dst.length)
+  def readFloats(dst: Array[Float]): Unit = readFloats(dst, 0, dst.length)
 
   /**
    * Reads the next `length` floats and put them into `dst` at the given offset.
@@ -664,8 +664,8 @@ abstract class NiolInput {
    * @param offset the first index to use
    * @param length the number of floats to read
    */
-  def getFloats(dst: Array[Float], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 2)
+  def readFloats(dst: Array[Float], offset: Int, length: Int): Unit = {
+    val bytes = readBytes(length * 2)
     ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN).asFloatBuffer().get(dst, offset, length)
   }
 
@@ -676,9 +676,9 @@ abstract class NiolInput {
    *
    * @param n the number of floats to read
    */
-  def getFloatsLE(n: Int): Array[Float] = {
+  def readFloatsLE(n: Int): Array[Float] = {
     val array = new Array[Float](n)
-    getFloatsLE(array, 0, n)
+    readFloatsLE(array, 0, n)
     array
   }
 
@@ -689,7 +689,7 @@ abstract class NiolInput {
    *
    * @param dst the array to fill
    */
-  def getFloatsLE(dst: Array[Float]): Unit = getFloatsLE(dst, 0, dst.length)
+  def readFloatsLE(dst: Array[Float]): Unit = readFloatsLE(dst, 0, dst.length)
 
   /**
    * Reads the next `length` floats and put them into `dst` at the given offset.
@@ -700,14 +700,14 @@ abstract class NiolInput {
    * @param offset the first index to use
    * @param length the number of floats to read
    */
-  def getFloatsLE(dst: Array[Float], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 2)
+  def readFloatsLE(dst: Array[Float], offset: Int, length: Int): Unit = {
+    val bytes = readBytes(length * 2)
     ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asFloatBuffer().get(dst, offset, length)
   }
 
 
   // ------------------------------------------------
-  // ----- Get operations for arrays of doubles -----
+  // ----- Read operations for arrays of doubles -----
   /**
    * Reads the next `n` doubles.
    * Uses big-endian for each value.
@@ -715,9 +715,9 @@ abstract class NiolInput {
    *
    * @param n the number of doubles to read
    */
-  def getDoubles(n: Int): Array[Double] = {
+  def readDoubles(n: Int): Array[Double] = {
     val array = new Array[Double](n)
-    getDoubles(array, 0, n)
+    readDoubles(array, 0, n)
     array
   }
 
@@ -728,7 +728,7 @@ abstract class NiolInput {
    *
    * @param dst the array to fill
    */
-  def getDoubles(dst: Array[Double]): Unit = getDoubles(dst, 0, dst.length)
+  def readDoubles(dst: Array[Double]): Unit = readDoubles(dst, 0, dst.length)
 
   /**
    * Reads the next `length` doubles and put them into `dst` at the given offset.
@@ -739,8 +739,8 @@ abstract class NiolInput {
    * @param offset the first index to use
    * @param length the number of doubles to read
    */
-  def getDoubles(dst: Array[Double], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 2)
+  def readDoubles(dst: Array[Double], offset: Int, length: Int): Unit = {
+    val bytes = readBytes(length * 2)
     ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN).asDoubleBuffer().get(dst, offset, length)
   }
 
@@ -751,9 +751,9 @@ abstract class NiolInput {
    *
    * @param n the number of doubles to read
    */
-  def getDoublesLE(n: Int): Array[Double] = {
+  def readDoublesLE(n: Int): Array[Double] = {
     val array = new Array[Double](n)
-    getDoublesLE(array, 0, n)
+    readDoublesLE(array, 0, n)
     array
   }
 
@@ -764,7 +764,7 @@ abstract class NiolInput {
    *
    * @param dst the array to fill
    */
-  def getDoublesLE(dst: Array[Double]): Unit = getDoublesLE(dst, 0, dst.length)
+  def readDoublesLE(dst: Array[Double]): Unit = readDoublesLE(dst, 0, dst.length)
 
   /**
    * Reads the next `length` doubles and put them into `dst` at the given offset.
@@ -775,8 +775,8 @@ abstract class NiolInput {
    * @param offset the first index to use
    * @param length the number of doubles to read
    */
-  def getDoublesLE(dst: Array[Double], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 2)
+  def readDoublesLE(dst: Array[Double], offset: Int, length: Int): Unit = {
+    val bytes = readBytes(length * 2)
     ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asDoubleBuffer().get(dst, offset, length)
   }
 }

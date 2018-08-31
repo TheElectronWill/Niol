@@ -35,23 +35,23 @@ abstract class NiolOutput {
 
   // --------------------------------
   // ----- Protected operations -----
-  /** Implements put without necessarily checking for available space. */
-  protected[this] def _put(b: Byte): Unit
+  /** Implements write without necessarily checking for available space. */
+  protected[this] def _write(b: Byte): Unit
 
-  /** Implements put without necessarily checking for available space. */
-  protected[this] final def _put(b: Int): Unit =_put(b.toByte)
+  /** Implements write without necessarily checking for available space. */
+  protected[this] final def _write(b: Int): Unit =_write(b.toByte)
 
-  /** Implements put without necessarily checking for available space. */
-  protected[this] final def _put(b: Long): Unit =_put(b.toByte)
+  /** Implements write without necessarily checking for available space. */
+  protected[this] final def _write(b: Long): Unit =_write(b.toByte)
 
-  /** Implements put without necessarily checking for available space. */
-  protected[this] def _put(from: Array[Byte], off: Int, len: Int): Unit
+  /** Implements write without necessarily checking for available space. */
+  protected[this] def _write(from: Array[Byte], off: Int, len: Int): Unit
 
-  /** Implements put without necessarily checking for available space. */
-  protected[this] def _put(from: ByteBuffer, len: Int): Unit
+  /** Implements write without necessarily checking for available space. */
+  protected[this] def _write(from: ByteBuffer, len: Int): Unit
 
-  /** Implements put without necessarily checking for available space. */
-  protected[this] def _put(from: NiolBuffer, len: Int): Unit
+  /** Implements write without necessarily checking for available space. */
+  protected[this] def _write(from: NiolBuffer, len: Int): Unit
 
   /** Checks if at least `n` bytes can be written */
   protected[this] def check(nValues: Int, n: Int): Unit = {
@@ -67,7 +67,7 @@ abstract class NiolOutput {
 
   /** Throws an exception if the operation is incomplete */
   protected[this] def checkComplete(expected: Int, actual: Int, v: String = "value"): Unit = {
-    if (actual != expected) throw new IncompletePutException(expected, actual, v)
+    if (actual != expected) throw new IncompleteWriteException(expected, actual, v)
   }
 
 
@@ -78,20 +78,20 @@ abstract class NiolOutput {
    *
    * @param b the byte to write
    */
-  def put(b: Byte): Unit = {
-    if (canWrite) _put(b)
+  def write(b: Byte): Unit = {
+    if (canWrite) _write(b)
     else throw new NotEnoughSpaceException(1, 0)
   }
 
   /**
-   * Attempts to put a byte. Returns false if the output is full.
+   * Attempts to write a byte. Returns false if the output is full.
    *
-   * @param b the byte to put
-   * @return true if the byte has been put, false if the output is full
+   * @param b the byte to write
+   * @return true if the byte has been write, false if the output is full
    */
-  def tryPut(b: Byte): Boolean = {
+  def tryWrite(b: Byte): Boolean = {
     if (canWrite) {
-      _put(b)
+      _write(b)
       true
     } else {
       false
@@ -104,7 +104,7 @@ abstract class NiolOutput {
    *
    * @param boolean the boolean to write
    */
-  def putBoolean(boolean: Boolean): Unit = putBool(boolean, 1, 0)
+  def writeBoolean(boolean: Boolean): Unit = writeBool(boolean, 1, 0)
 
   /**
    * Writes a boolean. The default behavior is as follow:
@@ -112,7 +112,7 @@ abstract class NiolOutput {
    *
    * @param bool the boolean to write
    */
-  def putBool(bool: Boolean): Unit = putBool(bool, 1, 0)
+  def writeBool(bool: Boolean): Unit = writeBool(bool, 1, 0)
 
   /**
    * Writes a boolean. If it's true, writes `trueValue`. If it's false, writes `falseValue`.
@@ -121,9 +121,9 @@ abstract class NiolOutput {
    * @param trueValue  the byte to write if the boolean is true
    * @param falseValue the byte to write if the boolean is false
    */
-  def putBool(bool: Boolean, trueValue: Byte, falseValue: Byte): Unit = {
+  def writeBool(bool: Boolean, trueValue: Byte, falseValue: Byte): Unit = {
     checkAvail(1)
-    _put(if (bool) trueValue else falseValue)
+    _write(if (bool) trueValue else falseValue)
   }
 
   /**
@@ -131,30 +131,30 @@ abstract class NiolOutput {
    *
    * @param b the byte to write
    */
-  final def putByte(b: Byte): Unit = put(b)
+  final def writeByte(b: Byte): Unit = write(b)
 
   /**
    * Writes the least significant byte of an int.
    *
    * @param i the value to write
    */
-  final def putByte(i: Int): Unit = put(i.toByte)
+  final def writeByte(i: Int): Unit = write(i.toByte)
 
   /**
    * Writes the least significant byte of a long.
    *
    * @param l the value to write
    */
-  final def putByte(l: Long): Unit = put(l.toByte)
+  final def writeByte(l: Long): Unit = write(l.toByte)
 
   /**
    * Writes a big-endian short.
    *
    * @param s the value to write
    */
-  final def putShort(s: Short): Unit = putShort(s.toInt)
+  final def writeShort(s: Short): Unit = writeShort(s.toInt)
   // Note: bit shifting operations are only applied on ints and longs, the value is converted if
-  // it's a smaller number. Therefore we delegate putShort(Short) to putShort(Int) to make the
+  // it's a smaller number. Therefore we delegate writeShort(Short) to writeShort(Int) to make the
   // short -> int conversion explicit.
 
   /**
@@ -162,17 +162,17 @@ abstract class NiolOutput {
    *
    * @param s the value to write
    */
-  final def putShortLE(s: Short): Unit = putShortLE(s.toInt)
+  final def writeShortLE(s: Short): Unit = writeShortLE(s.toInt)
 
   /**
    * Writes a big-endian short.
    *
    * @param i the value to write
    */
-  def putShort(i: Int): Unit = {
+  def writeShort(i: Int): Unit = {
     checkAvail(2)
-    _put(i >> 8)
-    _put(i)
+    _write(i >> 8)
+    _write(i)
   }
 
   /**
@@ -180,10 +180,10 @@ abstract class NiolOutput {
    *
    * @param i the value to write
    */
-  def putShortLE(i: Int): Unit = {
+  def writeShortLE(i: Int): Unit = {
     checkAvail(2)
-    _put(i)
-    _put(i >> 8)
+    _write(i)
+    _write(i >> 8)
   }
 
   /**
@@ -191,24 +191,24 @@ abstract class NiolOutput {
    *
    * @param c the value to write
    */
-  final def putChar(c: Char): Unit = putShort(c.toInt & 0xFFFF)
+  final def writeChar(c: Char): Unit = writeShort(c.toInt & 0xFFFF)
 
   /**
    * Writes a little-endian char.
    *
    * @param c the value to write
    */
-  final def putCharLE(c: Char): Unit = putShortLE(c.toInt & 0xFFFF)
+  final def writeCharLE(c: Char): Unit = writeShortLE(c.toInt & 0xFFFF)
 
   /**
    * Writes a big-endian 3-bytes integer.
    * @param m the value to write
    */
-  def putMedium(m: Int): Unit = {
+  def writeMedium(m: Int): Unit = {
     checkAvail(3)
-    _put(m >> 16)
-    _put(m >> 8)
-    _put(m)
+    _write(m >> 16)
+    _write(m >> 8)
+    _write(m)
   }
 
   /**
@@ -216,11 +216,11 @@ abstract class NiolOutput {
    *
    * @param m the value to write
    */
-  def putMediumLE(m: Int): Unit = {
+  def writeMediumLE(m: Int): Unit = {
     checkAvail(3)
-    _put(m)
-    _put(m >> 8)
-    _put(m >> 16)
+    _write(m)
+    _write(m >> 8)
+    _write(m >> 16)
   }
 
   /**
@@ -228,12 +228,12 @@ abstract class NiolOutput {
    *
    * @param i the value to write
    */
-  def putInt(i: Int): Unit = {
+  def writeInt(i: Int): Unit = {
     checkAvail(4)
-    _put(i >> 24)
-    _put(i >> 16)
-    _put(i >> 8)
-    _put(i)
+    _write(i >> 24)
+    _write(i >> 16)
+    _write(i >> 8)
+    _write(i)
   }
 
   /**
@@ -241,12 +241,12 @@ abstract class NiolOutput {
    *
    * @param i the value to write
    */
-  def putIntLE(i: Int): Unit = {
+  def writeIntLE(i: Int): Unit = {
     checkAvail(4)
-    _put(i)
-    _put(i >> 8)
-    _put(i >> 16)
-    _put(i >> 24)
+    _write(i)
+    _write(i >> 8)
+    _write(i >> 16)
+    _write(i >> 24)
   }
 
   /**
@@ -254,16 +254,16 @@ abstract class NiolOutput {
    *
    * @param l the value to write
    */
-  def putLong(l: Long): Unit = {
+  def writeLong(l: Long): Unit = {
     checkAvail(8)
-    _put(l >> 56)
-    _put(l >> 48)
-    _put(l >> 40)
-    _put(l >> 32)
-    _put(l >> 24)
-    _put(l >> 16)
-    _put(l >> 8)
-    _put(l)
+    _write(l >> 56)
+    _write(l >> 48)
+    _write(l >> 40)
+    _write(l >> 32)
+    _write(l >> 24)
+    _write(l >> 16)
+    _write(l >> 8)
+    _write(l)
   }
 
   /**
@@ -271,16 +271,16 @@ abstract class NiolOutput {
    *
    * @param l the value to write
    */
-  def putLongLE(l: Long): Unit = {
+  def writeLongLE(l: Long): Unit = {
     checkAvail(8)
-    _put(l)
-    _put(l >> 8)
-    _put(l >> 16)
-    _put(l >> 24)
-    _put(l >> 32)
-    _put(l >> 40)
-    _put(l >> 48)
-    _put(l >> 56)
+    _write(l)
+    _write(l >> 8)
+    _write(l >> 16)
+    _write(l >> 24)
+    _write(l >> 32)
+    _write(l >> 40)
+    _write(l >> 48)
+    _write(l >> 56)
   }
 
   /**
@@ -288,13 +288,13 @@ abstract class NiolOutput {
    *
    * @param f the value to write
    */
-  def putFloat(f: Float): Unit = {
+  def writeFloat(f: Float): Unit = {
     checkAvail(4)
     val i = java.lang.Float.floatToIntBits(f)
-    _put(i >> 24)
-    _put(i >> 16)
-    _put(i >> 8)
-    _put(i)
+    _write(i >> 24)
+    _write(i >> 16)
+    _write(i >> 8)
+    _write(i)
   }
 
   /**
@@ -302,20 +302,20 @@ abstract class NiolOutput {
    *
    * @param f the value to write
    */
-  final def putFloat(f: Double): Unit = putFloat(f.toFloat)
+  final def writeFloat(f: Double): Unit = writeFloat(f.toFloat)
 
   /**
    * Writes a little-endian 4-bytes float.
    *
    * @param f the value to write
    */
-  def putFloatLE(f: Float): Unit = {
+  def writeFloatLE(f: Float): Unit = {
     checkAvail(4)
     val i =java.lang.Float.floatToIntBits(f)
-    _put(i)
-    _put(i >> 8)
-    _put(i >> 16)
-    _put(i >> 24)
+    _write(i)
+    _write(i >> 8)
+    _write(i >> 16)
+    _write(i >> 24)
   }
 
   /**
@@ -323,24 +323,24 @@ abstract class NiolOutput {
    *
    * @param f the value to write
    */
-  final def putFloatLE(f: Double): Unit = putFloatLE(f.toFloat)
+  final def writeFloatLE(f: Double): Unit = writeFloatLE(f.toFloat)
 
   /**
    * Writes a big-endian 8-bytes double.
    *
    * @param d the value to write
    */
-  def putDouble(d: Double): Unit = {
+  def writeDouble(d: Double): Unit = {
     checkAvail(8)
     val l = java.lang.Double.doubleToLongBits(d)
-    _put(l >> 56)
-    _put(l >> 48)
-    _put(l >> 40)
-    _put(l >> 32)
-    _put(l >> 24)
-    _put(l >> 16)
-    _put(l >> 8)
-    _put(l)
+    _write(l >> 56)
+    _write(l >> 48)
+    _write(l >> 40)
+    _write(l >> 32)
+    _write(l >> 24)
+    _write(l >> 16)
+    _write(l >> 8)
+    _write(l)
   }
 
   /**
@@ -348,17 +348,17 @@ abstract class NiolOutput {
    *
    * @param d the value to write
    */
-  def putDoubleLE(d: Double): Unit = {
+  def writeDoubleLE(d: Double): Unit = {
     checkAvail(8)
     val l = java.lang.Double.doubleToLongBits(d)
-    _put(l)
-    _put(l >> 8)
-    _put(l >> 16)
-    _put(l >> 24)
-    _put(l >> 32)
-    _put(l >> 40)
-    _put(l >> 48)
-    _put(l >> 56)
+    _write(l)
+    _write(l >> 8)
+    _write(l >> 16)
+    _write(l >> 24)
+    _write(l >> 32)
+    _write(l >> 40)
+    _write(l >> 48)
+    _write(l >> 56)
   }
 
   /**
@@ -366,10 +366,10 @@ abstract class NiolOutput {
    *
    * @param uuid the value to write
    */
-  final def putUUID(uuid: UUID): Unit = {
+  final def writeUUID(uuid: UUID): Unit = {
     checkAvail(16)
-    putLong(uuid.getMostSignificantBits)
-    putLong(uuid.getLeastSignificantBits)
+    writeLong(uuid.getMostSignificantBits)
+    writeLong(uuid.getLeastSignificantBits)
   }
 
 
@@ -380,7 +380,7 @@ abstract class NiolOutput {
    *
    * @param i the value to write
    */
-  def putVarInt(i: Int): Unit = {
+  def writeVarInt(i: Int): Unit = {
     var value = i
     do {
       var bits7 = value & 0x7F
@@ -388,8 +388,8 @@ abstract class NiolOutput {
       if (value != 0) {
         bits7 |= 0x80
       }
-      if (!canWrite) throw new IncompletePutException(1, "VarInt")
-      _put(bits7)
+      if (!canWrite) throw new IncompleteWriteException(1, "VarInt")
+      _write(bits7)
     } while (value != 0)
   }
 
@@ -398,7 +398,7 @@ abstract class NiolOutput {
    *
    * @param l the value to write
    */
-  def putVarLong(l: Long): Unit = {
+  def writeVarLong(l: Long): Unit = {
     var value = l
     do {
       var bits7 = value & 0x7F
@@ -406,8 +406,8 @@ abstract class NiolOutput {
       if (value != 0) {
         bits7 |= 0x80
       }
-      if (!canWrite) throw new IncompletePutException(1, "VarLong")
-      _put(bits7)
+      if (!canWrite) throw new IncompleteWriteException(1, "VarLong")
+      _write(bits7)
     } while (value != 0)
   }
 
@@ -416,14 +416,14 @@ abstract class NiolOutput {
    *
    * @param n the value to write
    */
-  final def putSVarIntZigZag(n: Int): Unit = putVarInt((n << 1) ^ (n >> 31))
+  final def writeSVarIntZigZag(n: Int): Unit = writeVarInt((n << 1) ^ (n >> 31))
 
   /**
    * Writes a variable-length long using the signed/zig-zag encoding.
    *
    * @param n the value to write
    */
-  final def putSVarLongZigZag(n: Long): Unit = putVarLong((n << 1) ^ (n >> 63))
+  final def writeSVarLongZigZag(n: Long): Unit = writeVarLong((n << 1) ^ (n >> 63))
 
 
   // ----------------------------------------------
@@ -434,8 +434,8 @@ abstract class NiolOutput {
    * @param str     the value to write
    * @param charset the charset to encode the String with
    */
-  final def putString(str: String, charset: Charset = UTF_8): Unit = {
-    putCharSequence(str, charset)
+  final def writeString(str: String, charset: Charset = UTF_8): Unit = {
+    writeCharSequence(str, charset)
   }
 
   /**
@@ -444,11 +444,11 @@ abstract class NiolOutput {
    * @param csq     the value to write
    * @param charset the charset to encode the CharSequence with
    */
-  final def putCharSequence(csq: CharSequence, charset: Charset = UTF_8): Unit = {
+  final def writeCharSequence(csq: CharSequence, charset: Charset = UTF_8): Unit = {
     val bytes = charset.encode(CharBuffer.wrap(csq))
     val rem = bytes.remaining()
     checkAvail(rem)
-    _put(bytes, rem)
+    _write(bytes, rem)
   }
 
   /**
@@ -457,12 +457,12 @@ abstract class NiolOutput {
    * @param csq     the value to write
    * @param charset the charset to CharSequence the String with
    */
-  final def putVarString(csq: CharSequence, charset: Charset = UTF_8): Unit = {
+  final def writeVarString(csq: CharSequence, charset: Charset = UTF_8): Unit = {
     val bytes = charset.encode(CharBuffer.wrap(csq))
     val rem = bytes.remaining()
     checkAvail(rem + 1)
-    putVarInt(rem)
-    _put(bytes, rem)
+    writeVarInt(rem)
+    _write(bytes, rem)
   }
 
   /**
@@ -472,12 +472,12 @@ abstract class NiolOutput {
    * @param csq     the value to write
    * @param charset the charset to encode the CharSequence with
    */
-  final def putShortString(csq: CharSequence, charset: Charset = UTF_8): Unit = {
+  final def writeShortString(csq: CharSequence, charset: Charset = UTF_8): Unit = {
     val bytes = charset.encode(CharBuffer.wrap(csq))
     val rem = bytes.remaining()
     checkAvail(rem + 2)
-    putShort(rem)
-    _put(bytes, rem)
+    writeShort(rem)
+    _write(bytes, rem)
   }
 
   /**
@@ -487,27 +487,27 @@ abstract class NiolOutput {
    * @param csq     the value to write
    * @param charset the charset to encode the CharSequence with
    */
-  final def putShortStringLE(csq: CharSequence, charset: Charset = UTF_8): Unit = {
+  final def writeShortStringLE(csq: CharSequence, charset: Charset = UTF_8): Unit = {
     val bytes = charset.encode(CharBuffer.wrap(csq))
     val rem = bytes.remaining()
     checkAvail(rem + 2)
-    putShortLE(rem)
-    _put(bytes, rem)
+    writeShortLE(rem)
+    _write(bytes, rem)
   }
 
 
   // ----------------------------------------
-  // ----- Put operations for channels -----
+  // ----- Write operations for channels -----
   /**
    * Writes exactly `length` bytes from `src`.
    * Throws an exception if there isn't enough space for the data or if there isn't enough data.
    *
    * @param src    the channel providing the data
-   * @param length the number of bytes to get from the channel
+   * @param length the number of bytes to read from the channel
    */
-  def put(src: ScatteringByteChannel, length: Int): Unit = {
+  def write(src: ScatteringByteChannel, length: Int): Unit = {
     checkAvail(length)
-    val actual = putSome(src, length)
+    val actual = writeSome(src, length)
     checkComplete(length, actual, "byte")
   }
 
@@ -516,33 +516,33 @@ abstract class NiolOutput {
    * Returns the actual number of bytes written, possibly zero.
    *
    * @param src    the channel providing the data
-   * @param maxBytes the maximum number of bytes to get from the channel
+   * @param maxBytes the maximum number of bytes to read from the channel
    * @return the number of bytes read from `src`, or -1 if the end of the stream has been reached
    */
-  def putSome(src: ScatteringByteChannel, maxBytes: Int = TMP_BUFFER_SIZE): Int = {
+  def writeSome(src: ScatteringByteChannel, maxBytes: Int = TMP_BUFFER_SIZE): Int = {
     val l = Math.min(maxBytes, writeAvail)
     val buff = ByteBuffer.allocate(l)
     val read = src.read(buff)
     if (read > 0) {
       buff.flip()
-      _put(buff, read)
+      _write(buff, read)
     }
     read
   }
 
 
   // ---------------------------------------
-  // ----- Put operations for streams -----
+  // ----- Write operations for streams -----
   /**
    * Writes exactly `length` bytes from `src`.
    * Throws an exception if there isn't enough space for the data or if there isn't enough data.
    *
    * @param src    the stream providing the data
-   * @param length the number of bytes to get from the stream
+   * @param length the number of bytes to read from the stream
    */
-  def put(src: InputStream, length: Int): Unit = {
+  def write(src: InputStream, length: Int): Unit = {
     checkAvail(length)
-    val actual = putSome(src, length)
+    val actual = writeSome(src, length)
     checkComplete(length, actual, "byte")
   }
 
@@ -551,32 +551,32 @@ abstract class NiolOutput {
    * Returns the actual number of bytes written, possibly zero.
    *
    * @param src    the stream providing the data
-   * @param maxBytes the maximum number of bytes to get from the channel
+   * @param maxBytes the maximum number of bytes to read from the channel
    * @return the number of bytes read from `src`, or -1 if the end of the stream has been reached
    */
-  def putSome(src: InputStream, maxBytes: Int = TMP_BUFFER_SIZE): Int = {
+  def writeSome(src: InputStream, maxBytes: Int = TMP_BUFFER_SIZE): Int = {
     val l = Math.min(maxBytes, writeAvail)
     val buff = new Array[Byte](l)
     val read = src.read(buff)
     if (read > 0) {
-      _put(buff, 0, read)
+      _write(buff, 0, read)
     }
     read
   }
 
 
   // -----------------------------------------
-  // ----- Put operations for NiolInputs -----
+  // ----- Write operations for NiolInputs -----
   /**
    * Writes exactly `length` bytes from `src`.
    * Throws an exception if there isn't enough space for the data or if there isn't enough data.
    *
    * @param src    the NiolInput providing the data
-   * @param length the number of bytes to get from the input
+   * @param length the number of bytes to read from the input
    */
-  def put(src: NiolInput, length: Int): Unit = {
+  def write(src: NiolInput, length: Int): Unit = {
     checkAvail(length)
-    val actual = putSome(src, length)
+    val actual = writeSome(src, length)
     checkComplete(length, actual, "byte")
   }
 
@@ -585,32 +585,32 @@ abstract class NiolOutput {
    * Returns the actual number of bytes written, possibly zero.
    *
    * @param src    the NiolInput providing the data
-   * @param maxBytes the maximum number of bytes to get from the channel
-   * @return the number of bytes that have been put into this output, >= 0
+   * @param maxBytes the maximum number of bytes to read from the channel
+   * @return the number of bytes that have been write into this output, >= 0
    */
-  def putSome(src: NiolInput, maxBytes: Int = TMP_BUFFER_SIZE): Int = {
+  def writeSome(src: NiolInput, maxBytes: Int = TMP_BUFFER_SIZE): Int = {
     val l = Math.min(maxBytes, writeAvail)
     val buff = new Array[Byte](l)
-    val read = src.getSomeBytes(buff)
+    val read = src.readSomeBytes(buff)
     if (read > 0) {
-      _put(buff, 0, read)
+      _write(buff, 0, read)
     }
     read
   }
 
 
   // -------------------------------------------
-  // ----- Put operations for ByteBuffers ------
+  // ----- Write operations for ByteBuffers ------
   /**
    * Writes all of the given ByteBuffer.
    * Throws an exception if there isn't enough space for the data.
    *
    * @param src the buffer to write
    */
-  def put(src: ByteBuffer): Unit = {
+  def write(src: ByteBuffer): Unit = {
     val rem = src.remaining()
     checkAvail(rem)
-    _put(src, rem)
+    _write(src, rem)
   }
 
   /**
@@ -619,21 +619,21 @@ abstract class NiolOutput {
    *
    * @param src the buffer to write
    */
-  def putSome(src: ByteBuffer): Unit
+  def writeSome(src: ByteBuffer): Unit
 
 
   // -------------------------------------------
-  // ----- Put operations for NiolBuffers ------
+  // ----- Write operations for NiolBuffers ------
   /**
    * Writes all of the given ByteBuffer.
    * Throws an exception if there isn't enough space for the data.
    *
    * @param src the buffer to write
    */
-  def put(src: NiolBuffer): Unit = {
+  def write(src: NiolBuffer): Unit = {
     val ava = src.readAvail
     checkAvail(ava)
-    _put(src, ava)
+    _write(src, ava)
   }
 
   /**
@@ -642,61 +642,61 @@ abstract class NiolOutput {
    *
    * @param src the buffer to write
    */
-  def putSome(src: NiolBuffer): Unit = {
+  def writeSome(src: NiolBuffer): Unit = {
     while (src.canRead && canWrite) {
-      putByte(src.get())
+      writeByte(src.read())
     }
   }
 
 
   // ----------------------------------------------
-  // ----- Put operations for arrays of bytes -----
+  // ----- Write operations for arrays of bytes -----
   /**
    * Writes all the bytes of `src`.
    * Throws an exception if there isn't enough space for the data.
    *
-   * @param src the array to put
+   * @param src the array to write
    */
-  def put(src: Array[Byte]): Unit = put(src, 0, src.length)
+  def write(src: Array[Byte]): Unit = write(src, 0, src.length)
 
   /**
    * Writes the content of `src`, starting at index `offset` and ending at index `offset+length-1`.
    * Throws an exception if there isn't enough space for the data or if the array index goes out
    * of bounds.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of bytes to write
    */
-  def put(src: Array[Byte], offset: Int, length: Int): Unit = {
+  def write(src: Array[Byte], offset: Int, length: Int): Unit = {
     checkAvail(length)
-    _put(src, offset, length)
+    _write(src, offset, length)
   }
 
   /**
    * Writes at most `src.length` bytes of `src`.
    * Returns the actual number of bytes written, possibly zero.
    *
-   * @param src the array to put
+   * @param src the array to write
    * @return the number of bytes written
    */
-  def putSome(src: Array[Byte]): Int = putSome(src, 0, src.length)
+  def writeSome(src: Array[Byte]): Int = writeSome(src, 0, src.length)
 
   /**
    * Writes at most `length` bytes of `src`, starting at index `offset`.
    * Returns the actual number of bytes written, possibly zero.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of bytes to write
    * @return the number of bytes written
    */
-  def putSome(src: Array[Byte], offset: Int, length: Int): Int = {
+  def writeSome(src: Array[Byte], offset: Int, length: Int): Int = {
     val length = Math.min(writeAvail, length)
     var i = offset
     val l = offset + length
     while (i < l) {
-      _put(src(i))
+      _write(src(i))
       i += 1
     }
     i - offset
@@ -704,53 +704,53 @@ abstract class NiolOutput {
 
 
   // ----------------------------------------------
-  // ----- Put operations for boolean arrays -----
+  // ----- Write operations for boolean arrays -----
   /**
    * Writes all the booleans of `src`.
    * Throws an exception if there isn't enough space for the data.
    *
-   * @param src the array to put
+   * @param src the array to write
    */
-  def putBooleans(src: Array[Boolean]): Unit = putBooleans(src, 0, src.length)
+  def writeBooleans(src: Array[Boolean]): Unit = writeBooleans(src, 0, src.length)
 
   /**
    * Writes the content of `src`, starting at index `offset` and ending at index `offset+length-1`.
    * Throws an exception if there isn't enough space for the data or if the array index goes out
    * of bounds.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of booleans to write
    */
-  def putBooleans(src: Array[Boolean], offset: Int, length: Int): Unit = {
+  def writeBooleans(src: Array[Boolean], offset: Int, length: Int): Unit = {
     checkAvail(length)
-    putSomeBooleans(src, offset, length)
+    writeSomeBooleans(src, offset, length)
   }
 
   /**
    * Writes at most `src.length` booleans of `src`.
    * Returns the actual number of booleans written, possibly zero.
    *
-   * @param src the array to put
+   * @param src the array to write
    * @return the number of booleans written
    */
-  def putSomeBooleans(src: Array[Boolean]): Int = putSomeBooleans(src, 0, src.length)
+  def writeSomeBooleans(src: Array[Boolean]): Int = writeSomeBooleans(src, 0, src.length)
 
   /**
    * Writes at most `length` booleans of `src`, starting at index `offset`.
    * Returns the actual number of booleans written, possibly zero.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of booleans to write
    * @return the number of booleans written
    */
-  def putSomeBooleans(src: Array[Boolean], offset: Int, length: Int): Int = {
+  def writeSomeBooleans(src: Array[Boolean], offset: Int, length: Int): Int = {
     val length = Math.min(writeAvail, length)
     var i = offset
     val l = offset + length
     while (i < l) {
-      putBoolean(src(i))
+      writeBoolean(src(i))
       i += 1
     }
     i - offset
@@ -758,15 +758,15 @@ abstract class NiolOutput {
 
 
   // -----------------------------------------------
-  // ----- Put operations for arrays of shorts -----
+  // ----- Write operations for arrays of shorts -----
   /**
    * Writes all the shorts of `src`.
    * Uses big-endian for each value.
    * Throws an exception if there isn't enough space for the data.
    *
-   * @param src the array to put
+   * @param src the array to write
    */
-  def putShorts(src: Array[Short]): Unit = putShorts(src, 0, src.length)
+  def writeShorts(src: Array[Short]): Unit = writeShorts(src, 0, src.length)
 
   /**
    * Writes the content of `src`, starting at index `offset` and ending at index `offset+length-1`.
@@ -774,13 +774,13 @@ abstract class NiolOutput {
    * Throws an exception if there isn't enough space for the data or if the array index goes out
    * of bounds.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of shorts to write
    */
-  def putShorts(src: Array[Short], offset: Int, length: Int): Unit = {
+  def writeShorts(src: Array[Short], offset: Int, length: Int): Unit = {
     checkAvail(length)
-    putSomeShorts(src, offset, length)
+    writeSomeShorts(src, offset, length)
   }
 
   /**
@@ -788,27 +788,27 @@ abstract class NiolOutput {
    * Uses big-endian for each value.
    * Returns the actual number of shorts written, possibly zero.
    *
-   * @param src the array to put
+   * @param src the array to write
    * @return the number of shorts written
    */
-  def putSomeShorts(src: Array[Short]): Int = putSomeShorts(src, 0, src.length)
+  def writeSomeShorts(src: Array[Short]): Int = writeSomeShorts(src, 0, src.length)
 
   /**
    * Writes at most `length` shorts of `src`, starting at index `offset`.
    * Uses big-endian for each value.
    * Returns the actual number of shorts written, possibly zero.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of shorts to write
    * @return the number of shorts written
    */
-  def putSomeShorts(src: Array[Short], offset: Int, length: Int): Int = {
+  def writeSomeShorts(src: Array[Short], offset: Int, length: Int): Int = {
     val length = Math.min(writeAvail/2, length)
     var i = offset
     val l = offset + length
     while (i < l) {
-      putShort(src(i))
+      writeShort(src(i))
       i += 1
     }
     i - offset
@@ -819,9 +819,9 @@ abstract class NiolOutput {
    * Uses little-endian for each value.
    * Throws an exception if there isn't enough space for the data.
    *
-   * @param src the array to put
+   * @param src the array to write
    */
-  def putShortsLE(src: Array[Short]): Unit = putShortsLE(src, 0, src.length)
+  def writeShortsLE(src: Array[Short]): Unit = writeShortsLE(src, 0, src.length)
 
   /**
    * Writes the content of `src`, starting at index `offset` and ending at index `offset+length-1`.
@@ -829,13 +829,13 @@ abstract class NiolOutput {
    * Throws an exception if there isn't enough space for the data or if the array index goes out
    * of bounds.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of shorts to write
    */
-  def putShortsLE(src: Array[Short], offset: Int, length: Int): Unit = {
+  def writeShortsLE(src: Array[Short], offset: Int, length: Int): Unit = {
     checkAvail(length)
-    putSomeShortsLE(src, offset, length)
+    writeSomeShortsLE(src, offset, length)
   }
 
   /**
@@ -843,27 +843,27 @@ abstract class NiolOutput {
    * Uses little-endian for each value.
    * Returns the actual number of shorts written, possibly zero.
    *
-   * @param src the array to put
+   * @param src the array to write
    * @return the number of shorts written
    */
-  def putSomeShortsLE(src: Array[Short]): Int = putSomeShortsLE(src, 0, src.length)
+  def writeSomeShortsLE(src: Array[Short]): Int = writeSomeShortsLE(src, 0, src.length)
 
   /**
    * Writes at most `length` shorts of `src`, starting at index `offset`.
    * Uses little-endian for each value.
    * Returns the actual number of shorts written, possibly zero.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of shorts to write
    * @return the number of shorts written
    */
-  def putSomeShortsLE(src: Array[Short], offset: Int, length: Int): Int = {
+  def writeSomeShortsLE(src: Array[Short], offset: Int, length: Int): Int = {
     val length = Math.min(writeAvail/2, length)
     var i = offset
     val l = offset + length
     while (i < l) {
-      putShortLE(src(i))
+      writeShortLE(src(i))
       i += 1
     }
     i - offset
@@ -871,15 +871,15 @@ abstract class NiolOutput {
 
 
   // ---------------------------------------------
-  // ----- Put operations for arrays of ints -----
+  // ----- Write operations for arrays of ints -----
   /**
    * Writes all the ints of `src`.
    * Uses big-endian for each value.
    * Throws an exception if there isn't enough space for the data.
    *
-   * @param src the array to put
+   * @param src the array to write
    */
-  def putInts(src: Array[Int]): Unit = putInts(src, 0, src.length)
+  def writeInts(src: Array[Int]): Unit = writeInts(src, 0, src.length)
 
   /**
    * Writes the content of `src`, starting at index `offset` and ending at index `offset+length-1`.
@@ -887,13 +887,13 @@ abstract class NiolOutput {
    * Throws an exception if there isn't enough space for the data or if the array index goes out
    * of bounds.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of ints to write
    */
-  def putInts(src: Array[Int], offset: Int, length: Int): Unit = {
+  def writeInts(src: Array[Int], offset: Int, length: Int): Unit = {
     checkAvail(length)
-    putSomeInts(src, offset, length)
+    writeSomeInts(src, offset, length)
   }
 
   /**
@@ -901,27 +901,27 @@ abstract class NiolOutput {
    * Uses big-endian for each value.
    * Returns the actual number of ints written, possibly zero.
    *
-   * @param src the array to put
+   * @param src the array to write
    * @return the number of ints written
    */
-  def putSomeInts(src: Array[Int]): Int = putSomeInts(src, 0, src.length)
+  def writeSomeInts(src: Array[Int]): Int = writeSomeInts(src, 0, src.length)
 
   /**
    * Writes at most `length` ints of `src`, starting at index `offset`.
    * Uses big-endian for each value.
    * Returns the actual number of ints written, possibly zero.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of ints to write
    * @return the number of ints written
    */
-  def putSomeInts(src: Array[Int], offset: Int, length: Int): Int = {
+  def writeSomeInts(src: Array[Int], offset: Int, length: Int): Int = {
     val length = Math.min(writeAvail/4, length)
     var i = offset
     val l = offset + length
     while (i < l) {
-      putInt(src(i))
+      writeInt(src(i))
       i += 1
     }
     i - offset
@@ -932,9 +932,9 @@ abstract class NiolOutput {
    * Uses little-endian for each value.
    * Throws an exception if there isn't enough space for the data.
    *
-   * @param src the array to put
+   * @param src the array to write
    */
-  def putIntsLE(src: Array[Int]): Unit = putIntsLE(src, 0, src.length)
+  def writeIntsLE(src: Array[Int]): Unit = writeIntsLE(src, 0, src.length)
 
   /**
    * Writes the content of `src`, starting at index `offset` and ending at index `offset+length-1`.
@@ -942,13 +942,13 @@ abstract class NiolOutput {
    * Throws an exception if there isn't enough space for the data or if the array index goes out
    * of bounds.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of ints to write
    */
-  def putIntsLE(src: Array[Int], offset: Int, length: Int): Unit = {
+  def writeIntsLE(src: Array[Int], offset: Int, length: Int): Unit = {
     checkAvail(length)
-    putSomeIntsLE(src, offset, length)
+    writeSomeIntsLE(src, offset, length)
   }
 
   /**
@@ -956,27 +956,27 @@ abstract class NiolOutput {
    * Uses little-endian for each value.
    * Returns the actual number of ints written, possibly zero.
    *
-   * @param src the array to put
+   * @param src the array to write
    * @return the number of ints written
    */
-  def putSomeIntsLE(src: Array[Int]): Int = putSomeIntsLE(src, 0, src.length)
+  def writeSomeIntsLE(src: Array[Int]): Int = writeSomeIntsLE(src, 0, src.length)
 
   /**
    * Writes at most `length` ints of `src`, starting at index `offset`.
    * Uses little-endian for each value.
    * Returns the actual number of ints written, possibly zero.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of ints to write
    * @return the number of ints written
    */
-  def putSomeIntsLE(src: Array[Int], offset: Int, length: Int): Int = {
+  def writeSomeIntsLE(src: Array[Int], offset: Int, length: Int): Int = {
     val length = Math.min(writeAvail/4, length)
     var i = offset
     val l = offset + length
     while (i < l) {
-      putIntLE(src(i))
+      writeIntLE(src(i))
       i += 1
     }
     i - offset
@@ -984,15 +984,15 @@ abstract class NiolOutput {
 
 
   // ----------------------------------------------
-  // ----- Put operations for arrays of longs -----
+  // ----- Write operations for arrays of longs -----
   /**
    * Writes all the longs of `src`.
    * Uses big-endian for each value.
    * Throws an exception if there isn't enough space for the data.
    *
-   * @param src the array to put
+   * @param src the array to write
    */
-  def putLongs(src: Array[Long]): Unit = putLongs(src, 0, src.length)
+  def writeLongs(src: Array[Long]): Unit = writeLongs(src, 0, src.length)
 
   /**
    * Writes the content of `src`, starting at index `offset` and ending at index `offset+length-1`.
@@ -1000,13 +1000,13 @@ abstract class NiolOutput {
    * Throws an exception if there isn't enough space for the data or if the array index goes out
    * of bounds.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of longs to write
    */
-  def putLongs(src: Array[Long], offset: Int, length: Int): Unit = {
+  def writeLongs(src: Array[Long], offset: Int, length: Int): Unit = {
     checkAvail(length)
-    putSomeLongs(src, offset, length)
+    writeSomeLongs(src, offset, length)
   }
 
   /**
@@ -1014,27 +1014,27 @@ abstract class NiolOutput {
    * Uses big-endian for each value.
    * Returns the actual number of longs written, possibly zero.
    *
-   * @param src the array to put
+   * @param src the array to write
    * @return the number of longs written
    */
-  def putSomeLongs(src: Array[Long]): Int = putSomeLongs(src, 0, src.length)
+  def writeSomeLongs(src: Array[Long]): Int = writeSomeLongs(src, 0, src.length)
 
   /**
    * Writes at most `length` longs of `src`, starting at index `offset`.
    * Uses big-endian for each value.
    * Returns the actual number of longs written, possibly zero.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of longs to write
    * @return the number of longs written
    */
-  def putSomeLongs(src: Array[Long], offset: Int, length: Int): Int = {
+  def writeSomeLongs(src: Array[Long], offset: Int, length: Int): Int = {
     val length = Math.min(writeAvail/8, length)
     var i = offset
     val l = offset + length
     while (i < l) {
-      putLong(src(i))
+      writeLong(src(i))
       i += 1
     }
     i - offset
@@ -1045,9 +1045,9 @@ abstract class NiolOutput {
    * Uses little-endian for each value.
    * Throws an exception if there isn't enough space for the data.
    *
-   * @param src the array to put
+   * @param src the array to write
    */
-  def putLongsLE(src: Array[Long]): Unit = putLongsLE(src, 0, src.length)
+  def writeLongsLE(src: Array[Long]): Unit = writeLongsLE(src, 0, src.length)
 
   /**
    * Writes the content of `src`, starting at index `offset` and ending at index `offset+length-1`.
@@ -1055,13 +1055,13 @@ abstract class NiolOutput {
    * Throws an exception if there isn't enough space for the data or if the array index goes out
    * of bounds.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of longs to write
    */
-  def putLongsLE(src: Array[Long], offset: Int, length: Int): Unit = {
+  def writeLongsLE(src: Array[Long], offset: Int, length: Int): Unit = {
     checkAvail(length)
-    putSomeLongsLE(src, offset, length)
+    writeSomeLongsLE(src, offset, length)
   }
 
   /**
@@ -1069,27 +1069,27 @@ abstract class NiolOutput {
    * Uses little-endian for each value.
    * Returns the actual number of longs written, possibly zero.
    *
-   * @param src the array to put
+   * @param src the array to write
    * @return the number of longs written
    */
-  def putSomeLongsLE(src: Array[Long]): Int = putSomeLongsLE(src, 0, src.length)
+  def writeSomeLongsLE(src: Array[Long]): Int = writeSomeLongsLE(src, 0, src.length)
 
   /**
    * Writes at most `length` longs of `src`, starting at index `offset`.
    * Uses little-endian for each value.
    * Returns the actual number of longs written, possibly zero.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of longs to write
    * @return the number of longs written
    */
-  def putSomeLongsLE(src: Array[Long], offset: Int, length: Int): Int = {
+  def writeSomeLongsLE(src: Array[Long], offset: Int, length: Int): Int = {
     val length = Math.min(writeAvail/8, length)
     var i = offset
     val l = offset + length
     while (i < l) {
-      putLongLE(src(i))
+      writeLongLE(src(i))
       i += 1
     }
     i - offset
@@ -1097,15 +1097,15 @@ abstract class NiolOutput {
 
 
   // -----------------------------------------------
-  // ----- Put operations for arrays of floats -----
+  // ----- Write operations for arrays of floats -----
   /**
    * Writes all the floats of `src`.
    * Uses big-endian for each value.
    * Throws an exception if there isn't enough space for the data.
    *
-   * @param src the array to put
+   * @param src the array to write
    */
-  def putFloats(src: Array[Float]): Unit = putFloats(src, 0, src.length)
+  def writeFloats(src: Array[Float]): Unit = writeFloats(src, 0, src.length)
 
   /**
    * Writes the content of `src`, starting at index `offset` and ending at index `offset+length-1`.
@@ -1113,13 +1113,13 @@ abstract class NiolOutput {
    * Throws an exception if there isn't enough space for the data or if the array index goes out
    * of bounds.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of floats to write
    */
-  def putFloats(src: Array[Float], offset: Int, length: Int): Unit = {
+  def writeFloats(src: Array[Float], offset: Int, length: Int): Unit = {
     checkAvail(length)
-    putSomeFloats(src, offset, length)
+    writeSomeFloats(src, offset, length)
   }
 
   /**
@@ -1127,27 +1127,27 @@ abstract class NiolOutput {
    * Uses big-endian for each value.
    * Returns the actual number of floats written, possibly zero.
    *
-   * @param src the array to put
+   * @param src the array to write
    * @return the number of floats written
    */
-  def putSomeFloats(src: Array[Float]): Int = putSomeFloats(src, 0, src.length)
+  def writeSomeFloats(src: Array[Float]): Int = writeSomeFloats(src, 0, src.length)
 
   /**
    * Writes at most `length` floats of `src`, starting at index `offset`.
    * Uses big-endian for each value.
    * Returns the actual number of floats written, possibly zero.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of floats to write
    * @return the number of floats written
    */
-  def putSomeFloats(src: Array[Float], offset: Int, length: Int): Int = {
+  def writeSomeFloats(src: Array[Float], offset: Int, length: Int): Int = {
     val length = Math.min(writeAvail/4, length)
     var i = offset
     val l = offset + length
     while (i < l) {
-      putFloat(src(i))
+      writeFloat(src(i))
       i += 1
     }
     i - offset
@@ -1158,9 +1158,9 @@ abstract class NiolOutput {
    * Uses little-endian for each value.
    * Throws an exception if there isn't enough space for the data.
    *
-   * @param src the array to put
+   * @param src the array to write
    */
-  def putFloatsLE(src: Array[Float]): Unit = putFloatsLE(src, 0, src.length)
+  def writeFloatsLE(src: Array[Float]): Unit = writeFloatsLE(src, 0, src.length)
 
   /**
    * Writes the content of `src`, starting at index `offset` and ending at index `offset+length-1`.
@@ -1168,13 +1168,13 @@ abstract class NiolOutput {
    * Throws an exception if there isn't enough space for the data or if the array index goes out
    * of bounds.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of floats to write
    */
-  def putFloatsLE(src: Array[Float], offset: Int, length: Int): Unit = {
+  def writeFloatsLE(src: Array[Float], offset: Int, length: Int): Unit = {
     checkAvail(length)
-    putSomeFloatsLE(src, offset, length)
+    writeSomeFloatsLE(src, offset, length)
   }
 
   /**
@@ -1182,27 +1182,27 @@ abstract class NiolOutput {
    * Uses little-endian for each value.
    * Returns the actual number of floats written, possibly zero.
    *
-   * @param src the array to put
+   * @param src the array to write
    * @return the number of floats written
    */
-  def putSomeFloatsLE(src: Array[Float]): Int = putSomeFloatsLE(src, 0, src.length)
+  def writeSomeFloatsLE(src: Array[Float]): Int = writeSomeFloatsLE(src, 0, src.length)
 
   /**
    * Writes at most `length` floats of `src`, starting at index `offset`.
    * Uses little-endian for each value.
    * Returns the actual number of floats written, possibly zero.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of floats to write
    * @return the number of floats written
    */
-  def putSomeFloatsLE(src: Array[Float], offset: Int, length: Int): Int = {
+  def writeSomeFloatsLE(src: Array[Float], offset: Int, length: Int): Int = {
     val length = Math.min(writeAvail/4, length)
     var i = offset
     val l = offset + length
     while (i < l) {
-      putFloatLE(src(i))
+      writeFloatLE(src(i))
       i += 1
     }
     i - offset
@@ -1210,15 +1210,15 @@ abstract class NiolOutput {
 
 
   // ------------------------------------------------
-  // ----- Put operations for arrays of doubles -----
+  // ----- Write operations for arrays of doubles -----
   /**
    * Writes all the doubles of `src`.
    * Uses big-endian for each value.
    * Throws an exception if there isn't enough space for the data.
    *
-   * @param src the array to put
+   * @param src the array to write
    */
-  def putDoubles(src: Array[Double]): Unit = putDoubles(src, 0, src.length)
+  def writeDoubles(src: Array[Double]): Unit = writeDoubles(src, 0, src.length)
 
   /**
    * Writes the content of `src`, starting at index `offset` and ending at index `offset+length-1`.
@@ -1226,13 +1226,13 @@ abstract class NiolOutput {
    * Throws an exception if there isn't enough space for the data or if the array index goes out
    * of bounds.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of doubles to write
    */
-  def putDoubles(src: Array[Double], offset: Int, length: Int): Unit = {
+  def writeDoubles(src: Array[Double], offset: Int, length: Int): Unit = {
     checkAvail(length)
-    putSomeDoubles(src, offset, length)
+    writeSomeDoubles(src, offset, length)
   }
 
   /**
@@ -1240,27 +1240,27 @@ abstract class NiolOutput {
    * Uses big-endian for each value.
    * Returns the actual number of doubles written, possibly zero.
    *
-   * @param src the array to put
+   * @param src the array to write
    * @return the number of doubles written
    */
-  def putSomeDoubles(src: Array[Double]): Int = putSomeDoubles(src, 0, src.length)
+  def writeSomeDoubles(src: Array[Double]): Int = writeSomeDoubles(src, 0, src.length)
 
   /**
    * Writes at most `length` doubles of `src`, starting at index `offset`.
    * Uses big-endian for each value.
    * Returns the actual number of doubles written, possibly zero.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of doubles to write
    * @return the number of doubles written
    */
-  def putSomeDoubles(src: Array[Double], offset: Int, length: Int): Int = {
+  def writeSomeDoubles(src: Array[Double], offset: Int, length: Int): Int = {
     val length = Math.min(writeAvail/8, length)
     var i = offset
     val l = offset + length
     while (i < l) {
-      putDouble(src(i))
+      writeDouble(src(i))
       i += 1
     }
     i - offset
@@ -1271,9 +1271,9 @@ abstract class NiolOutput {
    * Uses little-endian for each value.
    * Throws an exception if there isn't enough space for the data.
    *
-   * @param src the array to put
+   * @param src the array to write
    */
-  def putDoublesLE(src: Array[Double]): Unit = putDoublesLE(src, 0, src.length)
+  def writeDoublesLE(src: Array[Double]): Unit = writeDoublesLE(src, 0, src.length)
 
   /**
    * Writes the content of `src`, starting at index `offset` and ending at index `offset+length-1`.
@@ -1281,13 +1281,13 @@ abstract class NiolOutput {
    * Throws an exception if there isn't enough space for the data or if the array index goes out
    * of bounds.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of doubles to write
    */
-  def putDoublesLE(src: Array[Double], offset: Int, length: Int): Unit = {
+  def writeDoublesLE(src: Array[Double], offset: Int, length: Int): Unit = {
     checkAvail(length)
-    putSomeDoublesLE(src, offset, length)
+    writeSomeDoublesLE(src, offset, length)
   }
 
   /**
@@ -1295,27 +1295,27 @@ abstract class NiolOutput {
    * Uses little-endian for each value.
    * Returns the actual number of doubles written, possibly zero.
    *
-   * @param src the array to put
+   * @param src the array to write
    * @return the number of doubles written
    */
-  def putSomeDoublesLE(src: Array[Double]): Int = putSomeDoublesLE(src, 0, src.length)
+  def writeSomeDoublesLE(src: Array[Double]): Int = writeSomeDoublesLE(src, 0, src.length)
 
   /**
    * Writes at most `length` doubles of `src`, starting at index `offset`.
    * Uses little-endian for each value.
    * Returns the actual number of doubles written, possibly zero.
    *
-   * @param src    the array to put
+   * @param src    the array to write
    * @param offset the first index to use
    * @param length the number of doubles to write
    * @return the number of doubles written
    */
-  def putSomeDoublesLE(src: Array[Double], offset: Int, length: Int): Int = {
+  def writeSomeDoublesLE(src: Array[Double], offset: Int, length: Int): Int = {
     val length = Math.min(writeAvail/8, length)
     var i = offset
     val l = offset + length
     while (i < l) {
-      putDoubleLE(src(i))
+      writeDoubleLE(src(i))
       i += 1
     }
     i - offset
