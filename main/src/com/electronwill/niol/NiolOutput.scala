@@ -18,19 +18,28 @@ abstract class NiolOutput {
   // ------------------------------
   // ----- Output information -----
   /**
-   * Returns the number of bytes that can be written to this NiolOutput.
-   * The result may be underestimated except when it's zero. The result is always >= 0.
+   * The number of bytes that can be written to this NiolOutput.
+   * This number is always >= 0. It may be underestimated except when it's zero, that is, if
+   * `writableBytes == 0` then no byte can be written and `isWritable == false`.
    *
-   * @return n > 0 if can write n bytes, 0 if EOS or full buffer
+   * @return n > 0 if can write n bytes, 0 if closed or full buffer
    */
-  def writeAvail: Int
+  def writableBytes: Int
 
   /***
-   * Returns true if at least one byte can be written to this NiolOutput.
+   * True if a byte can be written to this NiolOutput.
    *
    * @return true if at least one byte can be written, false otherwise
    */
-  def canWrite: Boolean = (writeAvail >= 0)
+  def isWritable: Boolean = (writableBytes >= 0)
+
+  /**
+   * True if this output is closed or has definitively reached its end.
+   * If `isEnded == true` then `isWriteable == false` and `writeAvail == 0`.
+   *
+   * @return true if it's closed or has definitively reached its end, false otherwise
+   */
+  def isEnded: Boolean
 
 
   // --------------------------------
@@ -55,13 +64,13 @@ abstract class NiolOutput {
 
   /** Checks if at least `n` bytes can be written */
   protected[this] def check(nValues: Int, n: Int): Unit = {
-    val avail = writeAvail
+    val avail = writableBytes
     if (avail < n) throw new NotEnoughSpaceException(nValues, n, avail)
   }
 
   /** Checks if at least `n` bytes can be written */
   protected[this] def checkAvail(n: Int): Unit = {
-    val avail = writeAvail
+    val avail = writableBytes
     if (avail < n) throw new NotEnoughSpaceException(n, avail)
   }
 
@@ -79,7 +88,7 @@ abstract class NiolOutput {
    * @param b the byte to write
    */
   def write(b: Byte): Unit = {
-    if (canWrite) _write(b)
+    if (isWritable) _write(b)
     else throw new NotEnoughSpaceException(1, 0)
   }
 
@@ -90,7 +99,7 @@ abstract class NiolOutput {
    * @return true if the byte has been write, false if the output is full
    */
   def tryWrite(b: Byte): Boolean = {
-    if (canWrite) {
+    if (isWritable) {
       _write(b)
       true
     } else {
@@ -388,7 +397,7 @@ abstract class NiolOutput {
       if (value != 0) {
         bits7 |= 0x80
       }
-      if (!canWrite) throw new IncompleteWriteException(1, "VarInt")
+      if (!isWritable) throw new IncompleteWriteException(1, "VarInt")
       _write(bits7)
     } while (value != 0)
   }
@@ -406,7 +415,7 @@ abstract class NiolOutput {
       if (value != 0) {
         bits7 |= 0x80
       }
-      if (!canWrite) throw new IncompleteWriteException(1, "VarLong")
+      if (!isWritable) throw new IncompleteWriteException(1, "VarLong")
       _write(bits7)
     } while (value != 0)
   }
@@ -520,7 +529,7 @@ abstract class NiolOutput {
    * @return the number of bytes read from `src`, or -1 if the end of the stream has been reached
    */
   def writeSome(src: ScatteringByteChannel, maxBytes: Int = TMP_BUFFER_SIZE): Int = {
-    val l = Math.min(maxBytes, writeAvail)
+    val l = Math.min(maxBytes, writableBytes)
     val buff = ByteBuffer.allocate(l)
     val read = src.read(buff)
     if (read > 0) {
@@ -555,7 +564,7 @@ abstract class NiolOutput {
    * @return the number of bytes read from `src`, or -1 if the end of the stream has been reached
    */
   def writeSome(src: InputStream, maxBytes: Int = TMP_BUFFER_SIZE): Int = {
-    val l = Math.min(maxBytes, writeAvail)
+    val l = Math.min(maxBytes, writableBytes)
     val buff = new Array[Byte](l)
     val read = src.read(buff)
     if (read > 0) {
@@ -589,7 +598,7 @@ abstract class NiolOutput {
    * @return the number of bytes that have been write into this output, >= 0
    */
   def writeSome(src: NiolInput, maxBytes: Int = TMP_BUFFER_SIZE): Int = {
-    val l = Math.min(maxBytes, writeAvail)
+    val l = Math.min(maxBytes, writableBytes)
     val buff = new Array[Byte](l)
     val read = src.readSomeBytes(buff)
     if (read > 0) {
@@ -643,7 +652,7 @@ abstract class NiolOutput {
    * @param src the buffer to write
    */
   def writeSome(src: NiolBuffer): Unit = {
-    while (src.canRead && canWrite) {
+    while (src.isReadable && isWritable) {
       writeByte(src.read())
     }
   }
@@ -692,7 +701,7 @@ abstract class NiolOutput {
    * @return the number of bytes written
    */
   def writeSome(src: Array[Byte], offset: Int, length: Int): Int = {
-    val length = Math.min(writeAvail, length)
+    val length = Math.min(writableBytes, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -746,7 +755,7 @@ abstract class NiolOutput {
    * @return the number of booleans written
    */
   def writeSomeBooleans(src: Array[Boolean], offset: Int, length: Int): Int = {
-    val length = Math.min(writeAvail, length)
+    val length = Math.min(writableBytes, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -804,7 +813,7 @@ abstract class NiolOutput {
    * @return the number of shorts written
    */
   def writeSomeShorts(src: Array[Short], offset: Int, length: Int): Int = {
-    val length = Math.min(writeAvail/2, length)
+    val length = Math.min(writableBytes/2, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -859,7 +868,7 @@ abstract class NiolOutput {
    * @return the number of shorts written
    */
   def writeSomeShortsLE(src: Array[Short], offset: Int, length: Int): Int = {
-    val length = Math.min(writeAvail/2, length)
+    val length = Math.min(writableBytes/2, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -917,7 +926,7 @@ abstract class NiolOutput {
    * @return the number of ints written
    */
   def writeSomeInts(src: Array[Int], offset: Int, length: Int): Int = {
-    val length = Math.min(writeAvail/4, length)
+    val length = Math.min(writableBytes/4, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -972,7 +981,7 @@ abstract class NiolOutput {
    * @return the number of ints written
    */
   def writeSomeIntsLE(src: Array[Int], offset: Int, length: Int): Int = {
-    val length = Math.min(writeAvail/4, length)
+    val length = Math.min(writableBytes/4, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -1030,7 +1039,7 @@ abstract class NiolOutput {
    * @return the number of longs written
    */
   def writeSomeLongs(src: Array[Long], offset: Int, length: Int): Int = {
-    val length = Math.min(writeAvail/8, length)
+    val length = Math.min(writableBytes/8, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -1085,7 +1094,7 @@ abstract class NiolOutput {
    * @return the number of longs written
    */
   def writeSomeLongsLE(src: Array[Long], offset: Int, length: Int): Int = {
-    val length = Math.min(writeAvail/8, length)
+    val length = Math.min(writableBytes/8, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -1143,7 +1152,7 @@ abstract class NiolOutput {
    * @return the number of floats written
    */
   def writeSomeFloats(src: Array[Float], offset: Int, length: Int): Int = {
-    val length = Math.min(writeAvail/4, length)
+    val length = Math.min(writableBytes/4, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -1198,7 +1207,7 @@ abstract class NiolOutput {
    * @return the number of floats written
    */
   def writeSomeFloatsLE(src: Array[Float], offset: Int, length: Int): Int = {
-    val length = Math.min(writeAvail/4, length)
+    val length = Math.min(writableBytes/4, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -1256,7 +1265,7 @@ abstract class NiolOutput {
    * @return the number of doubles written
    */
   def writeSomeDoubles(src: Array[Double], offset: Int, length: Int): Int = {
-    val length = Math.min(writeAvail/8, length)
+    val length = Math.min(writableBytes/8, length)
     var i = offset
     val l = offset + length
     while (i < l) {
@@ -1311,7 +1320,7 @@ abstract class NiolOutput {
    * @return the number of doubles written
    */
   def writeSomeDoublesLE(src: Array[Double], offset: Int, length: Int): Int = {
-    val length = Math.min(writeAvail/8, length)
+    val length = Math.min(writableBytes/8, length)
     var i = offset
     val l = offset + length
     while (i < l) {

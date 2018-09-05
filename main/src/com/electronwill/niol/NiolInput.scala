@@ -18,11 +18,19 @@ abstract class NiolInput {
   // ------------------------------
   // ----- Input information -----
   /***
-   * Returns true if at least one byte can be read from this NiolInput.
+   * Checks if a byte can be read from this NiolInput.
    *
    * @return true if at least one byte can be read, false otherwise
    */
-  def canRead: Boolean
+  def isReadable: Boolean
+
+  /**
+   * Checks if this input is closed or has definitively reached its end.
+   * If `isEnded == true` then `isReadable == false`.
+   *
+   * @return true if it's closed or has definitively reached its end, false otherwise
+   */
+  def isEnded: Boolean
 
 
   // --------------------------------
@@ -40,7 +48,7 @@ abstract class NiolInput {
   // ----- Primitive single-value operations -----
   /** Reads a byte */
   def read(): Byte = {
-    if (canRead) _read()
+    if (isReadable) _read()
     else throw new NotEnoughDataException(1, 0)
   }
 
@@ -51,7 +59,7 @@ abstract class NiolInput {
    * @return the byte value in range 0-255, or -1 if the input is empty
    */
   def tryRead(): Int = {
-    if (canRead) {
+    if (isReadable) {
       _read().toInt
     } else {
       -1
@@ -155,7 +163,7 @@ abstract class NiolInput {
     var result: Int = 0
     var read: Int = 0xFF
     while ((read & 0x80) != 0 && shift < maxShift) {
-      if (!canRead) throw new IncompleteReadException(1, "VarLong")
+      if (!isReadable) throw new IncompleteReadException(1, "VarLong")
       read = _read()
       result |= ((read & 0x7F) << shift)
       shift += 7
@@ -170,7 +178,7 @@ abstract class NiolInput {
     var result: Long = 0
     var read: Int = 0xFF
     while ((read & 0x80) != 0 && shift < maxShift) {
-      if (!canRead) throw new IncompleteReadException(1, "VarLong")
+      if (!isReadable) throw new IncompleteReadException(1, "VarLong")
       read = _read()
       result |= ((read & 0x7F) << shift)
       shift += 7
@@ -398,7 +406,7 @@ abstract class NiolInput {
   def readSomeBytes(dst: Array[Byte], offset: Int, length: Int): Int = {
     var i = offset
     val l = offset + length
-    while (i < l && canRead) {
+    while (i < l && isReadable) {
       dst(i) = _read()
       i += 1
     }
