@@ -7,14 +7,14 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.{ByteBuffer, CharBuffer}
 import java.util.UUID
 
-import com.electronwill.niol.buffer.NiolBuffer
+import com.electronwill.niol.buffer.newbuffers.NiolBuffer
 
 /**
  * An advanced output.
  *
  * @author TheElectronWill
  */
-abstract class NiolOutput {
+trait NiolOutput {
   // ------------------------------
   // ----- Output information -----
   /**
@@ -57,10 +57,7 @@ abstract class NiolOutput {
   protected[this] def _write(from: Array[Byte], off: Int, len: Int): Unit
 
   /** Implements write without necessarily checking for available space. */
-  protected[this] def _write(from: ByteBuffer, len: Int): Unit
-
-  /** Implements write without necessarily checking for available space. */
-  protected[this] def _write(from: NiolBuffer, len: Int): Unit
+  protected[niol] def _write(from: ByteBuffer, len: Int): Unit
 
   /** Checks if at least `n` bytes can be written */
   protected[this] def check(nValues: Int, n: Int): Unit = {
@@ -69,13 +66,14 @@ abstract class NiolOutput {
   }
 
   /** Checks if at least `n` bytes can be written */
-  protected[this] def checkAvail(n: Int): Unit = {
+  protected def checkWritable(n: Int): Unit = {
+    // Not protected[this] because it's used in NiolBuffer.scala
     val avail = writableBytes
     if (avail < n) throw new NotEnoughSpaceException(n, avail)
   }
 
   /** Throws an exception if the operation is incomplete */
-  protected[this] def checkComplete(expected: Int, actual: Int, v: String = "value"): Unit = {
+  protected[this] def checkCompleteWrite(expected: Int, actual: Int, v: String = "value"): Unit = {
     if (actual != expected) throw new IncompleteWriteException(expected, actual, v)
   }
 
@@ -131,7 +129,7 @@ abstract class NiolOutput {
    * @param falseValue the byte to write if the boolean is false
    */
   def writeBool(bool: Boolean, trueValue: Byte, falseValue: Byte): Unit = {
-    checkAvail(1)
+    checkWritable(1)
     _write(if (bool) trueValue else falseValue)
   }
 
@@ -179,7 +177,7 @@ abstract class NiolOutput {
    * @param i the value to write
    */
   def writeShort(i: Int): Unit = {
-    checkAvail(2)
+    checkWritable(2)
     _write(i >> 8)
     _write(i)
   }
@@ -190,7 +188,7 @@ abstract class NiolOutput {
    * @param i the value to write
    */
   def writeShortLE(i: Int): Unit = {
-    checkAvail(2)
+    checkWritable(2)
     _write(i)
     _write(i >> 8)
   }
@@ -214,7 +212,7 @@ abstract class NiolOutput {
    * @param m the value to write
    */
   def writeMedium(m: Int): Unit = {
-    checkAvail(3)
+    checkWritable(3)
     _write(m >> 16)
     _write(m >> 8)
     _write(m)
@@ -226,7 +224,7 @@ abstract class NiolOutput {
    * @param m the value to write
    */
   def writeMediumLE(m: Int): Unit = {
-    checkAvail(3)
+    checkWritable(3)
     _write(m)
     _write(m >> 8)
     _write(m >> 16)
@@ -238,7 +236,7 @@ abstract class NiolOutput {
    * @param i the value to write
    */
   def writeInt(i: Int): Unit = {
-    checkAvail(4)
+    checkWritable(4)
     _write(i >> 24)
     _write(i >> 16)
     _write(i >> 8)
@@ -251,7 +249,7 @@ abstract class NiolOutput {
    * @param i the value to write
    */
   def writeIntLE(i: Int): Unit = {
-    checkAvail(4)
+    checkWritable(4)
     _write(i)
     _write(i >> 8)
     _write(i >> 16)
@@ -264,7 +262,7 @@ abstract class NiolOutput {
    * @param l the value to write
    */
   def writeLong(l: Long): Unit = {
-    checkAvail(8)
+    checkWritable(8)
     _write(l >> 56)
     _write(l >> 48)
     _write(l >> 40)
@@ -281,7 +279,7 @@ abstract class NiolOutput {
    * @param l the value to write
    */
   def writeLongLE(l: Long): Unit = {
-    checkAvail(8)
+    checkWritable(8)
     _write(l)
     _write(l >> 8)
     _write(l >> 16)
@@ -298,7 +296,7 @@ abstract class NiolOutput {
    * @param f the value to write
    */
   def writeFloat(f: Float): Unit = {
-    checkAvail(4)
+    checkWritable(4)
     val i = java.lang.Float.floatToIntBits(f)
     _write(i >> 24)
     _write(i >> 16)
@@ -319,7 +317,7 @@ abstract class NiolOutput {
    * @param f the value to write
    */
   def writeFloatLE(f: Float): Unit = {
-    checkAvail(4)
+    checkWritable(4)
     val i =java.lang.Float.floatToIntBits(f)
     _write(i)
     _write(i >> 8)
@@ -340,7 +338,7 @@ abstract class NiolOutput {
    * @param d the value to write
    */
   def writeDouble(d: Double): Unit = {
-    checkAvail(8)
+    checkWritable(8)
     val l = java.lang.Double.doubleToLongBits(d)
     _write(l >> 56)
     _write(l >> 48)
@@ -358,7 +356,7 @@ abstract class NiolOutput {
    * @param d the value to write
    */
   def writeDoubleLE(d: Double): Unit = {
-    checkAvail(8)
+    checkWritable(8)
     val l = java.lang.Double.doubleToLongBits(d)
     _write(l)
     _write(l >> 8)
@@ -376,7 +374,7 @@ abstract class NiolOutput {
    * @param uuid the value to write
    */
   final def writeUUID(uuid: UUID): Unit = {
-    checkAvail(16)
+    checkWritable(16)
     writeLong(uuid.getMostSignificantBits)
     writeLong(uuid.getLeastSignificantBits)
   }
@@ -456,7 +454,7 @@ abstract class NiolOutput {
   final def writeCharSequence(csq: CharSequence, charset: Charset = UTF_8): Unit = {
     val bytes = charset.encode(CharBuffer.wrap(csq))
     val rem = bytes.remaining()
-    checkAvail(rem)
+    checkWritable(rem)
     _write(bytes, rem)
   }
 
@@ -469,7 +467,7 @@ abstract class NiolOutput {
   final def writeVarString(csq: CharSequence, charset: Charset = UTF_8): Unit = {
     val bytes = charset.encode(CharBuffer.wrap(csq))
     val rem = bytes.remaining()
-    checkAvail(rem + 1)
+    checkWritable(rem + 1)
     writeVarInt(rem)
     _write(bytes, rem)
   }
@@ -484,7 +482,7 @@ abstract class NiolOutput {
   final def writeShortString(csq: CharSequence, charset: Charset = UTF_8): Unit = {
     val bytes = charset.encode(CharBuffer.wrap(csq))
     val rem = bytes.remaining()
-    checkAvail(rem + 2)
+    checkWritable(rem + 2)
     writeShort(rem)
     _write(bytes, rem)
   }
@@ -499,7 +497,7 @@ abstract class NiolOutput {
   final def writeShortStringLE(csq: CharSequence, charset: Charset = UTF_8): Unit = {
     val bytes = charset.encode(CharBuffer.wrap(csq))
     val rem = bytes.remaining()
-    checkAvail(rem + 2)
+    checkWritable(rem + 2)
     writeShortLE(rem)
     _write(bytes, rem)
   }
@@ -515,9 +513,9 @@ abstract class NiolOutput {
    * @param length the number of bytes to read from the channel
    */
   def write(src: ScatteringByteChannel, length: Int): Unit = {
-    checkAvail(length)
+    checkWritable(length)
     val actual = writeSome(src, length)
-    checkComplete(length, actual, "byte")
+    checkCompleteWrite(length, actual, "byte")
   }
 
   /**
@@ -550,9 +548,9 @@ abstract class NiolOutput {
    * @param length the number of bytes to read from the stream
    */
   def write(src: InputStream, length: Int): Unit = {
-    checkAvail(length)
+    checkWritable(length)
     val actual = writeSome(src, length)
-    checkComplete(length, actual, "byte")
+    checkCompleteWrite(length, actual, "byte")
   }
 
   /**
@@ -584,9 +582,8 @@ abstract class NiolOutput {
    * @param length the number of bytes to read from the input
    */
   def write(src: NiolInput, length: Int): Unit = {
-    checkAvail(length)
-    val actual = writeSome(src, length)
-    checkComplete(length, actual, "byte")
+    checkWritable(length)
+    src.read(this, length)
   }
 
   /**
@@ -598,14 +595,29 @@ abstract class NiolOutput {
    * @return the number of bytes that have been write into this output, >= 0
    */
   def writeSome(src: NiolInput, maxBytes: Int = TMP_BUFFER_SIZE): Int = {
-    val l = Math.min(maxBytes, writableBytes)
-    val buff = new Array[Byte](l)
-    val read = src.readSomeBytes(buff)
-    if (read > 0) {
-      _write(buff, 0, read)
-    }
+    val length = Math.min(maxBytes, writableBytes)
+    val read = src.readSome(this, length)
     read
   }
+
+
+  // -------------------------------------------
+  // ----- Write operations for NiolBuffers ------
+  /**
+   * Writes all of the given NiolBuffer.
+   * Throws an exception if there isn't enough space for the data.
+   *
+   * @param src the buffer to write
+   */
+  def write(src: NiolBuffer): Unit = write(src, src.readableBytes)
+
+  /**
+   * Writes at most `src.readableBytes` bytes from `src` into this output.
+   * The buffer's read position will be advanced by the number of bytes written to this NiolOutput.
+   *
+   * @param src the buffer to write
+   */
+  def writeSome(src: NiolBuffer): Unit = writeSome(src, src.readableBytes)
 
 
   // -------------------------------------------
@@ -618,7 +630,7 @@ abstract class NiolOutput {
    */
   def write(src: ByteBuffer): Unit = {
     val rem = src.remaining()
-    checkAvail(rem)
+    checkWritable(rem)
     _write(src, rem)
   }
 
@@ -629,33 +641,6 @@ abstract class NiolOutput {
    * @param src the buffer to write
    */
   def writeSome(src: ByteBuffer): Unit
-
-
-  // -------------------------------------------
-  // ----- Write operations for NiolBuffers ------
-  /**
-   * Writes all of the given ByteBuffer.
-   * Throws an exception if there isn't enough space for the data.
-   *
-   * @param src the buffer to write
-   */
-  def write(src: NiolBuffer): Unit = {
-    val ava = src.readAvail
-    checkAvail(ava)
-    _write(src, ava)
-  }
-
-  /**
-   * Writes at most `src.readAvail` bytes from `src` into this output.
-   * The buffer's read position will be advanced by the number of bytes written to this NiolOutput.
-   *
-   * @param src the buffer to write
-   */
-  def writeSome(src: NiolBuffer): Unit = {
-    while (src.isReadable && isWritable) {
-      writeByte(src.read())
-    }
-  }
 
 
   // ----------------------------------------------
@@ -678,7 +663,7 @@ abstract class NiolOutput {
    * @param length the number of bytes to write
    */
   def write(src: Array[Byte], offset: Int, length: Int): Unit = {
-    checkAvail(length)
+    checkWritable(length)
     _write(src, offset, length)
   }
 
@@ -701,14 +686,9 @@ abstract class NiolOutput {
    * @return the number of bytes written
    */
   def writeSome(src: Array[Byte], offset: Int, length: Int): Int = {
-    val length = Math.min(writableBytes, length)
-    var i = offset
-    val l = offset + length
-    while (i < l) {
-      _write(src(i))
-      i += 1
-    }
-    i - offset
+    val len = math.min(writableBytes, length)
+    _write(src, offset, len)
+    len
   }
 
 
@@ -732,7 +712,7 @@ abstract class NiolOutput {
    * @param length the number of booleans to write
    */
   def writeBooleans(src: Array[Boolean], offset: Int, length: Int): Unit = {
-    checkAvail(length)
+    checkWritable(length)
     writeSomeBooleans(src, offset, length)
   }
 
@@ -788,7 +768,7 @@ abstract class NiolOutput {
    * @param length the number of shorts to write
    */
   def writeShorts(src: Array[Short], offset: Int, length: Int): Unit = {
-    checkAvail(length)
+    checkWritable(length)
     writeSomeShorts(src, offset, length)
   }
 
@@ -843,7 +823,7 @@ abstract class NiolOutput {
    * @param length the number of shorts to write
    */
   def writeShortsLE(src: Array[Short], offset: Int, length: Int): Unit = {
-    checkAvail(length)
+    checkWritable(length)
     writeSomeShortsLE(src, offset, length)
   }
 
@@ -901,7 +881,7 @@ abstract class NiolOutput {
    * @param length the number of ints to write
    */
   def writeInts(src: Array[Int], offset: Int, length: Int): Unit = {
-    checkAvail(length)
+    checkWritable(length)
     writeSomeInts(src, offset, length)
   }
 
@@ -956,7 +936,7 @@ abstract class NiolOutput {
    * @param length the number of ints to write
    */
   def writeIntsLE(src: Array[Int], offset: Int, length: Int): Unit = {
-    checkAvail(length)
+    checkWritable(length)
     writeSomeIntsLE(src, offset, length)
   }
 
@@ -1014,7 +994,7 @@ abstract class NiolOutput {
    * @param length the number of longs to write
    */
   def writeLongs(src: Array[Long], offset: Int, length: Int): Unit = {
-    checkAvail(length)
+    checkWritable(length)
     writeSomeLongs(src, offset, length)
   }
 
@@ -1069,7 +1049,7 @@ abstract class NiolOutput {
    * @param length the number of longs to write
    */
   def writeLongsLE(src: Array[Long], offset: Int, length: Int): Unit = {
-    checkAvail(length)
+    checkWritable(length)
     writeSomeLongsLE(src, offset, length)
   }
 
@@ -1127,7 +1107,7 @@ abstract class NiolOutput {
    * @param length the number of floats to write
    */
   def writeFloats(src: Array[Float], offset: Int, length: Int): Unit = {
-    checkAvail(length)
+    checkWritable(length)
     writeSomeFloats(src, offset, length)
   }
 
@@ -1182,7 +1162,7 @@ abstract class NiolOutput {
    * @param length the number of floats to write
    */
   def writeFloatsLE(src: Array[Float], offset: Int, length: Int): Unit = {
-    checkAvail(length)
+    checkWritable(length)
     writeSomeFloatsLE(src, offset, length)
   }
 
@@ -1240,7 +1220,7 @@ abstract class NiolOutput {
    * @param length the number of doubles to write
    */
   def writeDoubles(src: Array[Double], offset: Int, length: Int): Unit = {
-    checkAvail(length)
+    checkWritable(length)
     writeSomeDoubles(src, offset, length)
   }
 
@@ -1295,7 +1275,7 @@ abstract class NiolOutput {
    * @param length the number of doubles to write
    */
   def writeDoublesLE(src: Array[Double], offset: Int, length: Int): Unit = {
-    checkAvail(length)
+    checkWritable(length)
     writeSomeDoublesLE(src, offset, length)
   }
 

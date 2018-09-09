@@ -9,6 +9,8 @@ class BytesStorage(protected[this] var bb: ByteBuffer, private[this] var bufferP
 
   final def capacity: Int = bb.capacity()
 
+  final def bytes: ByteBuffer = bb
+
   def discardNow(): Unit = {
     if (bufferPool != null) {
       bufferPool.putBack(bb)
@@ -22,6 +24,10 @@ class BytesStorage(protected[this] var bb: ByteBuffer, private[this] var bufferP
   def get2(idx: Int): Short = bb.getShort(idx)
   def get4(idx: Int): Int   = bb.getInt(idx)
   def get8(idx: Int): Long  = bb.getLong(idx)
+
+  def get(idx0: Int, to: BytesStorage, off: Int, len: Int): Unit = {
+    to.put(off, this, idx0, len)
+  }
 
   def get(idx0: Int, to: Array[Byte], off: Int, len: Int): Unit = {
     bb.position(idx0)
@@ -46,6 +52,14 @@ class BytesStorage(protected[this] var bb: ByteBuffer, private[this] var bufferP
   def put2(idx: Int, value: Short): Unit = bb.putShort(idx, value)
   def put4(idx: Int, value: Int): Unit   = bb.putInt(idx, value)
   def put8(idx: Int, value: Long): Unit  = bb.putLong(idx, value)
+
+  def put(idx0: Int, from: BytesStorage, off: Int, len: Int): Unit = {
+    bb.position(idx0)
+    val oo = from.bytes
+    oo.position(off).limit(len)
+    bb.put(oo)
+    oo.clear()
+  }
 
   def put(idx0: Int, from: Array[Byte], off: Int, len: Int): Unit = {
     bb.position(idx0)

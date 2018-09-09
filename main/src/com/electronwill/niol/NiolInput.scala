@@ -7,14 +7,14 @@ import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.UUID
 
-import com.electronwill.niol.buffer.NiolBuffer
+import com.electronwill.niol.buffer.newbuffers.NiolBuffer
 
 /**
  * An advanced input.
  *
  * @author TheElectronWill
  */
-abstract class NiolInput {
+trait NiolInput {
   // ------------------------------
   // ----- Input information -----
   /***
@@ -296,7 +296,7 @@ abstract class NiolInput {
    * @param dst the destination
    * @param length the number of bytes to read
    */
-  def read(dst: NiolOutput, length: Int): Unit = dst.put(this, length)
+  def read(dst: NiolOutput, length: Int): Unit
 
   /**
    * Reads at most `maxLength` bytes and put them into `dst`.
@@ -305,7 +305,17 @@ abstract class NiolInput {
    * @param dst the stream to write to
    * @return the number of bytes read from this NiolInput and written to the stream
    */
-  def readSome(dst: NiolOutput, maxLength: Int = 4096): Int = dst.putSome(this, maxLength)
+  def readSome(dst: NiolOutput, maxLength: Int = 4096): Int
+
+  // -------------------------------------------
+  // ----- Put operations for NiolBuffers ------
+  /**
+   * Fills the given NiolBuffer.
+   * Throws an exception if there isn't enough data available.
+   *
+   * @param dst the buffer to fill
+   */
+  def read(dst: NiolBuffer): Unit = read(dst, dst.writableBytes)
 
 
   // -------------------------------------------
@@ -325,25 +335,6 @@ abstract class NiolInput {
    * @param dst the buffer to fill
    */
   def readSome(dst: ByteBuffer): Unit
-
-
-  // -------------------------------------------
-  // ----- Put operations for NiolBuffers ------
-  /**
-   * Fills the given NiolBuffer.
-   * Throws an exception if there isn't enough data available.
-   *
-   * @param dst the buffer to fill
-   */
-  def read(dst: NiolBuffer): Unit
-
-  /**
-   * Reads at most `dst.readAvail` bytes into `dst`.
-   * The buffer's position will be advanced by the number of bytes read from this NiolInput.
-   *
-   * @param dst the buffer to fill
-   */
-  def readSome(dst: NiolBuffer): Unit
 
 
   // ----------------------------------------------
