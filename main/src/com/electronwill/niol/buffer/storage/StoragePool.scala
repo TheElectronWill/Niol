@@ -2,7 +2,8 @@ package com.electronwill.niol.buffer.storage
 import java.lang.ref.ReferenceQueue
 import java.nio.ByteBuffer
 import java.nio.ByteBuffer.{allocate, allocateDirect}
-import java.util
+
+import com.electronwill.niol.utils.RecyclingIndex
 
 /**
  * A pool of [[BytesStorage]]s.
@@ -25,7 +26,7 @@ class StoragePool(
   private[this] val gcRefs = new ReferenceQueue[BytesStorage]
 
   /** Contains the active references, to prevent them to be collected */
-  private[this] val activeRefs = new util.HashSet[StorageReference](poolCapacity)
+  private[this] val activeRefs = new RecyclingIndex[StorageReference](poolCapacity)
 
   /** Contains the free ByteBuffers, which can be given to the user via get() */
   private[this] val freeBuffers = new Array[ByteBuffer](poolCapacity)
@@ -41,7 +42,7 @@ class StoragePool(
       case Some(buffer) ⇒
         val sto = new BytesStorage(buffer, this)
         val ref = new StorageReference(buffer, sto, gcRefs)
-        activeRefs.add(ref)
+        sto.id = activeRefs += ref
         sto
       case None if isMoreAllocationAllowed ⇒ new BytesStorage(allocateBuffer(), this)
       case None ⇒ throw new BufferAllocationException()
@@ -49,7 +50,10 @@ class StoragePool(
   }
 
   /** Puts a storage back into the pool. Used by [[BytesStorage.discardNow]] */
-  private[storage] def putBack(bb: ByteBuffer): Unit = this.synchronized(offerBuffer(bb))
+  private[storage] def putBack(id: Int, bb: ByteBuffer): Unit = this.synchronized {
+    activeRefs.remove(id)
+    offerBuffer(bb)
+  }
 
   /**
    * Polls at least 1 and at most `refProcessingPerGet` collected references.
@@ -94,7 +98,7 @@ class StoragePool(
 
   /** Allocates a new buffer and adds it to the pool. */
   private[this] def addNewBuffer(): Option[ByteBuffer] = {
-    if (activeRefs.size() < poolCapacity) {
+    if (activeRefs.size < poolCapacity) {
       val buffer = allocateBuffer()
       freeBuffers(freeBufferCount + 1) = buffer
       freeBufferCount += 1

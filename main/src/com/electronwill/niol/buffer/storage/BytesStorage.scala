@@ -6,6 +6,7 @@ import java.nio.channels.{ReadableByteChannel, WritableByteChannel}
  * A basic indexed storage of bytes.
  */
 class BytesStorage(protected[this] var bb: ByteBuffer, private[this] var bufferPool: StoragePool) {
+  private[niol] var id: Int = 0
 
   final def capacity: Int = bb.capacity()
 
@@ -13,11 +14,13 @@ class BytesStorage(protected[this] var bb: ByteBuffer, private[this] var bufferP
 
   def discardNow(): Unit = {
     if (bufferPool != null) {
-      bufferPool.putBack(bb)
+      bufferPool.putBack(id, bb)
       bufferPool = null // Prevents this storage from being discarded more than once
     }
     bb = null // Prevents this storage from being used after being discarded
   }
+
+  private[niol] def isDiscarded: Boolean = (bufferPool == null)
 
   // ----- Get -----
   def get1(idx: Int): Byte  = bb.get(idx)
