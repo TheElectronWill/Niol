@@ -23,7 +23,7 @@ class CompositeBufferTest {
 
     assert(composite.capacity == 3 * cap)
     assert(composite.readAvail == 2 * buffA.readAvail + buffB.readAvail)
-    assert(composite.writeAvail == 2 * buffA.writeAvail + buffB.writeAvail)
+    assert(composite.writableBytes == 2 * buffA.writableBytes + buffB.writableBytes)
     printContent(composite.duplicate)
 
     val read = composite.copyRead

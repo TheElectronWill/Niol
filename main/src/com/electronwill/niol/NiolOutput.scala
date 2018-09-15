@@ -7,7 +7,8 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.{ByteBuffer, CharBuffer}
 import java.util.UUID
 
-import com.electronwill.niol.buffer.newbuffers.NiolBuffer
+import com.electronwill.niol.buffer.NiolBuffer
+
 
 /**
  * An advanced output.

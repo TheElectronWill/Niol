@@ -7,7 +7,8 @@ import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.UUID
 
-import com.electronwill.niol.buffer.newbuffers.NiolBuffer
+import com.electronwill.niol.buffer.NiolBuffer
+
 
 /**
  * An advanced input.
@@ -258,7 +259,7 @@ trait NiolInput {
    * Returns the actual number of bytes read, possibly zero.
    *
    * @param dst the channel to write to
-   * @return the number of bytes read from this NiolInput and written to the channel
+   * @return the number of bytes read
    */
   def readSome(dst: GatheringByteChannel, maxBytes: Int = 4096): Int
 

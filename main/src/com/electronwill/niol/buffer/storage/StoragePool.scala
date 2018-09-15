@@ -8,13 +8,23 @@ import com.electronwill.niol.utils.RecyclingIndex
 /**
  * A pool of [[BytesStorage]]s.
  *
+ * ==Automatic storage return==
+ * The pool uses [[java.lang.ref.SoftReference]]s to track the ByteStorages. When a storage is
+ * collected by the GC, its underlying [[java.nio.ByteBuffer]] is returned to the pool.
+ * Thus, a ByteStorage is nothing more than a thin wrapper around a java ByteBuffer,
+ * with automatic pooling management.
+ *
+ * ==Manual storage return==
+ * You can force a ByteStorage to return to the pool by calling its method
+ * [[BytesStorage.discardNow]].
+ *
  * @param poolCapacity            the pool's capacity
  * @param bufferCapacity          the ByteStorages' capacity
  * @param isMoreAllocationAllowed true to allocate new buffer when all the `poolCapacity`
  *                                storages are used, false to throw an exception
  * @param isDirect                true to allocate direct buffers, false to allocate on the heap
  * @param refProcessingPerGet     the maximum number of [[java.lang.ref.PhantomReference]]s to
- *                                collect each time [[BytesStorage.get()]] is called.
+ *                                collect each time [[BytesStorage.get]] is called.
  */
 class StoragePool(
     val poolCapacity: Int,
@@ -22,10 +32,10 @@ class StoragePool(
     val isMoreAllocationAllowed: Boolean,
     val isDirect: Boolean,
     private val refProcessingPerGet: Int = 2) {
-  /** Contains the references of the collected storages (queue filled by the GC) */
+  /** Contains the references of the collected storages (this queue is filled by the GC) */
   private[this] val gcRefs = new ReferenceQueue[BytesStorage]
 
-  /** Contains the active references, to prevent them to be collected */
+  /** Contains the active references, to prevent them to be collected (otherwise gcRefs is empty) */
   private[this] val activeRefs = new RecyclingIndex[StorageReference](poolCapacity)
 
   /** Contains the free ByteBuffers, which can be given to the user via get() */
