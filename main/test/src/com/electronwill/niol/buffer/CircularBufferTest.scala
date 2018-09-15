@@ -1,6 +1,6 @@
 package com.electronwill.niol.buffer
 
-import com.electronwill.niol.buffer.provider.HeapNioAllocator
+import com.electronwill.niol.buffer.storage.BytesStorage
 import org.junit.jupiter.api.{Assertions, Test}
 
 /**
@@ -10,67 +10,65 @@ class CircularBufferTest {
   @Test
   def straightTest(): Unit = {
     val cap = 512
-    val buff = new CircularBuffer(HeapNioAllocator.get(cap))
-    printBuffer(buff)
+    val buff = new CircularBuffer(BytesStorage.allocateHeap(cap))
+    println(buff)
     assert(buff.capacity == cap)
-    assert(buff.readPos == 0 && buff.writePos == 0)
-    assert(buff.readLimit == 0 && buff.writeLimit == cap)
-    assert(buff.readAvail == 0 && buff.writeAvail == cap)
+    assert(buff.readableBytes == 0 && buff.writableBytes == cap)
 
-    buff.putBool(true)
-    buff.putByte(10)
-    buff.putShort(11)
-    buff.putInt(12)
-    buff.putLong(13l)
-    buff.putFloat(14f)
-    buff.putDouble(15d)
-    buff.putString("test")
+    buff.writeBool(true)
+    buff.writeByte(10)
+    buff.writeShort(11)
+    buff.writeInt(12)
+    buff.writeLong(13l)
+    buff.writeFloat(14f)
+    buff.writeDouble(15d)
+    buff.writeString("test")
 
-    printBuffer(buff)
-    assert(buff.readAvail == 32)
-    assert(buff.writeAvail == cap - 32)
+    println(buff)
+    assert(buff.readableBytes == 32)
+    assert(buff.writableBytes == cap - 32)
 
-    assert(buff.getBool())
-    assert(buff.getByte() == 10)
-    assert(buff.getShort() == 11)
-    assert(buff.getInt() == 12)
-    assert(buff.getLong() == 13l)
-    assert(buff.getFloat() == 14f)
-    assert(buff.getDouble() == 15d)
-    assert(buff.getString(4) == "test")
+    assert(buff.readBool())
+    assert(buff.readByte() == 10)
+    assert(buff.readShort() == 11)
+    assert(buff.readInt() == 12)
+    assert(buff.readLong() == 13l)
+    assert(buff.readFloat() == 14f)
+    assert(buff.readDouble() == 15d)
+    assert(buff.readString(4) == "test")
 
-    printBuffer(buff)
+    println(buff)
   }
 
   @Test
   def circularTest(): Unit = {
     val cap = 50
-    val buff = new CircularBuffer(HeapNioAllocator.get(cap))
+    val buff = new CircularBuffer(BytesStorage.allocateHeap(cap))
 
-    putInts(1, 12, buff)
-    printBuffer(buff)
-    assert(buff.readAvail == 48 && buff.writeAvail == cap - 48)
+    writeInts(1, 12, buff)
+    println(buff)
+    assert(buff.readableBytes == 48 && buff.writableBytes == cap - 48)
 
     readInts(1, 10, buff)
-    printBuffer(buff)
+    println(buff)
 
-    putInts(1, 10, buff)
-    printBuffer(buff)
+    writeInts(1, 10, buff)
+    println(buff)
 
     readInts(1, 12, buff)
-    printBuffer(buff)
-    assert(buff.readAvail == 0 && buff.writeAvail == cap)
+    println(buff)
+    assert(buff.readableBytes == 0 && buff.writableBytes == cap)
   }
 
-  private def putInts(v: Int, n: Int, dest: NiolBuffer): Unit = {
+  private def writeInts(v: Int, n: Int, dest: NiolBuffer): Unit = {
     for (i <- 1 to n) {
-      dest.putInt(v)
+      dest.writeInt(v)
     }
   }
 
   private def readInts(v: Int, n: Int, src: NiolBuffer): Unit = {
     for (i <- 1 to n) {
-      Assertions.assertEquals(v, src.getInt())
+      Assertions.assertEquals(v, src.readInt())
     }
   }
 }

@@ -2,53 +2,51 @@ package com.electronwill.niol.buffer
 
 import java.nio.charset.StandardCharsets
 
-import com.electronwill.niol.buffer.provider.HeapNioAllocator
+import com.electronwill.niol.buffer.storage.BytesStorage
 import org.junit.jupiter.api.Test
 
 /**
  * @author TheElectronWill
  */
-class CompositeBufferTest {
+class BiBufferTest {
   @Test
   def test(): Unit = {
     val cap = 512
-    val buffA = new StraightBuffer(HeapNioAllocator.get(cap))
-    val buffB = new StraightBuffer(HeapNioAllocator.get(cap))
+    val buffA = new CircularBuffer(BytesStorage.allocateHeap(cap))
+    val buffB = new CircularBuffer(BytesStorage.allocateHeap(cap))
     populate(buffA, 0)
     populate(buffB, 1)
 
-    val composite = new CompositeBuffer(buffA)
-    composite += buffB
-    composite += buffA.duplicate
+    val composite = new BiBuffer(buffA, buffB)
 
     assert(composite.capacity == 3 * cap)
-    assert(composite.readAvail == 2 * buffA.readAvail + buffB.readAvail)
+    assert(composite.readableBytes == 2 * buffA.readableBytes + buffB.readableBytes)
     assert(composite.writableBytes == 2 * buffA.writableBytes + buffB.writableBytes)
     printContent(composite.duplicate)
 
-    val read = composite.copyRead
-    val read2 = composite.subRead
-    printBuffer(read)
-    printBuffer(read2)
-    assert(read.readAvail == composite.readAvail)
-    assert(read.readAvail == read2.readAvail)
+    val read = composite.copy(BytesStorage.allocateHeap)
+    val read2 = composite.slice()
+    println(read)
+    println(read2)
+    assert(read.readableBytes == composite.readableBytes)
+    assert(read.readableBytes == read2.readableBytes)
     printContent(read)
     printContent(read2)
   }
 
   private def populate(buff: NiolBuffer, k: Int): Unit = {
-    buff.putBool(true)
-    buff.putByte(k + 10)
-    buff.putShort(k + 11)
-    buff.putInt(k + 12)
-    buff.putLong(k + 13)
-    buff.putFloat(k + 14)
-    buff.putDouble(k + 15)
-    buff.putString("test" + k)
+    buff.writeBool(true)
+    buff.writeByte(k + 10)
+    buff.writeShort(k + 11)
+    buff.writeInt(k + 12)
+    buff.writeLong(k + 13)
+    buff.writeFloat(k + 14)
+    buff.writeDouble(k + 15)
+    buff.writeString("test" + k)
   }
 
   private def printContent(composite: NiolBuffer): Unit = {
-    printBuffer(composite)
+    println(composite)
     println("------ Content ------")
     read(composite)
     println("----")
@@ -59,13 +57,13 @@ class CompositeBufferTest {
   }
 
   private def read(buff: NiolBuffer): Unit = {
-    println(buff.getBool())
-    println(buff.getByte())
-    println(buff.getShort())
-    println(buff.getInt())
-    println(buff.getLong())
-    println(buff.getFloat())
-    println(buff.getDouble())
-    println(buff.getString(5, StandardCharsets.UTF_8))
+    println(buff.readBool())
+    println(buff.readByte())
+    println(buff.readShort())
+    println(buff.readInt())
+    println(buff.readLong())
+    println(buff.readFloat())
+    println(buff.readDouble())
+    println(buff.readString(5, StandardCharsets.UTF_8))
   }
 }

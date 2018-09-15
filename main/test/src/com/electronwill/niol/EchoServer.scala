@@ -6,9 +6,9 @@ import java.nio.channels.{SelectionKey, SocketChannel}
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.atomic.AtomicInteger
 
-import com.electronwill.niol.buffer.provider.{DirectNioAllocator, HeapNioAllocator, StageBufferPoolBuilder}
-import com.electronwill.niol.buffer.{NiolBuffer, StraightBuffer}
-import com.electronwill.niol.network.tcp.{ServerChannelInfos => SCI, _}
+import com.electronwill.niol.buffer.storage.{BytesStorage, StagedPools}
+import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer}
+import com.electronwill.niol.network.tcp.{ServerChannelInfos ⇒ SCI, _}
 
 /**
  * @author TheElectronWill
@@ -24,10 +24,11 @@ object EchoServer {
     val port = 3000
 
     // Create a buffer pool
-    val poolBuilder = new StageBufferPoolBuilder
-    poolBuilder.addStage(4000, 10, DirectNioAllocator)
-    poolBuilder.setDefault(HeapNioAllocator)
-    val bufferPool = poolBuilder.build()
+
+    //val pool = poolBuilder.build()
+    val pool = StagedPools().directStage(4000, 10, isMoreAllocationAllowed=true)
+                            .defaultAllocateHeap()
+                            .build()
 
     // Create a ScalableSelector
     val startHandler = () => println("Server started")
@@ -52,7 +53,7 @@ object EchoServer {
         println(s"Client ${clientAttach.clientId} disconnected")
       }
     }
-    selector.listen(port, BufferSettings(150, bufferPool), listener)
+    selector.listen(port, BufferSettings(150, pool), listener)
 
     // Start the server
     selector.start("Echo Server")
@@ -102,27 +103,27 @@ class EchoAttach(sci: SCI[EchoAttach], chan: SocketChannel, key: SelectionKey)
   val clientId = EchoAttach.lastId.getAndIncrement()
 
   override def readHeader(buffer: NiolBuffer): Int = {
-    println(s"[S] available: ${buffer.readAvail}, write: ${buffer.writeAvail}")
-    if (buffer.readAvail < 2) {
+    println(s"[S] available: ${buffer.readableBytes}, write: ${buffer.writableBytes}")
+    if (buffer.readableBytes < 2) {
       -1
     } else {
-      val size = buffer.getShort()
-      println(s"[S] Message size: $size, remaining: ${buffer.readAvail}")
+      val size = buffer.readShort()
+      println(s"[S] Message size: $size, remaining: ${buffer.readableBytes}")
       size
     }
   }
   override def handleData(buffer: NiolBuffer): Unit = {
-    val response = buffer.copyRead
-    println(s"[S] available: ${buffer.readAvail}, response.available: ${response.readAvail}")
+    val response = buffer.copy(BytesStorage.allocateHeap)
+    println(s"[S] available: ${buffer.readableBytes}, response.available: ${response.readableBytes}")
 
-    val message = buffer.getString(buffer.readAvail, StandardCharsets.UTF_8)
+    val message = buffer.readString(buffer.readableBytes, StandardCharsets.UTF_8)
     println(s"[S] Received: (${message.length}) $message")
-    println(s"[S] *available: ${buffer.readAvail}, *response.available: ${response.readAvail}")
+    println(s"[S] *available: ${buffer.readableBytes}, *response.available: ${response.readableBytes}")
     assert(EchoServer.possibleMessages.contains(message))
 
-    val sizeBuffer = new StraightBuffer(DirectNioAllocator.get(2))
-    sizeBuffer.putShort(response.readAvail)
-    println(s"[S] sizeBuffer.readAvail: ${sizeBuffer.readAvail}")
+    val sizeBuffer = new CircularBuffer(BytesStorage.allocateDirect(2))
+    sizeBuffer.writeShort(response.readableBytes)
+    println(s"[S] sizeBuffer.readableBytes: ${sizeBuffer.readableBytes}")
     write(sizeBuffer)
     write(response)
     println("[S] written rep")
