@@ -641,7 +641,10 @@ trait NiolOutput {
    *
    * @param src the buffer to write
    */
-  def writeSome(src: ByteBuffer): Unit
+  def writeSome(src: ByteBuffer): Unit = {
+    val len = math.min(src.remaining(), writableBytes)
+    _write(src, len)
+  }
 
 
   // ----------------------------------------------
