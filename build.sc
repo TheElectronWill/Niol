@@ -12,7 +12,7 @@ trait JUnitTesting extends TestModule {// JUnit 5 tests
 }
 
 object main extends ScalaModule with JUnitTesting with PublishModule {
-  def scalaVersion = "2.12.6"
+  def scalaVersion = "2.12.7"
   def artifactName = "niol"
   def publishVersion = "2.0.0"
   
