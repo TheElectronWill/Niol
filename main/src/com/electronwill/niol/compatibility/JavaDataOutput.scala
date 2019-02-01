@@ -24,7 +24,7 @@ final class JavaDataOutput(private[this] val out: DataOutputStream) extends Niol
 
   // ----- Required implementations -----
   override def isEnded: Boolean = isClosed
-  override def writableBytes: Int = if (closed) Int.MaxValue else 0
+  override def writableBytes: Int = if (closed) 0 else Int.MaxValue
 
   override protected[this] def _write(b: Byte): Unit = out.write(b)
   override protected[this] def _write(from: Array[Byte], off: Int, len: Int): Unit = {
