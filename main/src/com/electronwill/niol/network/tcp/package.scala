@@ -1,7 +1,7 @@
 package com.electronwill.niol.network
 
-import com.electronwill.niol.buffer.BaseBuffer
-
 package object tcp {
-  type BufferTransform = BaseBuffer => BaseBuffer
+  final case class Bytes(array: Array[Byte], length: Int)
+
+  type BytesTransform = Bytes => Bytes
 }

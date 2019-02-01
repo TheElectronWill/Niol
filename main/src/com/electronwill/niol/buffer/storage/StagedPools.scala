@@ -34,7 +34,8 @@ import scala.collection.mutable.ArrayBuffer
  */
 final class StagedPools private[provider] (
     private[this] val stages: Array[StoragePool],
-    private[this] val defaultHandler: Int => BytesStorage) {
+    private[this] val defaultHandler: StorageProvider)
+  extends StorageProvider {
 
   def getPool(minCapacity: Int): Option[StoragePool] = {
     var i = 0
@@ -55,7 +56,7 @@ object StagedPools {
   /** Builds [[com.electronwill.niol.buffer.storage.StagedPools]]*/
   final class Builder {
     private[this] val stages = new ArrayBuffer[StoragePool]
-    private[this] var defaultHandler: Int => BytesStorage = Builder.EXCEPTION_THROWER
+    private[this] var defaultHandler: StorageProvider = Builder.EXCEPTION_THROWER
 
     def stage(pool: StoragePool): this.type = {
       stages += pool
@@ -77,17 +78,17 @@ object StagedPools {
     }
 
     def default(handler: Int => ByteBuffer): this.type = {
-      defaultHandler = cap ⇒ new BytesStorage(handler(cap), null)
+      defaultHandler = cap => new BytesStorage(handler(cap), null)
       this
     }
 
     def defaultAllocateHeap(): this.type = {
-      defaultHandler = cap ⇒ new BytesStorage(ByteBuffer.allocate(cap), null)
+      defaultHandler = cap => new BytesStorage(ByteBuffer.allocate(cap), null)
       this
     }
 
     def defaultAllocateDirect(): this.type = {
-      defaultHandler = cap ⇒ new BytesStorage(ByteBuffer.allocateDirect(cap), null)
+      defaultHandler = cap => new BytesStorage(ByteBuffer.allocateDirect(cap), null)
       this
     }
 
@@ -102,10 +103,9 @@ object StagedPools {
     }
   }
   object Builder {
-    private final val EXCEPTION_THROWER: (Int => BytesStorage) = { capacity =>
+    private final val EXCEPTION_THROWER: (StorageProvider) = { capacity =>
       throw new NoCorrespondingStageException(s"Cannot provide a buffer of size $capacity")
     }
-    def apply(): Builder = new Builder()
   }
   def apply(): Builder = new Builder()
 }

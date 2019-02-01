@@ -49,13 +49,13 @@ class StoragePool(
    */
   def get(): BytesStorage = this.synchronized {
     processCollectedRefs().orElse(pollOrAddBuffer()) match {
-      case Some(buffer) ⇒
+      case Some(buffer) =>
         val sto = new BytesStorage(buffer, this)
         val ref = new StorageReference(buffer, sto, gcRefs)
         sto.id = activeRefs += ref
         sto
-      case None if isMoreAllocationAllowed ⇒ new BytesStorage(allocateBuffer(), this)
-      case None ⇒ throw new BufferAllocationException()
+      case None if isMoreAllocationAllowed => new BytesStorage(allocateBuffer(), this)
+      case None => throw new BufferAllocationException()
     }
   }
 
@@ -86,8 +86,8 @@ class StoragePool(
   private[this] def pollOrAddBuffer(): Option[ByteBuffer] = {
     this.synchronized {
       freeBufferCount match {
-        case 0 ⇒ addNewBuffer()
-        case s ⇒
+        case 0 => addNewBuffer()
+        case s =>
           val buff = freeBuffers(s - 1)
           freeBufferCount -= 1
           Some(buff)

@@ -1,13 +1,13 @@
 package com.electronwill.niol.io
 
-import java.io.{Closeable, IOException}
+import java.io.{Closeable, IOException, OutputStream}
 import java.nio.ByteBuffer
 import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
-import java.nio.file.{Path, StandardOpenOption}
+import java.nio.file.{Files, Path, StandardOpenOption}
 
-import com.electronwill.niol.NiolInput
-import com.electronwill.niol.buffer.provider.BufferProvider
-import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer}
+import com.electronwill.niol.buffer.CircularBuffer
+import com.electronwill.niol.buffer.storage.{BytesStorage, StorageProvider}
+import com.electronwill.niol.{NiolInput, NiolOutput, TMP_BUFFER_SIZE}
 
 /**
  * A NiolInput based on a ByteChannel. The channel must be in blocking mode for the ChannelInput
@@ -15,197 +15,152 @@ import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer}
  *
  * @author TheElectronWill
  */
-final class ChannelInput(
-    private[this] val channel: ScatteringByteChannel,
-    bufferCapacity: Int = 4096,
-    bufferProvider: BufferProvider = BufferProvider.DefaultOffHeapProvider)
-  extends NiolInput
-  with Closeable {
+final class ChannelInput(val channel: ScatteringByteChannel, storage: BytesStorage)
+  extends NiolInput with Closeable {
 
-  private[this] var notEnded = true
-  private[this] val buffer: NiolBuffer = new CircularBuffer(bufferProvider.get(bufferCapacity))
+  private[this] var ended = true
+  private[this] val buffer = new CircularBuffer(storage)
 
-  def this(fc: FileChannel, bufferProvider: BufferProvider) = {
-    this(fc, Math.min(4096, fc.size.toInt), bufferProvider)
+  def this(fc: FileChannel, storage: BytesStorage) = {
+    this(fc, storage)
   }
 
-  def this(fc: FileChannel) = {
-    this(fc, BufferProvider.DefaultOffHeapProvider)
+  def this(fc: FileChannel, f: StorageProvider) = {
+    this(fc, f(math.min(TMP_BUFFER_SIZE, fc.size().toInt)))
   }
 
-  def this(path: Path, bufferProvider: BufferProvider) = {
-    this(FileChannel.open(path, StandardOpenOption.READ), bufferProvider)
+  def this(path: Path, storage: BytesStorage) = {
+    this(FileChannel.open(path, StandardOpenOption.READ), storage)
   }
 
-  def this(path: Path) = {
-    this(path, BufferProvider.DefaultOffHeapProvider)
+  def this(path: Path, f: StorageProvider) = {
+    this(path,
+         f(
+           if (Files.isRegularFile(path)) {
+             math.min(TMP_BUFFER_SIZE, Files.size(path).toInt)
+           } else {
+             TMP_BUFFER_SIZE
+           }
+         ))
   }
 
-  override def canRead: Boolean = notEnded
+  override def isEnded: Boolean = ended
+  override def isReadable: Boolean = !ended
 
   @throws[IOException]
   override def close(): Unit = {
+    ended = true
     channel.close()
   }
 
-  private[niol] def fileTransfer(dest: GatheringByteChannel): Long = {
-    buffer.getBytes(dest)
+  private[niol] def fileTransfer(dst: GatheringByteChannel, maxLen: Int): Long = {
+    buffer.readSome(dst)
     val fileChannel = channel.asInstanceOf[FileChannel]
     val pos = fileChannel.position()
-    val count = fileChannel.size() - pos
-    fileChannel.transferTo(pos, count, dest)
+    fileChannel.transferTo(pos, maxLen, dst)
   }
 
-  private def ensureReadAvail(minAvail: Int): Unit = {
-    if (buffer.readAvail < minAvail) {
+  private def makeReadable(nBytes: Int): Unit = {
+    if (buffer.readableBytes < nBytes) {
       readMore()
     }
   }
 
   private def readMore(): Boolean = {
-    val eos: Boolean = (channel >>: buffer)._2
+    val eos = buffer.writeSome(channel) < 0
     if (eos) {
-      notEnded = false
-      channel.close()
-      //TODO throw exception
+      close()
     }
     eos
   }
 
-  override def getByte(): Byte = {
-    ensureReadAvail(1)
-    buffer.getByte()
+  override def _read(): Byte = {
+    makeReadable(1)
+    buffer.readByte()
   }
 
-  override def getShort(): Short = {
-    ensureReadAvail(2)
-    buffer.getShort()
+  override def readShort(): Short = {
+    makeReadable(2)
+    buffer.readShort()
   }
 
-  override def getChar(): Char = {
-    ensureReadAvail(2)
-    buffer.getChar()
+  override def readChar(): Char = {
+    makeReadable(2)
+    buffer.readChar()
   }
 
-  override def getInt(): Int = {
-    ensureReadAvail(4)
-    buffer.getInt()
+  override def readInt(): Int = {
+    makeReadable(4)
+    buffer.readInt()
   }
 
-  override def getLong(): Long = {
-    ensureReadAvail(8)
-    buffer.getLong()
+  override def readLong(): Long = {
+    makeReadable(8)
+    buffer.readLong()
   }
 
-  override def getFloat(): Float = {
-    ensureReadAvail(4)
-    buffer.getFloat()
+  override def readFloat(): Float = {
+    makeReadable(4)
+    buffer.readFloat()
   }
 
-  override def getDouble(): Double = {
-    ensureReadAvail(8)
-    buffer.getDouble()
+  override def readDouble(): Double = {
+    makeReadable(8)
+    buffer.readDouble()
   }
 
-  override def getBytes(dest: Array[Byte], offset: Int, length: Int): Unit = {
+  override def readBytes(dst: Array[Byte], offset: Int, length: Int): Unit = {
     var remaining = length
     do {
-      if (buffer.readAvail == 0) {
+      if (buffer.readableBytes == 0) {
         readMore()
       }
-      val l = Math.min(remaining, buffer.readAvail)
+      val l = Math.min(remaining, buffer.readableBytes)
       val off = length - remaining
-      buffer.getBytes(dest, off, l)
+      buffer.readBytes(dst, off, l)
       remaining -= l
     } while (remaining > 0)
   }
 
-  override def getBytes(dest: ByteBuffer): Unit = {
+  override def read(dst: ByteBuffer): Unit = {
     do {
-      buffer.getBytes(dest)
-    } while (dest.hasRemaining && readMore())
+      buffer.read(dst)
+    } while (dst.hasRemaining && readMore())
   }
 
-  override def getBytes(dest: NiolBuffer): Unit = {
+  override def read(dst: NiolOutput, length: Int): Unit = {
+    var count = 0
     do {
-      dest.putBytes(buffer)
-    } while (dest.writeAvail > 0 && readMore())
+      val l = math.min(length - count, buffer.readableBytes)
+      buffer.read(dst, l)
+      count += l
+    } while (count < length && readMore())
   }
 
-  override def getBytes(dest: GatheringByteChannel): Int = {
-    if (channel.isInstanceOf[FileChannel] && dest.isInstanceOf[FileChannel]) {
-      fileTransfer(dest).toInt
+  override def readSome(dst: NiolOutput, maxLength: Int): Int = {
+    makeReadable(maxLength)
+    buffer.readSome(dst, maxLength)
+  }
+
+  override def readSome(dst: ByteBuffer): Unit = {
+    makeReadable(dst.remaining())
+    buffer.readSome(dst)
+  }
+
+  override def readSome(dst: OutputStream, maxLength: Int): Int = {
+    makeReadable(maxLength)
+    buffer.readSome(dst, maxLength)
+  }
+
+  override def readSome(dst: GatheringByteChannel, maxBytes: Int): Int = {
+    if (channel.isInstanceOf[FileChannel] && dst.isInstanceOf[FileChannel]) {
+      fileTransfer(dst, maxBytes).toInt
     } else {
       var count = 0
       do {
-        count += buffer.getBytes(dest)
-      } while (readMore())
+        count += buffer.readSome(dst)
+      } while (count < maxBytes && readMore())
       count
     }
-  }
-
-  override def getShorts(dest: Array[Short], offset: Int, length: Int): Unit = {
-    var remaining = length
-    do {
-      if (buffer.readAvail == 0) {
-        readMore()
-      }
-      val l = Math.min(remaining, buffer.readAvail)
-      val offset = length - remaining
-      buffer.getShorts(dest, offset, l)
-      remaining -= l
-    } while (remaining > 0)
-  }
-
-  override def getInts(dest: Array[Int], offset: Int, length: Int): Unit = {
-    var remaining = length
-    do {
-      if (buffer.readAvail == 0) {
-        readMore()
-      }
-      val l = Math.min(remaining, buffer.readAvail)
-      val offset = length - remaining
-      buffer.getInts(dest, offset, l)
-      remaining -= l
-    } while (remaining > 0)
-  }
-
-  override def getLongs(dest: Array[Long], offset: Int, length: Int): Unit = {
-    var remaining = length
-    do {
-      if (buffer.readAvail == 0) {
-        readMore()
-      }
-      val l = Math.min(remaining, buffer.readAvail)
-      val offset = length - remaining
-      buffer.getLongs(dest, offset, l)
-      remaining -= l
-    } while (remaining > 0)
-  }
-
-  override def getFloats(dest: Array[Float], offset: Int, length: Int): Unit = {
-    var remaining = length
-    do {
-      if (buffer.readAvail == 0) {
-        readMore()
-      }
-      val l = Math.min(remaining, buffer.readAvail)
-      val offset = length - remaining
-      buffer.getFloats(dest, offset, l)
-      remaining -= l
-    } while (remaining > 0)
-  }
-
-  override def getDoubles(dest: Array[Double], offset: Int, length: Int): Unit = {
-    var remaining = length
-    do {
-      if (buffer.readAvail == 0) {
-        readMore()
-      }
-      val l = Math.min(remaining, buffer.readAvail)
-      val offset = length - remaining
-      buffer.getDoubles(dest, offset, l)
-      remaining -= l
-    } while (remaining > 0)
   }
 }

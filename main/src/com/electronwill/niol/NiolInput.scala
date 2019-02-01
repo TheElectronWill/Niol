@@ -39,11 +39,6 @@ trait NiolInput {
   /** Implements read without necessarily checking for available data. */
   protected[this] def _read(): Byte
 
-  /** Throws an exception if the operation is incomplete */
-  protected[this] def checkComplete(expected: Int, actual: Int, v: String = "value"): Unit = {
-    if (actual != expected) throw new IncompleteReadException(expected, actual, v)
-  }
-
 
   // ---------------------------------------------
   // ----- Primitive single-value operations -----
@@ -251,7 +246,7 @@ trait NiolInput {
    */
   def read(dst: GatheringByteChannel, length: Int): Unit = {
     val actual = readSome(dst, length)
-    checkComplete(length, actual, "byte")
+    checkCompleteRead(length, actual, "byte")
   }
 
   /**
@@ -275,7 +270,7 @@ trait NiolInput {
    */
   def read(dst: OutputStream, length: Int): Unit = {
     val actual = readSome(dst, length)
-    checkComplete(length, actual, "byte")
+    checkCompleteRead(length, actual, "byte")
   }
 
   /**

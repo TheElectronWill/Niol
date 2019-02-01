@@ -4,15 +4,17 @@ import java.nio.channels.{ReadableByteChannel, WritableByteChannel}
 
 /**
  * A linear, indexed storage of bytes. Based on the java NIO [[ByteBuffer]] for performance.
+ * This class isn't thread-safe.
  */
 class BytesStorage(protected[this] var bb: ByteBuffer, private[this] var pool: StoragePool) {
   /** The storage's id. Makes bufferPool.putBack O(1) */
   private[niol] var id: Int = 0
 
+  /** @return the storage's capacity in bytes */
   final def capacity: Int = bb.capacity()
 
   /** @return the underlying ByteBuffer */
-  final def bytes: ByteBuffer = bb
+  final def byteBuffer: ByteBuffer = bb
 
   /** Returns the storage to the pool. A discarded storage cannot be used anymore. */
   def discardNow(): Unit = {
@@ -67,7 +69,7 @@ class BytesStorage(protected[this] var bb: ByteBuffer, private[this] var pool: S
   /** writes `from[off, off+len[` to `this[idx0, idx0+len[` */
   def put(idx0: Int, from: BytesStorage, off: Int, len: Int): Unit = {
     bb.position(idx0)
-    val oo = from.bytes
+    val oo = from.byteBuffer
     oo.position(off).limit(len)
     bb.put(oo)
     oo.clear()
@@ -94,10 +96,36 @@ class BytesStorage(protected[this] var bb: ByteBuffer, private[this] var pool: S
     nRead
   }
 }
+/** Companion of BytesStorage */
 object BytesStorage {
+  /**
+   * Allocates a new BytesStorage on the heap
+   *
+   * @param capacity the minimal capacity
+   * @return a new BytesStorage of capacity &ge; capacity
+   */
   def allocateHeap(capacity: Int) = wrap(ByteBuffer.allocate(capacity))
 
+  /**
+   * Allocates a new BytesStorage off heap
+   *
+   * @param capacity the minimal capacity
+   * @return a new direct BytesStorage of capacity &ge; capacity
+   */
   def allocateDirect(capacity: Int) = wrap(ByteBuffer.allocateDirect(capacity))
 
-  def wrap(bb: ByteBuffer) = new BytesStorage(bb, null)
+  /**
+   * Creates a new BytesStorage whose content is shared with the given ByteBuffer.
+   *
+   * @param bb ByteBuffer to wrap
+   * @return a new BytesStorage that wraps the given buffer
+   */
+  def wrap(bb: ByteBuffer) = new BytesStorage(bb.clear(), null)
+
+  /**
+   * Creates a new BytesStorage whose
+   * @param ba
+   * @return
+   */
+  def wrap(ba: Array[Byte]) = new BytesStorage(ByteBuffer.wrap(ba), null)
 }

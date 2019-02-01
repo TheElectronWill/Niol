@@ -6,9 +6,9 @@ package com.electronwill.niol
  * @param msg the message
  */
 class NotEnoughSpaceException(msg: String) extends Exception(msg) {
-  def this(required: Int, avail: Int) = this(s"Cannot write $required bytes: writeAvail = $avail")
+  def this(required: Int, avail: Int) = this(s"Cannot write $required bytes: writableBytes = $avail")
   def this(nValues: Int, required: Int, avail: Int) =
-    this(s"Cannot write $nValues value(s) ($required bytes): writeAvail = $avail")
+    this(s"Cannot write $nValues value(s) ($required bytes): writableBytes = $avail")
 }
 
 /**
@@ -17,9 +17,9 @@ class NotEnoughSpaceException(msg: String) extends Exception(msg) {
  * @param msg the message
  */
 class NotEnoughDataException(msg: String) extends Exception(msg) {
-  def this(required: Int, avail: Int) = this(s"Cannot read $required bytes: readAvail = $avail")
+  def this(required: Int, avail: Int) = this(s"Cannot read $required bytes: readableBytes = $avail")
   def this(nValues: Int, required: Int, avail: Int) =
-    this(s"Cannot read $nValues value(s) ($required bytes): readAvail = $avail")
+    this(s"Cannot read $nValues value(s) ($required bytes): readableBytes = $avail")
 }
 
 /**
@@ -31,7 +31,7 @@ class NotEnoughDataException(msg: String) extends Exception(msg) {
 class IncompleteWriteException(msg: String) extends Exception(msg) {
   def this(nValues: Int, v: String = "value") = this(s"Tried to write $nValues $v(s) but couldn't finish")
   def this(expected: Int, actual: Int, v: String = "value") =
-    this(s"Tried to write $expected ${v}s, actually write $actual")
+    this(s"Tried to write $expected ${v}s, actually wrote $actual")
 }
 
 /**

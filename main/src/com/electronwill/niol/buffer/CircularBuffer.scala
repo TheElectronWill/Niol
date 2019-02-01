@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
 import com.electronwill.niol.NiolOutput
-import com.electronwill.niol.buffer.storage.BytesStorage
+import com.electronwill.niol.buffer.storage.{BytesStorage, StorageProvider}
 import com.electronwill.niol.utils.isPositivePowerOfTwo
 
 /**
@@ -85,7 +85,7 @@ final class CircularBuffer private(
   override protected[this] def _read(to: NiolOutput, len: Int): Unit = {
     val p = readpos
     val w = writepos
-    val bb = storage.bytes
+    val bb = storage.byteBuffer
     bb.position(p)
     if (p < w) {
       // [0...p...w...cap-1]
@@ -138,14 +138,14 @@ final class CircularBuffer private(
   }
 
   // ----- Writes -----
-  override protected[this] def _write(b: Byte): Unit = {
+  override protected[niol] def _write(b: Byte): Unit = {
     val p = writepos
     writepos = (p + 1) & capMinus1
     lastOpWrite = true
     storage.put1(p, b)
   }
 
-  override protected[this] def _write(from: Array[Byte], off: Int, len: Int): Unit = {
+  override protected[niol] def _write(from: Array[Byte], off: Int, len: Int): Unit = {
     val p = writepos
     val r = readpos
     if (p < r) {
@@ -164,7 +164,7 @@ final class CircularBuffer private(
     }
     lastOpWrite = true
   }
-  override protected[this] def _write(from: ByteBuffer, len: Int): Unit = {
+  override protected[niol] def _write(from: ByteBuffer, len: Int): Unit = {
     val p = writepos
     val r = readpos
     if (p < r) {
@@ -212,10 +212,10 @@ final class CircularBuffer private(
   }
 
   // ----- Buffer methods -----
-  override def copy(storageSource: Int ⇒ BytesStorage): NiolBuffer = {
+  override def copy(storageSource: StorageProvider): NiolBuffer = {
     val readable = readableBytes
     val bs = storageSource(readable)
-    _read(bs.bytes, readable)
+    _read(bs.byteBuffer, readable)
     new CircularBuffer(bs)
   }
 
@@ -237,5 +237,25 @@ final class CircularBuffer private(
     readpos = 0
     writepos = 0
     lastOpWrite = false
+  }
+
+  override def advance(n: Int): Unit = {
+    val r = readableBytes
+    if (n > r) throw new IndexOutOfBoundsException(s"Cannot advance by $n bytes: only $r readable")
+    readpos = (readpos + n) & capMinus1
+  }
+}
+
+object CircularBuffer {
+  import java.nio.ByteBuffer
+
+  def wrap(bb: ByteBuffer): CircularBuffer = {
+    val sto = BytesStorage.wrap(bb)
+    new CircularBuffer(sto, bb.position(), bb.limit(), true)
+  }
+
+  def wrap(bytes: Array[Byte], readOffset: Int, readLength: Int): CircularBuffer = {
+    val sto = BytesStorage.wrap(ByteBuffer.wrap(bytes, readOffset, readLength))
+    new CircularBuffer(sto, readOffset, readOffset+readLength, true)
   }
 }

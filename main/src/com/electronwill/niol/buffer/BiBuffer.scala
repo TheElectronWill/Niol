@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
 import com.electronwill.niol.NiolOutput
-import com.electronwill.niol.buffer.storage.BytesStorage
+import com.electronwill.niol.buffer.storage.StorageProvider
 
 /**
  * A buffer made of two buffers.
@@ -92,9 +92,9 @@ final class BiBuffer(
   }
 
   // ----- Writes -----
-  override protected[this] def _write(v: Byte): Unit = if (a.isFull) a.write(v) else b.write(v)
+  override protected[niol] def _write(v: Byte): Unit = if (a.isFull) a.write(v) else b.write(v)
 
-  override protected[this] def _write(from: Array[Byte], off: Int, len: Int): Unit = {
+  override protected[niol] def _write(from: Array[Byte], off: Int, len: Int): Unit = {
     if (a.isFull) {
       b.write(from, off, len)
     } else {
@@ -136,12 +136,12 @@ final class BiBuffer(
   }
 
   // ----- Buffer methods -----
-  override def copy(storageSource: Int ⇒ BytesStorage): NiolBuffer = {
+  override def copy(storageSource: StorageProvider): NiolBuffer = {
     val readable = readableBytes
     val bs = storageSource(readable)
-    val bytes = bs.bytes
-    a.readSome(bytes)
-    b.read(bytes)
+    val bb = bs.byteBuffer
+    a.readSome(bb)
+    b.read(bb)
     new CircularBuffer(bs)
   }
 
@@ -170,5 +170,14 @@ final class BiBuffer(
   override def clear(): Unit = {
     a.clear()
     b.clear()
+  }
+
+  override def advance(n: Int): Unit = {
+    val nA = math.min(n, a.readableBytes)
+    val nB = n - nA
+    a.advance(nA)
+    if (nB > 0) {
+      b.advance(nB)
+    }
   }
 }

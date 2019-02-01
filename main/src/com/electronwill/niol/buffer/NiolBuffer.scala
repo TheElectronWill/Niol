@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.GatheringByteChannel
 
 import com.electronwill.niol._
-import com.electronwill.niol.buffer.storage.BytesStorage
+import com.electronwill.niol.buffer.storage.StorageProvider
 
 abstract class NiolBuffer extends NiolInput with NiolOutput {
   /**
@@ -20,7 +20,7 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
    * This number is always >= 0.
    * If `readableBytes == 0` then no byte can be read and `isReadable == false`.
    *
-   * @return
+   * @return n > 0 if can read n bytes, 0 if closed input or empty buffer
    */
   def readableBytes: Int
 
@@ -50,7 +50,7 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
    *
    * @return the copy
    */
-  def copy(storageSource: Int ⇒ BytesStorage): NiolBuffer
+  def copy(storageSource: StorageProvider): NiolBuffer
 
   /**
    * Creates a "slice" that gives a limited access to the next `length` readable bytes.
@@ -87,6 +87,21 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
    */
   def clear(): Unit
 
+  /**
+   * Advances the read position by n bytes, as if n bytes had been read into some destination.
+   *
+   * @param n the number of bytes to skip
+   */
+  def advance(n: Int): Unit
+
+  /**
+   * Creates a new [[BiBuffer]] made of this buffer plus the other buffer, in this order.
+   *
+   * @param other the other buffer
+   * @return a new BiBuffer(thisBuffer, other)
+   */
+  final def +(other: NiolBuffer): BiBuffer = new BiBuffer(this, other)
+
   // ----- Protected operations for reading -----
   /** Implements read without necessarily checking for available space. */
   protected[this] def _read(to: Array[Byte], off: Int, len: Int)
@@ -101,11 +116,6 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
   protected[this] def checkReadable(n: Int): Unit = {
     val avail = readableBytes
     if (avail < n) throw new NotEnoughDataException(n, avail)
-  }
-
-  /** Throws an exception if the operation is incomplete */
-  protected[this] def checkCompleteRead(expected: Int, actual: Int, v: String = "value"): Unit = {
-    if (actual != expected) throw new IncompleteReadException(expected, actual, v)
   }
 
   // ----- Reads -----
@@ -161,7 +171,19 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
     _read(dst, writable)
   }
 
-  // ----- toString -----
+  // ----- toSomething -----
+  /**
+   * Reads all the readable bytes of this buffer into a new byte array.
+   *
+   * @return the byte array containing all the bytes read
+   */
+  def toArray(): Array[Byte] = {
+    val len = readableBytes
+    val array = new Array[Byte](len)
+    _read(array, 0, len)
+    array
+  }
+
   override def toString: String = {
     s"""$getClass(capacity: $capacity,
        | isEmpty: $isEmpty,
