@@ -4,7 +4,7 @@ import mill.scalalib.publish._
 import coursier.maven.MavenRepository
 
 trait JUnitTesting extends TestModule {// JUnit 5 tests
-  def ivyDeps = Agg(ivy"net.aichler:jupiter-interface:0.7.0")
+  def ivyDeps = Agg(ivy"net.aichler:jupiter-interface:0.8.1")
   def testFrameworks = Seq("net.aichler.jupiter.api.JupiterFramework")
   def repositories = super.repositories ++ Seq(
     MavenRepository("https://jcenter.bintray.com")
@@ -12,7 +12,7 @@ trait JUnitTesting extends TestModule {// JUnit 5 tests
 }
 
 object main extends ScalaModule with JUnitTesting with PublishModule {
-  def scalaVersion = "2.12.7"
+  def scalaVersion = "2.12.8"
   def artifactName = "niol"
   def publishVersion = "2.0.0"
   
