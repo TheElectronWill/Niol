@@ -102,6 +102,8 @@ class EchoAttach(sci: SCI[EchoAttach], chan: SocketChannel, key: SelectionKey)
 
   val clientId = EchoAttach.lastId.getAndIncrement()
 
+  override protected def writeHeader(data: NiolBuffer, output: NiolBuffer): Unit = ???
+
   override def readHeader(buffer: NiolBuffer): Int = {
     println(s"[S] available: ${buffer.readableBytes}, write: ${buffer.writableBytes}")
     if (buffer.readableBytes < 2) {

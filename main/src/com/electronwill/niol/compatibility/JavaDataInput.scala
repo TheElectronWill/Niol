@@ -29,7 +29,7 @@ final class JavaDataInput(private[this] val in: DataInputStream) extends NiolInp
   override def isReadable: Boolean = nextByte >= 0
   override def isEnded: Boolean = nextByte < 0 || closed
 
-  override def _read(): Byte = tryRead().toByte
+  override protected[niol] def _read(): Byte = tryRead().toByte
 
   override def tryRead(): Int = {
     val read = nextByte
@@ -76,7 +76,7 @@ final class JavaDataInput(private[this] val in: DataInputStream) extends NiolInp
   }
 
   override def readSome(dst: ByteBuffer): Unit = {
-    if (isEnded) return 0
+    if (isEnded) return
     val tmp = new Array[Byte](dst.remaining())
     val read = in.read(tmp)
     if (read < 0) {

@@ -32,7 +32,7 @@ import scala.collection.mutable.ArrayBuffer
  *
  * @param stages The pool stages, ordered by ascending capacity
  */
-final class StagedPools private[provider] (
+final class StagedPools private[storage] (
     private[this] val stages: Array[StoragePool],
     private[this] val defaultHandler: StorageProvider)
   extends StorageProvider {
@@ -48,7 +48,7 @@ final class StagedPools private[provider] (
   }
 
   def getStorage(minCapacity: Int): BytesStorage = {
-    getPool(minCapacity).map(_.get()).getOrElse(defaultHandler(minCapacity))
+    getPool(minCapacity).map(_.get()).getOrElse(defaultHandler.getStorage(minCapacity))
   }
 }
 

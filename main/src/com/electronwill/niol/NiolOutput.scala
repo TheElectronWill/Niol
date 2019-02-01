@@ -63,13 +63,13 @@ trait NiolOutput {
   protected[niol] def _write(from: ByteBuffer, len: Int): Unit
 
   /** Checks if at least `n` bytes can be written */
-  protected[this] def check(nValues: Int, n: Int): Unit = {
+  protected[niol] def check(nValues: Int, n: Int): Unit = {
     val avail = writableBytes
     if (avail < n) throw new NotEnoughSpaceException(nValues, n, avail)
   }
 
   /** Checks if at least `n` bytes can be written */
-  protected[this] def checkWritable(n: Int): Unit = {
+  protected[niol] def checkWritable(n: Int): Unit = {
     // Not protected[this] because it's used in NiolBuffer.scala
     val avail = writableBytes
     if (avail < n) throw new NotEnoughSpaceException(n, avail)
@@ -551,6 +551,15 @@ trait NiolOutput {
   }
 
   /**
+   * Writes some bytes from `src`.
+   * Returns the actual number of bytes written, possibly zero.
+   *
+   * @param src    the stream providing the data
+   * @return the number of bytes read from `src`, or -1 if the end of the stream has been reached
+   */
+  def writeSome(src: InputStream): Int =  writeSome(src, TMP_BUFFER_SIZE)
+
+  /**
    * Writes at most `maxBytes` bytes from `src`.
    * Returns the actual number of bytes written, possibly zero.
    *
@@ -558,7 +567,7 @@ trait NiolOutput {
    * @param maxBytes the maximum number of bytes to read from the channel
    * @return the number of bytes read from `src`, or -1 if the end of the stream has been reached
    */
-  def writeSome(src: InputStream, maxBytes: Int = TMP_BUFFER_SIZE): Int = {
+  def writeSome(src: InputStream, maxBytes: Int): Int = {
     val l = Math.min(maxBytes, writableBytes)
     val buff = new Array[Byte](l)
     val read = src.read(buff)
@@ -584,6 +593,15 @@ trait NiolOutput {
   }
 
   /**
+   * Writes some bytes from `src`.
+   * Returns the actual number of bytes written, possibly zero.
+   *
+   * @param src    the NiolInput providing the data
+   * @return the number of bytes that have been write into this output, >= 0
+   */
+  def writeSome(src: NiolInput): Int = writeSome(src, TMP_BUFFER_SIZE)
+
+  /**
    * Writes at most `maxBytes` bytes from `src`.
    * Returns the actual number of bytes written, possibly zero.
    *
@@ -591,7 +609,7 @@ trait NiolOutput {
    * @param maxBytes the maximum number of bytes to read from the channel
    * @return the number of bytes that have been write into this output, >= 0
    */
-  def writeSome(src: NiolInput, maxBytes: Int = TMP_BUFFER_SIZE): Int = {
+  def writeSome(src: NiolInput, maxBytes: Int): Int = {
     val length = Math.min(maxBytes, writableBytes)
     val read = src.readSome(this, length)
     read
@@ -1290,9 +1308,9 @@ trait NiolOutput {
    * @return the number of doubles written
    */
   def writeSomeDoublesLE(src: Array[Double], offset: Int, length: Int): Int = {
-    val length = Math.min(writableBytes/8, length)
+    val len = Math.min(writableBytes/8, length)
     var i = offset
-    val l = offset + length
+    val l = offset + len
     while (i < l) {
       writeDoubleLE(src(i))
       i += 1

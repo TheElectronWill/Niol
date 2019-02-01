@@ -113,7 +113,7 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
   protected[this] def _read(to: NiolOutput, len: Int)
 
   /** Checks if at least `n` bytes can be written */
-  protected[this] def checkReadable(n: Int): Unit = {
+  protected[niol] def checkReadable(n: Int): Unit = {
     val avail = readableBytes
     if (avail < n) throw new NotEnoughDataException(n, avail)
   }

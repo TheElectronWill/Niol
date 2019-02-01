@@ -256,7 +256,7 @@ trait NiolInput {
    * @param dst the channel to write to
    * @return the number of bytes read
    */
-  def readSome(dst: GatheringByteChannel, maxBytes: Int = 4096): Int
+  def readSome(dst: GatheringByteChannel, maxBytes: Int = TMP_BUFFER_SIZE): Int
 
 
   // --------------------------------------
@@ -274,13 +274,22 @@ trait NiolInput {
   }
 
   /**
+   * Reads some bytes and put them into `dst`.
+   * Returns the actual number of bytes read, possibly zero.
+   *
+   * @param dst the stream to write to
+   * @return the number of bytes read from this NiolInput and written to the stream
+   */
+  def readSome(dst: OutputStream): Int = readSome(dst, TMP_BUFFER_SIZE)
+
+  /**
    * Reads at most `maxLength` bytes and put them into `dst`.
    * Returns the actual number of bytes read, possibly zero.
    *
    * @param dst the stream to write to
    * @return the number of bytes read from this NiolInput and written to the stream
    */
-  def readSome(dst: OutputStream, maxLength: Int = 4096): Int
+  def readSome(dst: OutputStream, maxLength: Int): Int
 
 
   // ------------------------------------------
@@ -301,7 +310,16 @@ trait NiolInput {
    * @param dst the stream to write to
    * @return the number of bytes read from this NiolInput and written to the stream
    */
-  def readSome(dst: NiolOutput, maxLength: Int = 4096): Int
+  def readSome(dst: NiolOutput): Int = readSome(dst, TMP_BUFFER_SIZE)
+
+  /**
+   * Reads at most `maxLength` bytes and put them into `dst`.
+   * Returns the actual number of bytes read, possibly zero.
+   *
+   * @param dst the stream to write to
+   * @return the number of bytes read from this NiolInput and written to the stream
+   */
+  def readSome(dst: NiolOutput, maxLength: Int): Int
 
   // -------------------------------------------
   // ----- Put operations for NiolBuffers ------

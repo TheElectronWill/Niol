@@ -138,7 +138,7 @@ final class BiBuffer(
   // ----- Buffer methods -----
   override def copy(storageSource: StorageProvider): NiolBuffer = {
     val readable = readableBytes
-    val bs = storageSource(readable)
+    val bs = storageSource.getStorage(readable)
     val bb = bs.byteBuffer
     a.readSome(bb)
     b.read(bb)

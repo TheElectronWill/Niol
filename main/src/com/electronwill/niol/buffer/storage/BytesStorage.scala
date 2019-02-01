@@ -120,7 +120,10 @@ object BytesStorage {
    * @param bb ByteBuffer to wrap
    * @return a new BytesStorage that wraps the given buffer
    */
-  def wrap(bb: ByteBuffer) = new BytesStorage(bb.clear(), null)
+  def wrap(bb: ByteBuffer) = {
+    bb.clear()
+    new BytesStorage(bb, null)
+  }
 
   /**
    * Creates a new BytesStorage whose

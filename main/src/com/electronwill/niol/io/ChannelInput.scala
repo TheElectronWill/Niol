@@ -21,21 +21,17 @@ final class ChannelInput(val channel: ScatteringByteChannel, storage: BytesStora
   private[this] var ended = true
   private[this] val buffer = new CircularBuffer(storage)
 
-  def this(fc: FileChannel, storage: BytesStorage) = {
-    this(fc, storage)
-  }
-
-  def this(fc: FileChannel, f: StorageProvider) = {
-    this(fc, f(math.min(TMP_BUFFER_SIZE, fc.size().toInt)))
+  def this(fc: FileChannel, prov: StorageProvider) = {
+    this(fc, prov.getStorage(math.min(TMP_BUFFER_SIZE, fc.size().toInt)))
   }
 
   def this(path: Path, storage: BytesStorage) = {
     this(FileChannel.open(path, StandardOpenOption.READ), storage)
   }
 
-  def this(path: Path, f: StorageProvider) = {
+  def this(path: Path, prov: StorageProvider) = {
     this(path,
-         f(
+         prov.getStorage(
            if (Files.isRegularFile(path)) {
              math.min(TMP_BUFFER_SIZE, Files.size(path).toInt)
            } else {
@@ -74,7 +70,7 @@ final class ChannelInput(val channel: ScatteringByteChannel, storage: BytesStora
     eos
   }
 
-  override def _read(): Byte = {
+  override protected[niol] def _read(): Byte = {
     makeReadable(1)
     buffer.readByte()
   }

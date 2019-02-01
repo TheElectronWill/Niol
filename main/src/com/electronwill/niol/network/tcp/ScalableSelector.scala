@@ -1,9 +1,7 @@
 package com.electronwill.niol.network.tcp
 
 import java.net.InetSocketAddress
-import java.nio.channels.{SelectionKey, Selector, ServerSocketChannel, SocketChannel}
-
-import com.electronwill.niol.buffer.provider.BufferProvider
+import java.nio.channels.{SelectionKey, Selector, ServerSocketChannel}
 
 import scala.collection.mutable
 

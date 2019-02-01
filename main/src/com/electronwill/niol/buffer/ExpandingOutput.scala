@@ -60,8 +60,8 @@ final class ExpandingOutput(
   override def isEnded: Boolean = false
   override def isWritable: Boolean = true
 
-  override protected def check(nValues: Int, n: Int): Unit = {}
-  override protected def checkWritable(n: Int): Unit = {}
+  override protected[niol] def check(nValues: Int, n: Int): Unit = {}
+  override protected[niol] def checkWritable(n: Int): Unit = {}
 
   override protected[niol] def _write(b: Byte): Unit = {
     if (!current.isWritable) expand(minBlockSize)

@@ -19,9 +19,9 @@ class BiBufferTest {
 
     val composite = new BiBuffer(buffA, buffB)
 
-    assert(composite.capacity == 3 * cap)
-    assert(composite.readableBytes == 2 * buffA.readableBytes + buffB.readableBytes)
-    assert(composite.writableBytes == 2 * buffA.writableBytes + buffB.writableBytes)
+    assert(composite.capacity == 2 * cap)
+    assert(composite.readableBytes == buffA.readableBytes + buffB.readableBytes)
+    assert(composite.writableBytes == buffA.writableBytes + buffB.writableBytes)
     printContent(composite.duplicate)
 
     val read = composite.copy(BytesStorage.allocateHeap)

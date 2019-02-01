@@ -100,7 +100,7 @@ abstract class HAttach[A <: HAttach[A]] (
       // 1-read
       val bb = readStorage.byteBuffer
       eos = (channel.read(bb) < 0)
-      val length = bb.position
+      val length = bb.position()
       val byteArray =
         if (bb.hasArray) {
           bb.array
@@ -125,7 +125,7 @@ abstract class HAttach[A <: HAttach[A]] (
           } else if (packetBuffer.capacity < packetLength) {
             // The buffer is too small => create an additional buffer
             val additionalCapacity = packetLength - packetBuffer.capacity
-            val additionalStorage = packetBufferProvider(additionalCapacity)
+            val additionalStorage = packetBufferProvider.getStorage(additionalCapacity)
             // Creates a CompositeBuffer without copying the data
             packetBuffer = packetBufferBase + new CircularBuffer(additionalStorage)
             // Attempts to fill the buffer -- tail recursive call!

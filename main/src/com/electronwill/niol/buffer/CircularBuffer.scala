@@ -214,7 +214,7 @@ final class CircularBuffer private(
   // ----- Buffer methods -----
   override def copy(storageSource: StorageProvider): NiolBuffer = {
     val readable = readableBytes
-    val bs = storageSource(readable)
+    val bs = storageSource.getStorage(readable)
     _read(bs.byteBuffer, readable)
     new CircularBuffer(bs)
   }

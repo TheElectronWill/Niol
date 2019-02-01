@@ -30,7 +30,7 @@ class NotEnoughDataException(msg: String) extends Exception(msg) {
  */
 class IncompleteWriteException(msg: String) extends Exception(msg) {
   def this(nValues: Int, v: String = "value") = this(s"Tried to write $nValues $v(s) but couldn't finish")
-  def this(expected: Int, actual: Int, v: String = "value") =
+  def this(expected: Int, actual: Int, v: String) =
     this(s"Tried to write $expected ${v}s, actually wrote $actual")
 }
 
@@ -42,5 +42,5 @@ class IncompleteWriteException(msg: String) extends Exception(msg) {
  */
 class IncompleteReadException(msg: String) extends Exception(msg) {
   def this(nValues: Int, v: String = "value") = this(s"Tried to read $nValues $v(s) but couldn't finish")
-  def this(expected: Int, actual: Int, v: String = "value") =
+  def this(expected: Int, actual: Int, v: String) =
     this(s"Tried to read $expected ${v}s, actually got $actual")}

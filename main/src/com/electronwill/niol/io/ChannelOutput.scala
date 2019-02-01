@@ -21,21 +21,17 @@ final class ChannelOutput(val channel: GatheringByteChannel, storage: BytesStora
   private[this] var closed = true
   private[this] val buffer = new CircularBuffer(storage)
 
-  def this(fc: FileChannel, storage: BytesStorage) = {
-    this(fc, storage)
-  }
-
-  def this(fc: FileChannel, f: StorageProvider) = {
-    this(fc, f(math.min(TMP_BUFFER_SIZE, fc.size().toInt)))
+  def this(fc: FileChannel, prov: StorageProvider) = {
+    this(fc, prov.getStorage(math.min(TMP_BUFFER_SIZE, fc.size().toInt)))
   }
 
   def this(path: Path, storage: BytesStorage) = {
     this(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE), storage)
   }
 
-  def this(path: Path, f: StorageProvider) = {
+  def this(path: Path, prov: StorageProvider) = {
     this(path,
-      f(
+      prov.getStorage(
         if (Files.isRegularFile(path)) {
           math.min(TMP_BUFFER_SIZE, Files.size(path).toInt)
         } else {
@@ -64,12 +60,12 @@ final class ChannelOutput(val channel: GatheringByteChannel, storage: BytesStora
     }
   }
 
-  override def _write(b: Byte): Unit = {
+  override protected[niol] def _write(b: Byte): Unit = {
     makeWritable(1)
     buffer.write(b)
   }
 
-  override protected[this] def _write(from: Array[Byte], off: Int, len: Int): Unit = {
+  override protected[niol] def _write(from: Array[Byte], off: Int, len: Int): Unit = {
     flush()
     val bb = ByteBuffer.wrap(from, off, len)
     channel.write(bb)
