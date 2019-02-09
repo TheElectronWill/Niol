@@ -119,13 +119,16 @@ abstract class HAttach[A <: HAttach[A]] (
         packetLength = readHeader(packetBuffer)
         if (packetLength >= 0) {
           state = HInputState.READ_DATA
+
           if (packetBuffer.readableBytes >= packetLength) {
             // All the data is available => handle it
             handleDataView()
+
           } else if (packetBuffer.capacity < packetLength) {
             // The buffer is too small => create an additional buffer
             val additionalCapacity = packetLength - packetBuffer.capacity
-            val additionalStorage = packetBufferProvider.getStorage(additionalCapacity)
+            additionalStorage = packetBufferProvider.getStorage(additionalCapacity)
+
             // Creates a CompositeBuffer without copying the data
             packetBuffer = packetBufferBase + CircularBuffer(additionalStorage)
 
@@ -150,11 +153,14 @@ abstract class HAttach[A <: HAttach[A]] (
   protected def readHeader(buffer: NiolBuffer): Int
 
   /**
-   * Writes a packet's header.
+   * Constructs a packet's header.
+   * This method should NOT advance the read position of the `data` buffer. If you need to read
+   * the packet's content, you should use [[NiolBuffer.duplicate]] first.
+   *
    * @param data the packet's content
-   * @param output where to write the header
+   * @return a buffer containing the header's bytes
    */
-  protected def writeHeader(data: NiolBuffer, output: NiolBuffer): Unit
+  protected def makeHeader(data: NiolBuffer): NiolBuffer
 
   protected[network] final def writeMore(): Boolean = {
     writeQueue.synchronized { // Sync protects the queue and the consistency of the interestOps
@@ -182,7 +188,9 @@ abstract class HAttach[A <: HAttach[A]] (
    * Writes some data to the client. The data isn't written immediately but at some time in the
    * future. Therefore this method isn't blocking.
    *
-   * @param buffer the data to write
+   * This method constructs a header and prepends it to the data.
+   *
+   * @param buffer the data to write, not prefixed by a header
    */
   final def write(buffer: NiolBuffer): Unit = write(buffer, null)
 
@@ -190,10 +198,36 @@ abstract class HAttach[A <: HAttach[A]] (
    * Asynchronously writes some data to the client, and executes the given completion handler
    * when the operation completes.
    *
-   * @param buffer            the data to write
+   * This method constructs a header and prepends it to the data.
+   *
+   * @param buffer            the data to write, not prefixed by a header
    * @param completionHandler the handler to execute after the operation
    */
   final def write(buffer: NiolBuffer, completionHandler: Runnable): Unit = {
+    val withHeader = makeHeader(buffer) + buffer
+    writeRaw(withHeader, completionHandler)
+  }
+
+  /**
+   * Writes some data to the client. The data isn't written immediately but at some time in the
+   * future. Therefore this method isn't blocking.
+   *
+   * This method doesn't construct a header, you need to provide it.
+   *
+   * @param buffer the data to write, prefixed by a header
+   */
+  final def writeRaw(buffer: NiolBuffer): Unit = writeRaw(buffer, null)
+
+  /**
+   * Asynchronously writes some data to the client, and executes the given completion handler
+   * when the operation completes.
+   *
+   * This method doesn't construct a header, you need to provide it.
+   *
+   * @param buffer            the data to write, prefixed by a header
+   * @param completionHandler the handler to execute after the operation
+   */
+  final def writeRaw(buffer: NiolBuffer, completionHandler: Runnable): Unit = {
     val finalBuffer =
       if (wTransform == null) {
         // No transformation => use the buffer as is
@@ -207,7 +241,7 @@ abstract class HAttach[A <: HAttach[A]] (
       }
     writeQueue.synchronized { // Sync protects the queue and the consistency of the interestOps
       if (writeQueue.isEmpty) {
-        finalBuffer.readSome(channel, finalBuffer.readableBytes)
+        finalBuffer.readSome(channel)
         if (finalBuffer.readableBytes > 0) {
           // Incomplete write => continue the operation as soon as possible
           writeQueue.offer((finalBuffer, completionHandler))
@@ -236,7 +270,8 @@ abstract class HAttach[A <: HAttach[A]] (
 
       // Discards the additional buffer, if any
       if (packetBuffer ne packetBufferBase) {
-        additionalStorage.discardNow()
+        // additionalStorage.discardNow() should NOT be called here because handleData() might
+        // have duplicated the buffer and used that duplicate elsewhere
         additionalStorage = null
         packetBuffer = packetBufferBase
         packetBuffer.clear()
