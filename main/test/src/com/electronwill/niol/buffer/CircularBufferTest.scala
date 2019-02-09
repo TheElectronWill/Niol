@@ -1,7 +1,8 @@
 package com.electronwill.niol.buffer
 
 import com.electronwill.niol.buffer.storage.BytesStorage
-import org.junit.jupiter.api.{Assertions, Test}
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions._
 
 /**
  * @author TheElectronWill
@@ -12,8 +13,9 @@ class CircularBufferTest {
     val cap = 512
     val buff = CircularBuffer(BytesStorage.allocateHeap(cap))
     println(buff)
-    assert(buff.capacity == cap)
-    assert(buff.readableBytes == 0 && buff.writableBytes == cap)
+    assertEquals(cap, buff.capacity)
+    assertEquals(0, buff.readableBytes)
+    assertEquals(cap, buff.writableBytes)
 
     buff.writeBool(true)
     buff.writeByte(10)
@@ -25,17 +27,17 @@ class CircularBufferTest {
     buff.writeString("test")
 
     println(buff)
-    assert(buff.readableBytes == 32)
-    assert(buff.writableBytes == cap - 32)
+    assertEquals(32, buff.readableBytes)
+    assertEquals(cap - 32, buff.writableBytes)
 
-    assert(buff.readBool())
-    assert(buff.readByte() == 10)
-    assert(buff.readShort() == 11)
-    assert(buff.readInt() == 12)
-    assert(buff.readLong() == 13l)
-    assert(buff.readFloat() == 14f)
-    assert(buff.readDouble() == 15d)
-    assert(buff.readString(4) == "test")
+    assertTrue(buff.readBool())
+    assertEquals(10, buff.readByte())
+    assertEquals(11, buff.readShort())
+    assertEquals(12, buff.readInt())
+    assertEquals(13l, buff.readLong())
+    assertEquals(14f, buff.readFloat())
+    assertEquals(15d, buff.readDouble())
+    assertEquals("test", buff.readString(4))
 
     println(buff)
   }
@@ -78,7 +80,41 @@ class CircularBufferTest {
     assertEquals(0, buff.readableBytes)
     assertEquals(cap, buff.writableBytes)
   }
+
+  @Test
+  def longTest(): Unit = {
+    val buff = CircularBuffer(BytesStorage.allocateHeap(48))
+    buff.writeLong(1789569706)
+    buff.writeLong(4624633867356078080L)
+    buff.writeLong(-1234567891011121314L)
+    buff.writeLong(-1L)
+    buff.writeLong(+1L)
+    buff.writeInt(0)
+    buff.writeInt(123)
+    assertEquals(1789569706, buff.readLong())
+    assertEquals(4624633867356078080L, buff.readLong())
+    assertEquals(-1234567891011121314L, buff.readLong())
+    assertEquals(-1, buff.readLong())
+    assertEquals(+1, buff.readLong())
+    assertEquals(123, buff.readLong())
   }
+
+  @Test
+  def intTest(): Unit = {
+    val buff = CircularBuffer(BytesStorage.allocateHeap(24))
+    buff.writeInt(1789569706)
+    buff.writeInt(462463386)
+    buff.writeInt(-12345678)
+    buff.writeInt(-1)
+    buff.writeInt(+1)
+    buff.writeShort(0)
+    buff.writeShort(123)
+    assertEquals(1789569706, buff.readInt())
+    assertEquals(462463386, buff.readInt())
+    assertEquals(-12345678, buff.readInt())
+    assertEquals(-1, buff.readInt())
+    assertEquals(+1, buff.readInt())
+    assertEquals(123, buff.readInt())
   }
 
   private def writeInts(v: Int, n: Int, dest: NiolBuffer): Unit = {

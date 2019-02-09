@@ -4,6 +4,8 @@ import java.nio.charset.StandardCharsets
 
 import com.electronwill.niol.buffer.storage.BytesStorage
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions._
+
 
 /**
  * @author TheElectronWill
@@ -11,27 +13,27 @@ import org.junit.jupiter.api.Test
 class BiBufferTest {
   @Test
   def test(): Unit = {
-    val cap = 512
+    val cap = 64
     val buffA = CircularBuffer(BytesStorage.allocateHeap(cap))
     val buffB = CircularBuffer(BytesStorage.allocateHeap(cap))
     populate(buffA, 0)
     populate(buffB, 1)
 
     val composite = new BiBuffer(buffA, buffB)
+    assertEquals(2 * cap, composite.capacity)
+    assertEquals(buffA.readableBytes + buffB.readableBytes, composite.readableBytes)
+    assertEquals(buffA.writableBytes + buffB.writableBytes, composite.writableBytes)
 
-    assert(composite.capacity == 2 * cap)
-    assert(composite.readableBytes == buffA.readableBytes + buffB.readableBytes)
-    assert(composite.writableBytes == buffA.writableBytes + buffB.writableBytes)
-    printContent(composite.duplicate)
-
-    val read = composite.copy(BytesStorage.allocateHeap)
-    val read2 = composite.slice()
-    println(read)
-    println(read2)
-    assert(read.readableBytes == composite.readableBytes)
-    assert(read.readableBytes == read2.readableBytes)
-    printContent(read)
-    printContent(read2)
+    val slice = composite.slice(composite.readableBytes)
+    val duplicate = composite.duplicate
+    println(s"composite: $composite")
+    println(s"slice: $slice")
+    println(s"duplicate: $duplicate")
+    assertEquals(composite.readableBytes, slice.readableBytes)
+    assertEquals(composite.readableBytes, duplicate.readableBytes)
+    printContent(composite)
+    printContent(slice)
+    printContent(duplicate)
   }
 
   private def populate(buff: NiolBuffer, k: Int): Unit = {
@@ -45,15 +47,13 @@ class BiBufferTest {
     buff.writeString("test" + k)
   }
 
-  private def printContent(composite: NiolBuffer): Unit = {
-    println(composite)
-    println("------ Content ------")
-    read(composite)
-    println("----")
-    read(composite)
-    println("----")
-    read(composite)
-    println("---------------------")
+  private def printContent(buff: NiolBuffer): Unit = {
+    read(buff)
+    println("---")
+    if (buff.isReadable) {
+      read(buff)
+      println("---------------------")
+    }
   }
 
   private def read(buff: NiolBuffer): Unit = {
