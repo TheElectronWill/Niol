@@ -1,13 +1,13 @@
 package com.electronwill.niol.io
 
-import java.io.{Closeable, IOException, OutputStream}
+import java.io.{Closeable, IOException}
 import java.nio.ByteBuffer
 import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
 import java.nio.file.{Files, Path, StandardOpenOption}
 
-import com.electronwill.niol.buffer.CircularBuffer
 import com.electronwill.niol.buffer.storage.{BytesStorage, StorageProvider}
-import com.electronwill.niol.{NiolInput, NiolOutput, TMP_BUFFER_SIZE}
+import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer}
+import com.electronwill.niol.{NiolInput, TMP_BUFFER_SIZE}
 
 /**
  * A NiolInput based on a ByteChannel. The channel must be in blocking mode for the ChannelInput
@@ -19,7 +19,7 @@ final class ChannelInput(val channel: ScatteringByteChannel, storage: BytesStora
   extends NiolInput with Closeable {
 
   private[this] var ended = true
-  private[this] val buffer = new CircularBuffer(storage)
+  private[this] val buffer = CircularBuffer(storage)
 
   def this(fc: FileChannel, prov: StorageProvider) = {
     this(fc, prov.getStorage(math.min(TMP_BUFFER_SIZE, fc.size().toInt)))
@@ -62,12 +62,13 @@ final class ChannelInput(val channel: ScatteringByteChannel, storage: BytesStora
     }
   }
 
+  /** @return false if EOS reached */
   private def readMore(): Boolean = {
     val eos = buffer.writeSome(channel) < 0
     if (eos) {
       close()
     }
-    eos
+    !eos
   }
 
   override protected[niol] def _read(): Byte = {
@@ -124,39 +125,19 @@ final class ChannelInput(val channel: ScatteringByteChannel, storage: BytesStora
     } while (dst.hasRemaining && readMore())
   }
 
-  override def read(dst: NiolOutput, length: Int): Unit = {
-    var count = 0
-    do {
-      val l = math.min(length - count, buffer.readableBytes)
-      buffer.read(dst, l)
-      count += l
-    } while (count < length && readMore())
-  }
-
-  override def readSome(dst: NiolOutput, maxLength: Int): Int = {
-    makeReadable(maxLength)
-    buffer.readSome(dst, maxLength)
-  }
-
-  override def readSome(dst: ByteBuffer): Unit = {
+  override def readSome(dst: ByteBuffer): Int = {
     makeReadable(dst.remaining())
     buffer.readSome(dst)
   }
 
-  override def readSome(dst: OutputStream, maxLength: Int): Int = {
-    makeReadable(maxLength)
-    buffer.readSome(dst, maxLength)
+  override def read(dst: NiolBuffer): Unit = {
+    do {
+      buffer.read(dst)
+    } while (dst.isWritable && readMore())
   }
 
-  override def readSome(dst: GatheringByteChannel, maxBytes: Int): Int = {
-    if (channel.isInstanceOf[FileChannel] && dst.isInstanceOf[FileChannel]) {
-      fileTransfer(dst, maxBytes).toInt
-    } else {
-      var count = 0
-      do {
-        count += buffer.readSome(dst)
-      } while (count < maxBytes && readMore())
-      count
-    }
+  override def readSome(dst: NiolBuffer): Int = {
+    makeReadable(dst.writableBytes)
+    buffer.readSome(dst)
   }
 }

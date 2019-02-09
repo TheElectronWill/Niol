@@ -1,4 +1,5 @@
 package com.electronwill.niol.buffer.storage
+
 import java.nio.ByteBuffer
 import java.nio.channels.{ReadableByteChannel, WritableByteChannel}
 

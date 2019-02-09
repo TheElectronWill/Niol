@@ -1,7 +1,5 @@
 package com.electronwill.niol
 
-import java.io.InputStream
-import java.nio.channels.ScatteringByteChannel
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.{ByteBuffer, CharBuffer}
@@ -335,16 +333,8 @@ trait NiolOutput {
    * @param d the value to write
    */
   def writeDouble(d: Double): Unit = {
-    checkWritable(8)
     val l = java.lang.Double.doubleToLongBits(d)
-    _write(l >> 56)
-    _write(l >> 48)
-    _write(l >> 40)
-    _write(l >> 32)
-    _write(l >> 24)
-    _write(l >> 16)
-    _write(l >> 8)
-    _write(l)
+    writeLong(l)
   }
 
   /**
@@ -353,16 +343,8 @@ trait NiolOutput {
    * @param d the value to write
    */
   def writeDoubleLE(d: Double): Unit = {
-    checkWritable(8)
     val l = java.lang.Double.doubleToLongBits(d)
-    _write(l)
-    _write(l >> 8)
-    _write(l >> 16)
-    _write(l >> 24)
-    _write(l >> 32)
-    _write(l >> 40)
-    _write(l >> 48)
-    _write(l >> 56)
+    writeLongLE(l)
   }
 
   /**
@@ -450,9 +432,9 @@ trait NiolOutput {
    */
   final def writeCharSequence(csq: CharSequence, charset: Charset = UTF_8): Unit = {
     val bytes = charset.encode(CharBuffer.wrap(csq))
-    val rem = bytes.remaining()
-    checkWritable(rem)
-    _write(bytes, rem)
+    val resultLength = bytes.limit()
+    checkWritable(resultLength)
+    _write(bytes, resultLength)
   }
 
   /**
@@ -463,10 +445,10 @@ trait NiolOutput {
    */
   final def writeVarString(csq: CharSequence, charset: Charset = UTF_8): Unit = {
     val bytes = charset.encode(CharBuffer.wrap(csq))
-    val rem = bytes.remaining()
-    checkWritable(rem + 1)
-    writeVarInt(rem)
-    _write(bytes, rem)
+    val resultLength = bytes.limit()
+    checkWritable(resultLength + 1)
+    writeVarInt(resultLength)
+    _write(bytes, resultLength)
   }
 
   /**
@@ -478,10 +460,10 @@ trait NiolOutput {
    */
   final def writeShortString(csq: CharSequence, charset: Charset = UTF_8): Unit = {
     val bytes = charset.encode(CharBuffer.wrap(csq))
-    val rem = bytes.remaining()
-    checkWritable(rem + 2)
-    writeShort(rem)
-    _write(bytes, rem)
+    val resultLength = bytes.limit()
+    checkWritable(resultLength + 2)
+    writeShort(resultLength)
+    _write(bytes, resultLength)
   }
 
   /**
@@ -493,128 +475,11 @@ trait NiolOutput {
    */
   final def writeShortStringLE(csq: CharSequence, charset: Charset = UTF_8): Unit = {
     val bytes = charset.encode(CharBuffer.wrap(csq))
-    val rem = bytes.remaining()
-    checkWritable(rem + 2)
-    writeShortLE(rem)
-    _write(bytes, rem)
+    val resultLength = bytes.limit()
+    checkWritable(resultLength + 2)
+    writeShortLE(resultLength)
+    _write(bytes, resultLength)
   }
-
-
-  // ----------------------------------------
-  // ----- Write operations for channels -----
-  /**
-   * Writes exactly `length` bytes from `src`.
-   * Throws an exception if there isn't enough space for the data or if there isn't enough data.
-   *
-   * @param src    the channel providing the data
-   * @param length the number of bytes to read from the channel
-   */
-  def write(src: ScatteringByteChannel, length: Int): Unit = {
-    checkWritable(length)
-    val actual = writeSome(src, length)
-    checkCompleteWrite(length, actual, "byte")
-  }
-
-  /**
-   * Writes at most `maxBytes` bytes from `src`.
-   * Returns the actual number of bytes written, possibly zero.
-   *
-   * @param src    the channel providing the data
-   * @param maxBytes the maximum number of bytes to read from the channel
-   * @return the number of bytes read from `src`, or -1 if the end of the stream has been reached
-   */
-  def writeSome(src: ScatteringByteChannel, maxBytes: Int = TMP_BUFFER_SIZE): Int = {
-    val l = Math.min(maxBytes, writableBytes)
-    val buff = ByteBuffer.allocate(l)
-    val read = src.read(buff)
-    if (read > 0) {
-      buff.flip()
-      _write(buff, read)
-    }
-    read
-  }
-
-
-  // ---------------------------------------
-  // ----- Write operations for streams -----
-  /**
-   * Writes exactly `length` bytes from `src`.
-   * Throws an exception if there isn't enough space for the data or if there isn't enough data.
-   *
-   * @param src    the stream providing the data
-   * @param length the number of bytes to read from the stream
-   */
-  def write(src: InputStream, length: Int): Unit = {
-    checkWritable(length)
-    val actual = writeSome(src, length)
-    checkCompleteWrite(length, actual, "byte")
-  }
-
-  /**
-   * Writes some bytes from `src`.
-   * Returns the actual number of bytes written, possibly zero.
-   *
-   * @param src    the stream providing the data
-   * @return the number of bytes read from `src`, or -1 if the end of the stream has been reached
-   */
-  def writeSome(src: InputStream): Int =  writeSome(src, TMP_BUFFER_SIZE)
-
-  /**
-   * Writes at most `maxBytes` bytes from `src`.
-   * Returns the actual number of bytes written, possibly zero.
-   *
-   * @param src    the stream providing the data
-   * @param maxBytes the maximum number of bytes to read from the channel
-   * @return the number of bytes read from `src`, or -1 if the end of the stream has been reached
-   */
-  def writeSome(src: InputStream, maxBytes: Int): Int = {
-    val l = Math.min(maxBytes, writableBytes)
-    val buff = new Array[Byte](l)
-    val read = src.read(buff)
-    if (read > 0) {
-      _write(buff, 0, read)
-    }
-    read
-  }
-
-
-  // -----------------------------------------
-  // ----- Write operations for NiolInputs -----
-  /**
-   * Writes exactly `length` bytes from `src`.
-   * Throws an exception if there isn't enough space for the data or if there isn't enough data.
-   *
-   * @param src    the NiolInput providing the data
-   * @param length the number of bytes to read from the input
-   */
-  def write(src: NiolInput, length: Int): Unit = {
-    checkWritable(length)
-    src.read(this, length)
-  }
-
-  /**
-   * Writes some bytes from `src`.
-   * Returns the actual number of bytes written, possibly zero.
-   *
-   * @param src    the NiolInput providing the data
-   * @return the number of bytes that have been write into this output, >= 0
-   */
-  def writeSome(src: NiolInput): Int = writeSome(src, TMP_BUFFER_SIZE)
-
-  /**
-   * Writes at most `maxBytes` bytes from `src`.
-   * Returns the actual number of bytes written, possibly zero.
-   *
-   * @param src    the NiolInput providing the data
-   * @param maxBytes the maximum number of bytes to read from the channel
-   * @return the number of bytes that have been write into this output, >= 0
-   */
-  def writeSome(src: NiolInput, maxBytes: Int): Int = {
-    val length = Math.min(maxBytes, writableBytes)
-    val read = src.readSome(this, length)
-    read
-  }
-
 
   // -------------------------------------------
   // ----- Write operations for NiolBuffers ------
@@ -624,7 +489,7 @@ trait NiolOutput {
    *
    * @param src the buffer to write
    */
-  def write(src: NiolBuffer): Unit = write(src, src.readableBytes)
+  def write(src: NiolBuffer): Unit
 
   /**
    * Writes at most `src.readableBytes` bytes from `src` into this output.
@@ -632,7 +497,7 @@ trait NiolOutput {
    *
    * @param src the buffer to write
    */
-  def writeSome(src: NiolBuffer): Unit = writeSome(src, src.readableBytes)
+  def writeSome(src: NiolBuffer): Int
 
 
   // -------------------------------------------
@@ -655,9 +520,10 @@ trait NiolOutput {
    *
    * @param src the buffer to write
    */
-  def writeSome(src: ByteBuffer): Unit = {
+  def writeSome(src: ByteBuffer): Int = {
     val len = min(src.remaining(), writableBytes)
     _write(src, len)
+    len
   }
 
 

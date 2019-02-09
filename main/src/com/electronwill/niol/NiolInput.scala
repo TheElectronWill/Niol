@@ -1,10 +1,8 @@
 package com.electronwill.niol
 
-import java.io.OutputStream
-import java.nio.{ByteBuffer, ByteOrder}
-import java.nio.channels.GatheringByteChannel
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.{ByteBuffer, ByteOrder}
 import java.util.UUID
 
 import com.electronwill.niol.buffer.NiolBuffer
@@ -37,13 +35,13 @@ trait NiolInput {
   // --------------------------------
   // ----- Protected operations -----
   /** Implements read without necessarily checking for available data. */
-  protected[this] def _read(): Byte
+  protected[niol] def _read(): Byte
 
 
   // ---------------------------------------------
   // ----- Primitive single-value operations -----
   /** Reads a byte */
-  def read(): Byte = {
+  def r(): Byte = {
     if (isReadable) _read()
     else throw new NotEnoughDataException(1, 0)
   }
@@ -69,19 +67,25 @@ trait NiolInput {
   def readBool(): Boolean = readBoolean()
 
   /** Reads one byte and returns true if it's equal to the given value, false otherwise. */
-  def readBoolT(trueValue: Byte): Boolean = read() == trueValue
+  def readBoolT(trueValue: Byte): Boolean = r() == trueValue
 
   /** Reads one byte and returns false if it's equal to the given value, true otherwise. */
-  def readBoolF(falseValue: Byte): Boolean = read() != falseValue
+  def readBoolF(falseValue: Byte): Boolean = r() != falseValue
 
   /** Reads a byte */
-  final def readByte(): Byte = read()
+  final def readByte(): Byte = r()
 
   /** Reads a big-endian short */
-  def readShort(): Short = (readByte() << 8 | readByte()).toShort
+  def readShort(): Short = {
+    ((readByte() & 0xFF) << 8 |
+     (readByte() & 0xFF)).toShort
+  }
 
   /** Reads a little-endian short */
-  def readShortLE(): Short = (readByte() | readByte() << 8).toShort
+  def readShortLE(): Short = {
+    ((readByte() & 0xFF) |
+     (readByte() & 0xFF) << 8).toShort
+  }
 
   /** Reads a big-endian char */
   def readChar(): Char = readUnsignedShort().toChar
@@ -96,21 +100,47 @@ trait NiolInput {
   def readMediumLE(): Int = readByte() | readByte() << 8 | readByte() << 16
 
   /** Reads a big-endian 4-bytes integer */
-  def readInt(): Int = readByte() << 24 | readByte() << 16 | readByte() << 8 | readByte()
+  def readInt(): Int = {
+    val b = readBytes(4)
+    (b(0) & 0xFF) << 24 |
+    (b(1) & 0xFF) << 16 |
+    (b(2) & 0xFF) << 8 |
+    (b(3) & 0xFF)
+  }
 
   /** Reads a little-endian 4-bytes integer */
-  def readIntLE(): Int = readByte() | readByte() << 8 | readByte() << 16 | readByte() << 24
+  def readIntLE(): Int = {
+    val b = readBytes(4)
+    (b(0) & 0xFF) |
+    (b(1) & 0xFF) << 8 |
+    (b(2) & 0xFF) << 16 |
+    (b(3) & 0xFF) << 24
+  }
 
   /** Reads a big-endian 8-bytes integer */
   def readLong(): Long = {
     val b = readBytes(8)
-    b(0) << 56 | b(1) << 48 | b(2) << 40 | b(3) << 32 | b(4) << 24 | b(5) << 16 | b(6) << 8 | b(7)
+    (b(0) & 0xFFl) << 56 |
+    (b(1) & 0xFFl) << 48 |
+    (b(2) & 0xFFl) << 40 |
+    (b(3) & 0xFFl) << 32 |
+    (b(4) & 0xFFl) << 24 |
+    (b(5) & 0xFFl) << 16 |
+    (b(6) & 0xFFl) << 8  |
+    (b(7) & 0xFFl)
   }
 
   /** Reads a little-endian 8-bytes integer */
   def readLongLE(): Long = {
     val b = readBytes(8)
-    b(0) | b(1) << 8 | b(2) << 16 | b(3) << 24 | b(4) << 32 | b(5) << 40 | b(6) << 48 | b(7) << 56
+    (b(0) & 0xFFl) |
+    (b(1) & 0xFFl) << 8 |
+    (b(2) & 0xFFl) << 16 |
+    (b(3) & 0xFFl) << 24 |
+    (b(4) & 0xFFl) << 32 |
+    (b(5) & 0xFFl) << 40 |
+    (b(6) & 0xFFl) << 48 |
+    (b(7) & 0xFFl) << 56
   }
 
   /** Reads a big-endian 4-bytes float */
@@ -234,93 +264,6 @@ trait NiolInput {
     readCharSequence(readUnsignedShortLE(), charset)
   }
 
-
-  // ---------------------------------------
-  // ----- Read operations for channels -----
-  /**
-   * Reads exactly `length` bytes and put them into `dst`.
-   * Throws an exception if there isn't enough data available.
-   *
-   * @param dst the destination
-   * @param length the number of bytes to read
-   */
-  def read(dst: GatheringByteChannel, length: Int): Unit = {
-    val actual = readSome(dst, length)
-    checkCompleteRead(length, actual, "byte")
-  }
-
-  /**
-   * Reads at most `maxBytes` bytes and put them into `dst`.
-   * Returns the actual number of bytes read, possibly zero.
-   *
-   * @param dst the channel to write to
-   * @return the number of bytes read
-   */
-  def readSome(dst: GatheringByteChannel, maxBytes: Int = TMP_BUFFER_SIZE): Int
-
-
-  // --------------------------------------
-  // ----- Read operations for streams -----
-  /**
-   * Reads exactly `length` bytes and put them into `dst`.
-   * Throws an exception if there isn't enough data available.
-   *
-   * @param dst the destination
-   * @param length the number of bytes to read
-   */
-  def read(dst: OutputStream, length: Int): Unit = {
-    val actual = readSome(dst, length)
-    checkCompleteRead(length, actual, "byte")
-  }
-
-  /**
-   * Reads some bytes and put them into `dst`.
-   * Returns the actual number of bytes read, possibly zero.
-   *
-   * @param dst the stream to write to
-   * @return the number of bytes read from this NiolInput and written to the stream
-   */
-  def readSome(dst: OutputStream): Int = readSome(dst, TMP_BUFFER_SIZE)
-
-  /**
-   * Reads at most `maxLength` bytes and put them into `dst`.
-   * Returns the actual number of bytes read, possibly zero.
-   *
-   * @param dst the stream to write to
-   * @return the number of bytes read from this NiolInput and written to the stream
-   */
-  def readSome(dst: OutputStream, maxLength: Int): Int
-
-
-  // ------------------------------------------
-  // ----- Read operations for NiolOutputs -----
-  /**
-   * Reads exactly `length` bytes and put them into `dst`.
-   * Throws an exception if there isn't enough data available.
-   *
-   * @param dst the destination
-   * @param length the number of bytes to read
-   */
-  def read(dst: NiolOutput, length: Int): Unit
-
-  /**
-   * Reads at most `maxLength` bytes and put them into `dst`.
-   * Returns the actual number of bytes read, possibly zero.
-   *
-   * @param dst the stream to write to
-   * @return the number of bytes read from this NiolInput and written to the stream
-   */
-  def readSome(dst: NiolOutput): Int = readSome(dst, TMP_BUFFER_SIZE)
-
-  /**
-   * Reads at most `maxLength` bytes and put them into `dst`.
-   * Returns the actual number of bytes read, possibly zero.
-   *
-   * @param dst the stream to write to
-   * @return the number of bytes read from this NiolInput and written to the stream
-   */
-  def readSome(dst: NiolOutput, maxLength: Int): Int
-
   // -------------------------------------------
   // ----- Put operations for NiolBuffers ------
   /**
@@ -329,8 +272,15 @@ trait NiolInput {
    *
    * @param dst the buffer to fill
    */
-  def read(dst: NiolBuffer): Unit = read(dst, dst.writableBytes)
+  def read(dst: NiolBuffer): Unit
 
+  /**
+   * Reads at most `dst.writableBytes` bytes into `dst`.
+   * The buffer's position will be advanced by the number of bytes read from this NiolInput.
+   *
+   * @param dst the buffer to fill
+   */
+  def readSome(dst: NiolBuffer): Int
 
   // -------------------------------------------
   // ----- Put operations for ByteBuffers ------
@@ -348,7 +298,7 @@ trait NiolInput {
    *
    * @param dst the buffer to fill
    */
-  def readSome(dst: ByteBuffer): Unit
+  def readSome(dst: ByteBuffer): Int
 
 
   // ----------------------------------------------
@@ -385,7 +335,7 @@ trait NiolInput {
     var i = offset
     val l = offset + length
     while (i < l) {
-      dst(i) = read()
+      dst(i) = r()
       i += 1
     }
   }
@@ -405,12 +355,12 @@ trait NiolInput {
    *
    * @param dst   the array to fill
    * @param offset the first index to use
-   * @param length the maximum number of bytes to read
+   * @param maxLength the maximum number of bytes to read
    * @return the number of bytes read
    */
-  def readSomeBytes(dst: Array[Byte], offset: Int, length: Int): Int = {
+  def readSomeBytes(dst: Array[Byte], offset: Int, maxLength: Int): Int = {
     var i = offset
-    val l = offset + length
+    val l = offset + maxLength
     while (i < l && isReadable) {
       dst(i) = _read()
       i += 1

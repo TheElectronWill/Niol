@@ -1,11 +1,8 @@
 package com.electronwill.niol.buffer
 
-import java.io.OutputStream
+import java.io.{InputStream, OutputStream}
 import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
-
-import com.electronwill.niol.NiolOutput
-import com.electronwill.niol.buffer.storage.StorageProvider
 
 /**
  * A buffer made of two buffers.
@@ -23,76 +20,67 @@ final class BiBuffer(
   override def readableBytes: Int = a.readableBytes + b.readableBytes
   override def writableBytes: Int = a.writableBytes + b.writableBytes
 
-  override def isEmpty: Boolean = a.isEmpty
+  override def isEmpty: Boolean = a.isEmpty && b.isEmpty
   override def isFull: Boolean = a.isFull && b.isFull
 
   // ----- Reads -----
-  override protected[this] def _read(): Byte = if (a.isEmpty) b.read() else a.read()
-  override protected[this] def _read(to: Array[Byte], off: Int, len: Int): Unit = {
-    val read = a.readSomeBytes(to, off, len)
-    if (read <= len) {
-      b.readBytes(to, off, len)
+  override protected[niol] def _read(): Byte = if (a.isEmpty) b._read() else a._read()
+
+  override protected[niol] def _read(to: Array[Byte], off: Int, len: Int): Unit = {
+    val nA = math.min(a.readableBytes, len)
+    val nB = len - nA
+    a._read(to, off, nA)
+    if (nB > 0) {
+      b._read(to, off+nA, nB)
     }
   }
-  override protected[this] def _read(to: ByteBuffer, len: Int): Unit = ???
 
-  override protected[this] def _read(to: NiolOutput, len: Int): Unit = ???
+  override protected[niol] def _read(to: ByteBuffer, len: Int): Unit = {
+    val nA = math.min(a.readableBytes, len)
+    val nB = len - nA
+    a._read(to, nA)
+    if (nB > 0) {
+      b._read(to, nB)
+    }
+  }
+
+  override protected[niol] def _read(to: NiolBuffer, len: Int): Unit = {
+    val nA = math.min(a.readableBytes, len)
+    val nB = len - nA
+    a._read(to, nA)
+    if (nB > 0) {
+      b._read(to, nB)
+    }
+  }
 
   override def read(dst: ByteBuffer): Unit = {
     a.readSome(dst)
     b.read(dst)
   }
 
-  override def readSome(dst: ByteBuffer): Unit = {
-    a.readSome(dst)
-    b.read(dst)
-  }
-
-  override def read(dst: NiolOutput, length: Int): Unit = {
-    val read = a.readSome(dst, length)
-    val diff = length - read
-    if (diff > 0) {
-      b.read(dst, diff)
-    }
-  }
-
-  override def readSome(dst: NiolOutput, maxLength: Int): Int = {
-    a.readSome(dst, maxLength)
-    b.readSome(dst, maxLength)
+  override def readSome(dst: ByteBuffer): Int = {
+    a.readSome(dst) + b.readSome(dst)
   }
 
   override def read(dst: NiolBuffer): Unit = {
-    a.readSome(dst)
+    while (a.isReadable) a.readSome(dst)
     b.read(dst)
   }
 
-  override def readSome(dst: GatheringByteChannel, maxBytes: Int): Int = {
-    val read = a.readSome(dst, maxBytes)
-    val diff = maxBytes - read
-    if (diff > 0) {
-      read + b.readSome(dst, diff)
-    } else {
-      read
-    }
+  override def readSome(dst: NiolBuffer): Int = {
+    if (a.isReadable) a.readSome(dst) else b.readSome(dst)
   }
 
-  override def readSome(dst: OutputStream, maxLength: Int): Int = {
-    val read = a.readSome(dst, maxLength)
-    val diff = maxLength - read
-    if (diff > 0) {
-      read + b.readSome(dst, diff)
-    } else {
-      read
-    }
+  override def readSome(dst: GatheringByteChannel): Int = {
+    if (a.isReadable) a.readSome(dst) else b.readSome(dst)
   }
 
-  override def read(dst: GatheringByteChannel, length: Int): Unit = {
-    val read = a.readSome(dst, length)
-    b.read(dst, length - read)
+  override def readSome(dst: OutputStream): Int = {
+    if (a.isReadable) a.readSome(dst) else b.readSome(dst)
   }
 
   // ----- Writes -----
-  override protected[niol] def _write(v: Byte): Unit = if (a.isFull) a.write(v) else b.write(v)
+  override protected[niol] def _write(v: Byte): Unit = if (a.isFull) b._write(v) else a._write(v)
 
   override protected[niol] def _write(from: Array[Byte], off: Int, len: Int): Unit = {
     if (a.isFull) {
@@ -120,31 +108,28 @@ final class BiBuffer(
     }
   }
 
-  override def writeSome(src: ByteBuffer): Unit = {
-    a.writeSome(src)
-    b.writeSome(src)
+  override def writeSome(src: ByteBuffer): Int = {
+    a.writeSome(src) + b.writeSome(src)
   }
 
-  override def write(src: ScatteringByteChannel, length: Int): Unit = {
-    val written = a.writeSome(src, length)
-    b.write(src, length - written)
+  override def write(src: NiolBuffer): Unit = {
+    while (a.isWritable) a.writeSome(src)
+    b.write(src)
   }
 
-  override def writeSome(src: ScatteringByteChannel, maxBytes: Int): Int = {
-    val written = a.writeSome(src, maxBytes)
-    b.writeSome(src, maxBytes - written)
+  override def writeSome(src: NiolBuffer): Int = {
+    if (a.isWritable) a.writeSome(src) else b.writeSome(src)
+  }
+
+  override def writeSome(src: ScatteringByteChannel): Int = {
+    if (a.isWritable) a.writeSome(src) else b.writeSome(src)
+  }
+
+  override def writeSome(src: InputStream): Int = {
+    if (a.isWritable) a.writeSome(src) else b.writeSome(src)
   }
 
   // ----- Buffer methods -----
-  override def copy(storageSource: StorageProvider): NiolBuffer = {
-    val readable = readableBytes
-    val bs = storageSource.getStorage(readable)
-    val bb = bs.byteBuffer
-    a.readSome(bb)
-    b.read(bb)
-    new CircularBuffer(bs)
-  }
-
   override def slice(length: Int): NiolBuffer = {
     if (a.isEmpty) {
       b.slice(length)

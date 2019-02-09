@@ -1,11 +1,10 @@
 package com.electronwill.niol.buffer
 
-import java.io.OutputStream
+import java.io.{InputStream, OutputStream}
 import java.nio.ByteBuffer
-import java.nio.channels.GatheringByteChannel
+import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
 import com.electronwill.niol._
-import com.electronwill.niol.buffer.storage.StorageProvider
 
 abstract class NiolBuffer extends NiolInput with NiolOutput {
   /**
@@ -45,14 +44,6 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
   override def isEnded: Boolean = false
 
   /**
-   * Copies the readable bytes into a new buffer.
-   * The returned buffer `r` satisfies `r.readableBytes == thisBuffer.readableBytes`.
-   *
-   * @return the copy
-   */
-  def copy(storageSource: StorageProvider): NiolBuffer
-
-  /**
    * Creates a "slice" that gives a limited access to the next `length` readable bytes.
    * No copy is involved. Throws an exception if `readableBytes < length`.
    * The returned buffer satisfies `readableBytes == length`.
@@ -60,7 +51,7 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
    * @param length the length of the slice
    * @return the slice
    */
-  def slice(length: Int = readableBytes): NiolBuffer
+  def slice(length: Int): NiolBuffer
 
   /**
    * Creates a "slice" that gives a limited access to the next `length` writable bytes.
@@ -74,7 +65,7 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
 
   /**
    * Returns a new buffer that shares its content with this buffer, but has independent read and
-   * write positions. Initially, the positions are the same, but they evolve differently.
+   * write positions. Initially the positions are the same but they evolve differently.
    *
    * @return the duplicate
    */
@@ -104,13 +95,13 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
 
   // ----- Protected operations for reading -----
   /** Implements read without necessarily checking for available space. */
-  protected[this] def _read(to: Array[Byte], off: Int, len: Int)
+  protected[niol] def _read(to: Array[Byte], off: Int, len: Int)
 
   /** Implements read without necessarily checking for available space. */
-  protected[this] def _read(to: ByteBuffer, len: Int)
+  protected[niol] def _read(to: ByteBuffer, len: Int)
 
   /** Implements read without necessarily checking for available space. */
-  protected[this] def _read(to: NiolOutput, len: Int)
+  protected[niol] def _read(to: NiolBuffer, len: Int): Unit
 
   /** Checks if at least `n` bytes can be written */
   protected[niol] def checkReadable(n: Int): Unit = {
@@ -118,38 +109,53 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
     if (avail < n) throw new NotEnoughDataException(n, avail)
   }
 
-  // ----- Reads -----
-  override def read(dst: GatheringByteChannel, length: Int): Unit = {
-    checkReadable(length)
-    val actual = readSome(dst, length)
-    checkCompleteRead(length, actual, "byte")
-  }
+  // ----- Writes specific to NiolBuffer -----
+  /**
+   * Writes at most `maxBytes` bytes from `src`.
+   * Returns the actual number of bytes written, possibly zero.
+   *
+   * @param src the channel providing the data
+   * @return the number of bytes read from `src`, or -1 if the end of the stream has been reached
+   */
+  def writeSome(src: ScatteringByteChannel): Int
 
-  override def read(dst: OutputStream, length: Int): Unit = {
-    checkReadable(length)
-    val actual = readSome(dst, length)
-    checkCompleteRead(length, actual, "byte")
-  }
+  /**
+   * Writes some bytes from `src`.
+   * Returns the actual number of bytes written, possibly zero.
+   *
+   * @param src    the stream providing the data
+   * @return the number of bytes read from `src`, or -1 if the end of the stream has been reached
+   */
+  def writeSome(src: InputStream): Int
 
+  // ----- Reads specific to NiolBuffer -----
+  /**
+   * Reads some bytes and writes them to `dst`.
+   * Returns the actual number of bytes read, possibly zero.
+   *
+   * @param dst the channel to write to
+   * @return the number of bytes read
+   */
+  def readSome(dst: GatheringByteChannel): Int
+
+  /**
+   * Reads some bytes and writes them to `dst`.
+   * Returns the actual number of bytes read, possibly zero.
+   *
+   * @param dst the channel to write to
+   * @return the number of bytes read
+   */
+  def readSome(dst: OutputStream): Int
+
+  // ----- Reads overriden -----
   override def read(dst: ByteBuffer): Unit = {
     val rem = dst.remaining()
     checkReadable(rem)
     _read(dst, rem)
   }
 
-  override def readSome(dst: ByteBuffer): Unit = {
+  override def readSome(dst: ByteBuffer): Int = {
     val len = math.min(dst.remaining, readableBytes)
-    _read(dst, len)
-  }
-
-  override def read(dst: NiolOutput, length: Int): Unit = {
-    checkReadable(length)
-    dst.checkWritable(length)
-    _read(dst, length)
-  }
-
-  override def readSome(dst: NiolOutput, maxLength: Int): Int = {
-    val len = math.min(readableBytes, math.min(dst.writableBytes, maxLength))
     _read(dst, len)
     len
   }
@@ -185,10 +191,12 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
   }
 
   override def toString: String = {
-    s"""$getClass(capacity: $capacity,
-       | isEmpty: $isEmpty,
-       | isFull: $isFull,
-       | readable: $readableBytes,
-       | writable: $writableBytes)""".stripMargin
+    s"""${getClass.getSimpleName}(
+       |  capacity: $capacity,
+       |  isEmpty: $isEmpty,
+       |  isFull: $isFull,
+       |  readable: $readableBytes,
+       |  writable: $writableBytes
+       |)""".stripMargin
   }
 }

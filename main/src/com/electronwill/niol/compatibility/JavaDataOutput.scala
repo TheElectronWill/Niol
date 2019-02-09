@@ -3,7 +3,8 @@ package com.electronwill.niol.compatibility
 import java.io.{DataOutputStream, IOException}
 import java.nio.ByteBuffer
 
-import com.electronwill.niol.NiolOutput
+import com.electronwill.niol.buffer.NiolBuffer
+import com.electronwill.niol.{IncompleteWriteException, NiolOutput}
 
 /**
  * Niol wrapper around a [[DataOutputStream]].
@@ -41,6 +42,18 @@ final class JavaDataOutput(private[this] val out: DataOutputStream) extends Niol
       out.write(tmp)
     }
   }
+
+  override def write(src: NiolBuffer): Unit = {
+    var read = src.readSome(out)
+    while (read > 0) {
+      read = src.readSome(out)
+    }
+    if (src.isReadable) {
+      throw new IncompleteWriteException("Couldn't empty the NiolBuffer")
+    }
+  }
+
+  override def writeSome(src: NiolBuffer): Int = src.readSome(out)
 
   // ----- Overrides -----
   override def writeShort(s: Int): Unit = out.writeShort(s)

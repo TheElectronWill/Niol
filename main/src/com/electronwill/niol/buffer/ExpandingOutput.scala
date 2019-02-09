@@ -87,4 +87,19 @@ final class ExpandingOutput(
       current._write(from, nB)
     }
   }
+
+  override def write(src: NiolBuffer): Unit = {
+    if (current.writableBytes <= src.readableBytes) {
+      current.write(src)
+    } else {
+      current.writeSome(src)
+      expand(src.readableBytes)
+      current.write(src)
+    }
+  }
+
+  override def writeSome(src: NiolBuffer): Int = {
+    if (!current.isWritable) expand(minBlockSize)
+    current.writeSome(src)
+  }
 }

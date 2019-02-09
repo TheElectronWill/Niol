@@ -2,12 +2,12 @@ package com.electronwill.niol.io
 
 import java.io.{Closeable, IOException}
 import java.nio.ByteBuffer
-import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
+import java.nio.channels.{FileChannel, GatheringByteChannel}
 import java.nio.file.{Files, Path, StandardOpenOption}
 
-import com.electronwill.niol.buffer.CircularBuffer
 import com.electronwill.niol.buffer.storage.{BytesStorage, StorageProvider}
-import com.electronwill.niol.{NiolInput, NiolOutput, TMP_BUFFER_SIZE}
+import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer}
+import com.electronwill.niol.{NiolOutput, TMP_BUFFER_SIZE}
 
 /**
  * A NiolOutput based on a ByteChannel. The channel must be in blocking mode for the ChannelOutput
@@ -19,7 +19,7 @@ final class ChannelOutput(val channel: GatheringByteChannel, storage: BytesStora
   extends NiolOutput with Closeable {
 
   private[this] var closed = true
-  private[this] val buffer = new CircularBuffer(storage)
+  private[this] val buffer = CircularBuffer(storage)
 
   def this(fc: FileChannel, prov: StorageProvider) = {
     this(fc, prov.getStorage(math.min(TMP_BUFFER_SIZE, fc.size().toInt)))
@@ -48,10 +48,11 @@ final class ChannelOutput(val channel: GatheringByteChannel, storage: BytesStora
   def close(): Unit = {
     flush()
     channel.close()
+    closed = true
   }
 
   def flush(): Unit = {
-    buffer.readSome(channel, buffer.readableBytes)
+    buffer.readSome(channel)
   }
 
   private def makeWritable(n: Int): Unit = {
@@ -101,30 +102,16 @@ final class ChannelOutput(val channel: GatheringByteChannel, storage: BytesStora
     makeWritable(8)
     buffer.writeDouble(d)
   }
-
-  private[niol] def fileTransfer(src: ScatteringByteChannel, maxLen: Int): Long = {
+  override def write(src: NiolBuffer): Unit = {
     flush()
-    val fileChannel = channel.asInstanceOf[FileChannel]
-    val pos = fileChannel.position()
-    fileChannel.transferFrom(src, pos, maxLen)
+    var written = src.readSome(channel)
+    while (written > 0 && src.isReadable) {
+      written = src.readSome(channel)
+    }
   }
 
-  override def writeSome(src: NiolInput, maxLen: Int): Int = {
-    var read = buffer.readSome(channel, buffer.readableBytes)
-    read += (src match {
-      case input: ChannelInput if(input.channel.isInstanceOf[FileChannel]) =>
-          // Faster write FileChannel -> Channel
-          input.fileTransfer(channel, maxLen).toInt
-
-      case input: ChannelInput if(channel.isInstanceOf[FileChannel]) =>
-          // Faster write Channel -> FileChannel
-          fileTransfer(input.channel, maxLen).toInt
-
-      case _ =>
-        buffer.writeSome(src, maxLen)
-        buffer.readSome(channel, maxLen)
-    })
-    read = math.max(read, Int.MaxValue)
-    read
+  override def writeSome(src: NiolBuffer): Int = {
+    flush()
+    src.readSome(channel)
   }
 }
