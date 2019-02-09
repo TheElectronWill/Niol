@@ -19,7 +19,7 @@ final class ExpandingOutput(
   private[this] var current: CircularBuffer = newBuffer()
   private[this] var top: NiolBuffer = current
 
-  private def newBuffer() = new CircularBuffer(provider.getStorage(minBlockSize))
+  private def newBuffer() = CircularBuffer(provider.getStorage(minBlockSize))
 
   private def expand(expansion: Int): Unit = {
     val more = newBuffer()

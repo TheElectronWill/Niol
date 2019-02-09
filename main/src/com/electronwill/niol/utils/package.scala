@@ -32,4 +32,18 @@ package object utils {
    * @return true if it's a positive power of two
    */
   def isPositivePowerOfTwo(n: Int): Boolean = (n > 0) && isPowerOfTwo(n)
+
+  /** Returns the smallest power of two p that satisfies p >= n */
+  def nearestPowerOfTwo(n: Int): Int = {
+    val h = Integer.highestOneBit(n)
+    if (n == h) n else h << 1
+  }
+
+  /**
+   * Returns x iff x is positive, otherwise returns zero.
+   *
+   * @param x an integer
+   * @return x if positive, or zero
+   */
+  def positively(x: Int): Int = math.max(0, x)
 }

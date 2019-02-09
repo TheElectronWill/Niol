@@ -10,7 +10,7 @@ class CircularBufferTest {
   @Test
   def straightTest(): Unit = {
     val cap = 512
-    val buff = new CircularBuffer(BytesStorage.allocateHeap(cap))
+    val buff = CircularBuffer(BytesStorage.allocateHeap(cap))
     println(buff)
     assert(buff.capacity == cap)
     assert(buff.readableBytes == 0 && buff.writableBytes == cap)
@@ -42,12 +42,18 @@ class CircularBufferTest {
 
   @Test
   def circularTest(): Unit = {
-    val cap = 50
-    val buff = new CircularBuffer(BytesStorage.allocateHeap(cap))
+    val cap = 64
+   circularTest(cap, new CircularBufferOptiMod2(BytesStorage.allocateHeap(cap)))
+   circularTest(cap,  new CircularBufferGeneralMod(BytesStorage.allocateHeap(cap)))
+  }
+
+  private def circularTest(cap: Int, buff: NiolBuffer): Unit = {
+    assertEquals(cap, buff.capacity)
 
     writeInts(1, 12, buff)
     println(buff)
-    assert(buff.readableBytes == 48 && buff.writableBytes == cap - 48)
+    assertEquals(48, buff.readableBytes)
+    assertEquals(cap - 48, buff.writableBytes)
 
     readInts(1, 10, buff)
     println(buff)
@@ -57,18 +63,29 @@ class CircularBufferTest {
 
     readInts(1, 12, buff)
     println(buff)
-    assert(buff.readableBytes == 0 && buff.writableBytes == cap)
+    assertEquals(0, buff.readableBytes)
+    assertEquals(cap, buff.writableBytes)
+
+    writeInts(1777, 16, buff)
+    println(buff)
+
+    assertEquals(0, buff.writableBytes)
+    assertEquals(cap, buff.readableBytes)
+
+    readInts(1777, 16, buff)
+    println(buff)
+
+    assertEquals(0, buff.readableBytes)
+    assertEquals(cap, buff.writableBytes)
+  }
+  }
   }
 
   private def writeInts(v: Int, n: Int, dest: NiolBuffer): Unit = {
-    for (i <- 1 to n) {
-      dest.writeInt(v)
-    }
+    (1 to n) foreach (_=>dest.writeInt(v))
   }
 
   private def readInts(v: Int, n: Int, src: NiolBuffer): Unit = {
-    for (i <- 1 to n) {
-      Assertions.assertEquals(v, src.readInt())
-    }
+    (1 to n) foreach (_=>assertEquals(v, src.readInt()))
   }
 }

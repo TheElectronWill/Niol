@@ -12,8 +12,8 @@ class BiBufferTest {
   @Test
   def test(): Unit = {
     val cap = 512
-    val buffA = new CircularBuffer(BytesStorage.allocateHeap(cap))
-    val buffB = new CircularBuffer(BytesStorage.allocateHeap(cap))
+    val buffA = CircularBuffer(BytesStorage.allocateHeap(cap))
+    val buffB = CircularBuffer(BytesStorage.allocateHeap(cap))
     populate(buffA, 0)
     populate(buffB, 1)
 

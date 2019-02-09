@@ -56,7 +56,7 @@ abstract class HAttach[A <: HAttach[A]] (
       val newPacketBuffer =
         if (additionalLength > 0) {
           additionalStorage = newProvider.getStorage(additionalLength)
-          newBase + new CircularBuffer(additionalStorage)
+          newBase + CircularBuffer(additionalStorage)
         } else {
           newBase
         }
@@ -79,7 +79,7 @@ abstract class HAttach[A <: HAttach[A]] (
     val readBuff = if (hasTransform) s.readStorageProvider.getStorage(s.readBufferSize) else null
 
     // Gets the packetBuffer
-    val packetBuff = new CircularBuffer(provider.getStorage(s.packetBufferBaseSize))
+    val packetBuff = CircularBuffer(provider.getStorage(s.packetBufferBaseSize))
 
     // Returns the result
     (readBuff, packetBuff, provider)
@@ -127,7 +127,8 @@ abstract class HAttach[A <: HAttach[A]] (
             val additionalCapacity = packetLength - packetBuffer.capacity
             val additionalStorage = packetBufferProvider.getStorage(additionalCapacity)
             // Creates a CompositeBuffer without copying the data
-            packetBuffer = packetBufferBase + new CircularBuffer(additionalStorage)
+            packetBuffer = packetBufferBase + CircularBuffer(additionalStorage)
+
             // Attempts to fill the buffer -- tail recursive call!
             readMore()
           }
