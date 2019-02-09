@@ -73,7 +73,7 @@ class StoragePool(
   private[this] def processCollectedRefs(): Option[ByteBuffer] = {
     var i = 0
     var ref = gcRefs.poll().asInstanceOf[StorageReference] // Tries to get at least 1 buffer
-    while (i < refProcessingPerGet - 1 && ref != null) {
+    while (i <= refProcessingPerGet && ref != null) {
       offerBuffer(ref.bb)
       ref = gcRefs.poll().asInstanceOf[StorageReference]
       i += 1
@@ -98,7 +98,7 @@ class StoragePool(
   /** Adds a buffer to the pool (if possible). Returns false if the pool is full. */
   private[this] def offerBuffer(buffer: ByteBuffer): Boolean = {
     if (freeBufferCount < freeBuffers.length) {
-      freeBuffers(freeBufferCount + 1) = buffer
+      freeBuffers(freeBufferCount) = buffer
       freeBufferCount += 1
       true
     } else {
@@ -110,7 +110,7 @@ class StoragePool(
   private[this] def addNewBuffer(): Option[ByteBuffer] = {
     if (activeRefs.size < poolCapacity) {
       val buffer = allocateBuffer()
-      freeBuffers(freeBufferCount + 1) = buffer
+      freeBuffers(freeBufferCount) = buffer
       freeBufferCount += 1
       Some(buffer)
     } else {
