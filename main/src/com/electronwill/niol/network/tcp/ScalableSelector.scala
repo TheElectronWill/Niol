@@ -42,8 +42,8 @@ import scala.collection.mutable
  * @author TheElectronWill
  */
 final class ScalableSelector(
-    private[this] val startHandler: () => Unit,
-    private[this] val stopHandler: () => Unit,
+    private[this] val startHandler: Runnable,
+    private[this] val stopHandler: Runnable,
     private[this] val errorHandler: Exception => Boolean)
   extends Runnable {
 
@@ -96,7 +96,7 @@ final class ScalableSelector(
       throw new IllegalStateException("This selector is already running! Don't call run() by hand.")
     }
     running = true
-    startHandler()
+    startHandler.run()
     while (running) {
       try {
         selector.select() // Blocking selection
@@ -137,7 +137,7 @@ final class ScalableSelector(
       }
     }
     selector.close()
-    stopHandler()
+    stopHandler.run()
   }
 
   /**

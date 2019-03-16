@@ -18,8 +18,6 @@ object EchoServer {
   val possibleMessages =
     Seq("Hello,world", "Hello,test", "this is a big message " + "$" * 16000)
 
-  val counter = new AtomicInteger()
-
   def main(args: Array[String]): Unit = {
     // Setting: server's port
     val port = 3000
