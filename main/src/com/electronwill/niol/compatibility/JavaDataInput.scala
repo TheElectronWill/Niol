@@ -30,7 +30,7 @@ final class JavaDataInput(private[this] val in: DataInputStream) extends NiolInp
   override def readSome(dst: ByteBuffer): Int = {
     if (isEnded) return 0
     if (dst.hasArray) {
-      in.read(dst.array, dst.arrayOffset + dst.position, dst.limit)
+      in.read(dst.array, dst.arrayOffset + dst.position(), dst.limit)
     } else {
       val tmp = new Array[Byte](math.min(TMP_BUFFER_SIZE, dst.remaining))
       val read = in.read(tmp)
@@ -47,7 +47,7 @@ final class JavaDataInput(private[this] val in: DataInputStream) extends NiolInp
     }
     val goal = dst.remaining
     if (dst.hasArray) {
-      val read = in.read(dst.array, dst.arrayOffset + dst.position, dst.limit)
+      val read = in.read(dst.array, dst.arrayOffset + dst.position(), dst.limit)
       if (read < goal) {
         throw new IncompleteReadException(goal, read, "byte")
       }
