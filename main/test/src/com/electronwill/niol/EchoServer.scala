@@ -23,13 +23,11 @@ object EchoServer {
     val port = 3000
 
     // Create a buffer pool
-
-    //val pool = poolBuilder.build()
     val pool = StagedPools().directStage(4000, 10, isMoreAllocationAllowed=true)
                             .defaultAllocateHeap()
                             .build()
 
-    // Create a ScalableSelector
+    // Create event handlers
     val startHandler = () => println("Server started")
     val stopHandler = () => println("Server stopped")
     val errorHandler = (e: Exception) => {
@@ -38,9 +36,11 @@ object EchoServer {
       Thread.sleep(1000)
       true
     }
+
+    // Create a ScalableSelector
     val selector = new ScalableSelector(startHandler, stopHandler, errorHandler)
 
-    // Create a TcpListener and starts a TCP Server on the port
+    // Create a TcpListener
     val listener = new TcpListener[EchoAttach] {
       override def onAccept(sci: SCI[EchoAttach], c: SocketChannel, k: SelectionKey): EchoAttach = {
         println(s"Accepted client ${c.getLocalAddress}")
@@ -52,9 +52,10 @@ object EchoServer {
         println(s"Client ${clientAttach.clientId} disconnected")
       }
     }
+    // Assign the TcpListener to the given port with the previously created buffer pool
     selector.listen(port, BufferSettings(150, pool), listener)
 
-    // Start the server
+    // Finally: start the server
     selector.start("Echo Server")
 
     // -----------------------------------------------------------

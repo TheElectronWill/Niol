@@ -47,8 +47,20 @@ final class ScalableSelector(
     private[this] val errorHandler: Exception => Boolean)
   extends Runnable {
 
+  /**
+   * Creates a new ScalableSelector with default event handlers.
+   *  - The default startHandler and stopHandler do nothing.
+   *  - The default errorHandler prints the stack trace and returns false (stops the selector).
+   */
+  def this() = this(()=>(), ()=>(), e => {e.printStackTrace(); false})
+
+  /** The Java NIO selector */
   private[this] val selector = Selector.open()
+
+  /** Maps ports to SCI instances */
   private[this] val serverChannelsInfos = new mutable.LongMap[ServerChannelInfos[_]]
+
+  /** volatile field to stop the selector from any thread */
   @volatile private[this] var running = false
 
   /**

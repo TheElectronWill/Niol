@@ -188,7 +188,7 @@ abstract class HAttach[A <: HAttach[A]] (
    * Writes some data to the client. The data isn't written immediately but at some time in the
    * future. Therefore this method isn't blocking.
    *
-   * This method constructs a header and prepends it to the data.
+   * '''This method constructs a header and prepends it to the data.'''
    *
    * @param buffer the data to write, not prefixed by a header
    */
@@ -198,7 +198,7 @@ abstract class HAttach[A <: HAttach[A]] (
    * Asynchronously writes some data to the client, and executes the given completion handler
    * when the operation completes.
    *
-   * This method constructs a header and prepends it to the data.
+   * '''This method constructs a header and prepends it to the data.'''
    *
    * @param buffer            the data to write, not prefixed by a header
    * @param completionHandler the handler to execute after the operation
@@ -212,9 +212,10 @@ abstract class HAttach[A <: HAttach[A]] (
    * Writes some data to the client. The data isn't written immediately but at some time in the
    * future. Therefore this method isn't blocking.
    *
-   * This method doesn't construct a header, you need to provide it.
+   * '''This method doesn't construct a header, you need to provide it.'''
    *
    * @param buffer the data to write, prefixed by a header
+   * @see [[write(NiolBuffer)]]
    */
   final def writeRaw(buffer: NiolBuffer): Unit = writeRaw(buffer, null)
 
@@ -222,10 +223,11 @@ abstract class HAttach[A <: HAttach[A]] (
    * Asynchronously writes some data to the client, and executes the given completion handler
    * when the operation completes.
    *
-   * This method doesn't construct a header, you need to provide it.
+   * '''This method doesn't construct a header, you need to provide it.'''
    *
    * @param buffer            the data to write, prefixed by a header
    * @param completionHandler the handler to execute after the operation
+   * @see [[write(NiolBuffer, Runnable)]]
    */
   final def writeRaw(buffer: NiolBuffer, completionHandler: Runnable): Unit = {
     val finalBuffer =
