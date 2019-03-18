@@ -1,9 +1,7 @@
 package com.electronwill.niol.network.tcp
 
 import java.net.InetSocketAddress
-import java.nio.channels.{SelectionKey, Selector, ServerSocketChannel, SocketChannel}
-
-import com.electronwill.niol.buffer.provider.BufferProvider
+import java.nio.channels.{SelectionKey, Selector, ServerSocketChannel}
 
 import scala.collection.mutable
 
@@ -44,13 +42,25 @@ import scala.collection.mutable
  * @author TheElectronWill
  */
 final class ScalableSelector(
-    private[this] val startHandler: () => Unit,
-    private[this] val stopHandler: () => Unit,
+    private[this] val startHandler: Runnable,
+    private[this] val stopHandler: Runnable,
     private[this] val errorHandler: Exception => Boolean)
   extends Runnable {
 
+  /**
+   * Creates a new ScalableSelector with default event handlers.
+   *  - The default startHandler and stopHandler do nothing.
+   *  - The default errorHandler prints the stack trace and returns false (stops the selector).
+   */
+  def this() = this(()=>(), ()=>(), e => {e.printStackTrace(); false})
+
+  /** The Java NIO selector */
   private[this] val selector = Selector.open()
+
+  /** Maps ports to SCI instances */
   private[this] val serverChannelsInfos = new mutable.LongMap[ServerChannelInfos[_]]
+
+  /** volatile field to stop the selector from any thread */
   @volatile private[this] var running = false
 
   /**
@@ -98,7 +108,7 @@ final class ScalableSelector(
       throw new IllegalStateException("This selector is already running! Don't call run() by hand.")
     }
     running = true
-    startHandler()
+    startHandler.run()
     while (running) {
       try {
         selector.select() // Blocking selection
@@ -139,7 +149,7 @@ final class ScalableSelector(
       }
     }
     selector.close()
-    stopHandler()
+    stopHandler.run()
   }
 
   /**

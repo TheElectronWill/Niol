@@ -15,3 +15,4 @@ nbproject
 # IntelliJ files
 *.iml
 .idea
+.idea_modules

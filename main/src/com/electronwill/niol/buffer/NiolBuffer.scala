@@ -1,153 +1,202 @@
 package com.electronwill.niol.buffer
 
-import java.util.concurrent.atomic.AtomicInteger
+import java.io.{InputStream, OutputStream}
+import java.nio.ByteBuffer
+import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
 import com.electronwill.niol._
-import com.electronwill.niol.buffer.provider.HeapNioAllocator
 
-/**
- * An abstract readable and writable container of bytes.
- *
- * @author TheElectronWill
- */
 abstract class NiolBuffer extends NiolInput with NiolOutput {
-  protected[this] val useCount = new AtomicInteger(1)
-
-  // buffer state
-  /** @return true if this buffer is a [[com.electronwill.niol.buffer.BaseBuffer]] */
-  def isBase: Boolean = false
-
-  /** @return the buffer's capacity */
+  /**
+   * The buffer's capacity.
+   *
+   * @return the current capcity
+   */
   def capacity: Int
 
-  /** @return true iff readAvail > 0 */
-  override def canRead: Boolean = readAvail > 0
-
-  /** @return the available space to write. */
-  def writeAvail: Int
-
-  /** Skips n writable bytes. */
-  def skipWrite(n: Int): Unit
-
-  /** @return the available space to read. */
-  def readAvail: Int
-
-  /** Skips n readable bytes. */
-  def skipRead(n: Int): Unit
-
-  // buffer operations
   /**
-   * Duplicates this buffer. The returned buffer shares its content with this buffer, but has
-   * a separate position and limit
+   * The number of bytes that can be read from this buffer.
+   * This number is always >= 0.
+   * If `readableBytes == 0` then no byte can be read and `isReadable == false`.
    *
-   * @return the new buffer
+   * @return n > 0 if can read n bytes, 0 if closed input or empty buffer
+   */
+  def readableBytes: Int
+
+  /**
+   * Checks if the buffer is empty, that is, if `readableBytes == 0`.
+   *
+   * @return true if no byte can be read from this buffer
+   */
+  def isEmpty: Boolean
+
+  /**
+   * Checks if the buffer is full, that is, if `writableBytes == 0`.
+   *
+   * @return true if no byte can be written to this buffer
+   */
+  def isFull: Boolean
+
+  override def isReadable: Boolean = !isEmpty
+
+  override def isWritable: Boolean = !isFull
+
+  override def isEnded: Boolean = false
+
+  /**
+   * Creates a "slice" that gives a limited access to the next `length` readable bytes.
+   * No copy is involved. Throws an exception if `readableBytes < length`.
+   * The returned buffer satisfies `readableBytes == length`.
+   *
+   * @param length the length of the slice
+   * @return the slice
+   */
+  def slice(length: Int): NiolBuffer
+
+  /**
+   * Creates a "slice" that gives a limited access to the next `length` writable bytes.
+   * No copy is involved. Throws an exception if `writableBytes < length`.
+   * The returned buffer satisfies `writableBytes == length`.
+   *
+   * @param length the length of the slice
+   * @return the writable slice
+   */
+  def writableSlice(length: Int): NiolBuffer
+
+  /**
+   * Returns a new buffer that shares its content with this buffer, but has independent read and
+   * write positions. Initially the positions are the same but they evolve differently.
+   *
+   * @return the duplicate
    */
   def duplicate: NiolBuffer
 
-  /** Copies the readable content of this buffer in a new buffer. */
-  def copyRead: NiolBuffer
+  /**
+   * Makes the buffer empty. After a call to `clear`, [[isReadable]] returns `false`,
+   * [[readableBytes]] returns zero and [[writableBytes]] returns the buffer's capacity.
+   * The buffer's capacity is not modified.
+   */
+  def clear(): Unit
 
   /**
-   * Creates a view of the buffer's readable data.
-   * The returned buffer has the following characteristics:
-   * - readPosition = 0
-   * - readAvail = capacity = thisBuffer.readAvail
-   * - writeAvail = 0
+   * Advances the read position by n bytes, as if n bytes had been read into some destination.
+   *
+   * @param n the number of bytes to skip
    */
-  def subRead: NiolBuffer = subRead(readAvail)
+  def advance(n: Int): Unit
 
   /**
-   * Creates a limited view of the buffer's readable data.
-   * The returned buffer has the following characteristics:
-   * - readPosition = 0
-   * - readAvail = capacity
-   * - writeAvail = 0
+   * Creates a new [[BiBuffer]] made of this buffer plus the other buffer, in this order.
+   *
+   * @param other the other buffer
+   * @return a new BiBuffer(thisBuffer, other)
    */
-  def subRead(maxLength: Int): NiolBuffer
+  final def +(other: NiolBuffer): BiBuffer = new BiBuffer(this, other)
 
-  /**
-   * Creates a view of the buffer's writeable space.
-   * The returned buffer has the following characteristics:
-   * - writePosition = 0
-   * - writeAvail = capacity = thisBuffer.writeAvail
-   * - readAvail = 0
-   */
-  def subWrite: NiolBuffer = subWrite(writeAvail)
+  // ----- Protected operations for reading -----
+  /** Implements read without necessarily checking for available space. */
+  protected[niol] def _read(to: Array[Byte], off: Int, len: Int)
 
-  /**
-   * Creates a limited view of the buffer's writeable space.
-   * The returned buffer has the following characteristics:
-   * - writePosition = 0
-   * - writeAvail = capacity
-   * - readAvail = 0
-   */
-  def subWrite(maxLength: Int): NiolBuffer
+  /** Implements read without necessarily checking for available space. */
+  protected[niol] def _read(to: ByteBuffer, len: Int)
 
-  /** Concatenates two buffers without copying their content. */
-  def concat(buffer: NiolBuffer): NiolBuffer = {
-    if (this.capacity == 0) {
-      if (buffer.capacity == 0) EmptyBuffer else buffer.duplicate
-    } else if (buffer.capacity == 0) {
-      this.duplicate
-    } else {
-      val res = new CompositeBuffer(this)
-      res += buffer
-      res
-    }
+  /** Implements read without necessarily checking for available space. */
+  protected[niol] def _read(to: NiolBuffer, len: Int): Unit
+
+  /** Checks if at least `n` bytes can be written */
+  protected[niol] def checkReadable(n: Int): Unit = {
+    val avail = readableBytes
+    if (avail < n) throw new NotEnoughDataException(n, avail)
   }
 
-  /** Concatenates two buffers by copying them to a new buffer. */
-  def concatCopy(buffer: NiolBuffer): NiolBuffer = {
-    val availableThis = this.readAvail
-    val availableBuff = buffer.readAvail
-    if (availableThis == 0) {
-      if (availableBuff == 0) EmptyBuffer else buffer.copyRead
-    } else if (availableBuff == 0) {
-      this.copyRead
-    } else {
-      val copy = HeapNioAllocator.get(availableThis + availableBuff)
-      this.duplicate >>: copy
-      buffer.duplicate >>: copy
-      copy
-    }
+  // ----- Writes specific to NiolBuffer -----
+  /**
+   * Writes at most `maxBytes` bytes from `src`.
+   * Returns the actual number of bytes written, possibly zero.
+   *
+   * @param src the channel providing the data
+   * @return the number of bytes read from `src`, or -1 if the end of the stream has been reached
+   */
+  def writeSome(src: ScatteringByteChannel): Int
+
+  /**
+   * Writes some bytes from `src`.
+   * Returns the actual number of bytes written, possibly zero.
+   *
+   * @param src    the stream providing the data
+   * @return the number of bytes read from `src`, or -1 if the end of the stream has been reached
+   */
+  def writeSome(src: InputStream): Int
+
+  // ----- Reads specific to NiolBuffer -----
+  /**
+   * Reads some bytes and writes them to `dst`.
+   * Returns the actual number of bytes read, possibly zero.
+   *
+   * @param dst the channel to write to
+   * @return the number of bytes read
+   */
+  def readSome(dst: GatheringByteChannel): Int
+
+  /**
+   * Reads some bytes and writes them to `dst`.
+   * Returns the actual number of bytes read, possibly zero.
+   *
+   * @param dst the channel to write to
+   * @return the number of bytes read
+   */
+  def readSome(dst: OutputStream): Int
+
+  // ----- Reads overriden -----
+  override def read(dst: ByteBuffer): Unit = {
+    val rem = dst.remaining()
+    checkReadable(rem)
+    _read(dst, rem)
   }
 
-  /** Compacts this buffer by moving its readable content to position 0 if possible. */
-  def compact(): Unit
+  override def readSome(dst: ByteBuffer): Int = {
+    val len = math.min(dst.remaining, readableBytes)
+    _read(dst, len)
+    len
+  }
 
+  override def readBytes(dst: Array[Byte], offset: Int, length: Int): Unit = {
+    checkReadable(length)
+    _read(dst, offset, length)
+  }
+
+  override def readSomeBytes(dst: Array[Byte], offset: Int, length: Int): Int = {
+    val len = math.min(readableBytes, length)
+    _read(dst, offset, len)
+    len
+  }
+
+  override def read(dst: NiolBuffer): Unit = {
+    val writable = dst.writableBytes
+    checkReadable(writable)
+    _read(dst, writable)
+  }
+
+  // ----- toSomething -----
   /**
-   * Clears this buffer.
+   * Reads all the readable bytes of this buffer into a new byte array.
+   *
+   * @return the byte array containing all the bytes read
    */
-  def clear()
+  def toArray(): Array[Byte] = {
+    val len = readableBytes
+    val array = new Array[Byte](len)
+    _read(array, 0, len)
+    array
+  }
 
-  /**
-   * Discards this buffer: if its use count is 0 (after decrease), returns it to the pool it
-   * comes from. A discarded buffer must no longer be used, except when re-obtained later from
-   * the pool.
-   */
-  def discard(): Unit
-
-  /**
-   * Frees the buffer memory. A freed buffer must no longer be used nor obtained from the pool.
-   */
-  protected[niol] def freeMemory(): Unit = {}
-
-  /**
-   * Marks this buffer as used by incrementing its use count. Manually calling this method is
-   * rarely necessary because creating, duplicating or subviewing a buffer automatically
-   * increases the use count.
-   */
-  def markUsed(): Unit = useCount.getAndIncrement()
-
-  // shortcuts
-  /** Concatenates two buffers without copying their content. */
-  @inline final def +(buffer: NiolBuffer): NiolBuffer = concat(buffer)
-
-  // overrides
-  override def putBytes(src: NiolInput): Unit = src.getBytes(this)
-
-  /** @return a String containing the informations about the state of this buffer. */
   override def toString: String = {
-    s"${getClass.getSimpleName}(capacity=$capacity; writeAvail=$writeAvail; readAvail=$readAvail)"
+    s"""${getClass.getSimpleName}(
+       |  capacity: $capacity,
+       |  isEmpty: $isEmpty,
+       |  isFull: $isFull,
+       |  readable: $readableBytes,
+       |  writable: $writableBytes
+       |)""".stripMargin
   }
 }

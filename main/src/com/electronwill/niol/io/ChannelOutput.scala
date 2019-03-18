@@ -2,10 +2,12 @@ package com.electronwill.niol.io
 
 import java.io.{Closeable, IOException}
 import java.nio.ByteBuffer
-import java.nio.channels.{FileChannel, GatheringByteChannel, ScatteringByteChannel}
-import java.nio.file.{Path, StandardOpenOption}
+import java.nio.channels.{FileChannel, GatheringByteChannel}
+import java.nio.file.{Files, Path, StandardOpenOption}
 
-import com.electronwill.niol.{NiolInput, NiolOutput}
+import com.electronwill.niol.buffer.storage.{BytesStorage, StorageProvider}
+import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer}
+import com.electronwill.niol.{NiolOutput, TMP_BUFFER_SIZE}
 
 /**
  * A NiolOutput based on a ByteChannel. The channel must be in blocking mode for the ChannelOutput
@@ -13,213 +15,103 @@ import com.electronwill.niol.{NiolInput, NiolOutput}
  *
  * @author TheElectronWill
  */
-final class ChannelOutput(
-    private[this] val channel: GatheringByteChannel,
-    bufferCapacity: Int = 4096,
-    directBuffer: Boolean = true)
-  extends NiolOutput
-  with Closeable {
+final class ChannelOutput(val channel: GatheringByteChannel, storage: BytesStorage)
+  extends NiolOutput with Closeable {
 
-  private[this] val buffer: ByteBuffer = {
-    if (directBuffer) {
-      ByteBuffer.allocateDirect(bufferCapacity)
-    } else {
-      ByteBuffer.allocate(bufferCapacity)
-    }
+  private[this] var closed = true
+  private[this] val buffer = CircularBuffer(storage)
+
+  def this(fc: FileChannel, prov: StorageProvider) = {
+    this(fc, prov.getStorage(math.min(TMP_BUFFER_SIZE, fc.size().toInt)))
   }
 
-  def this(path: Path, bufferCapacity: Int, directBuffer: Boolean) = {
-    this(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE),
-         bufferCapacity,
-         directBuffer)
+  def this(path: Path, storage: BytesStorage) = {
+    this(FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE), storage)
   }
 
-  def this(path: Path, bufferCapacity: Int) = {
-    this(path, bufferCapacity, true)
-  }
-
-  def this(path: Path) = {
-    this(path, 4096, true)
-  }
-
-  private def ensureAvailable(min: Int): Unit = {
-    if (buffer.remaining() < min) {
-      flush()
-    }
-  }
-
-  override def putByte(b: Byte): Unit = {
-    ensureAvailable(1)
-    buffer.put(b)
-  }
-
-  override def putShort(s: Short): Unit = {
-    ensureAvailable(2)
-    buffer.putShort(s)
-  }
-
-  override def putInt(i: Int): Unit = {
-    ensureAvailable(4)
-    buffer.putInt(i)
-  }
-
-  override def putLong(l: Long): Unit = {
-    ensureAvailable(8)
-    buffer.putLong(l)
-  }
-
-  override def putFloat(f: Float): Unit = {
-    ensureAvailable(4)
-    buffer.putFloat(f)
-  }
-
-  override def putDouble(d: Double): Unit = {
-    ensureAvailable(8)
-    buffer.putDouble(d)
-  }
-
-  override def putBytes(src: Array[Byte], offset: Int, length: Int): Unit = {
-    var remaining = length
-    do {
-      if (!buffer.hasRemaining) {
-        flush()
-      }
-      val l = Math.min(remaining, buffer.position)
-      val off = length - remaining
-      buffer.put(src, off, l)
-      remaining += l
-    } while (remaining > 0)
-  }
-
-  override def putBytes(src: NiolInput): Unit = {
-    src match {
-      case input: ChannelInput =>
-        input.fileTransfer(channel)
-      case _ =>
-        do {
-          if (!buffer.hasRemaining) {
-            flush()
-          }
-          src.getBytes(buffer)
-        } while (src.canRead)
-    }
-  }
-
-  override def putBytes(src: ByteBuffer): Unit = {
-    if (src.isDirect) {
-      buffer.flip()
-      channel.write(Array(buffer, src))
-      buffer.clear()
-    } else {
-      do {
-        if (!buffer.hasRemaining) {
-          flush()
+  def this(path: Path, prov: StorageProvider) = {
+    this(path,
+      prov.getStorage(
+        if (Files.isRegularFile(path)) {
+          math.min(TMP_BUFFER_SIZE, Files.size(path).toInt)
+        } else {
+          TMP_BUFFER_SIZE
         }
-        buffer.put(src)
-      } while (src.hasRemaining)
-    }
+      ))
   }
 
-  override def putBytes(src: ScatteringByteChannel): (Int, Boolean) = {
-    src match {
-      case fc: FileChannel =>
-        flush()
-        val pos = fc.position()
-        val count = fc.size() - pos
-        (fc.transferTo(pos, count, channel).toInt, false)
-      case _ =>
-        var read = 1
-        var totalRead = 0
-        var eos = false
-        do {
-          if (!buffer.hasRemaining) {
-            flush()
-          }
-          read = src.read(buffer)
-          if (read == -1) {
-            eos = true
-          } else {
-            totalRead += read
-          }
-        } while (read > 0)
-        (totalRead, eos)
-    }
-  }
-
-  override def putShorts(src: Array[Short], offset: Int, length: Int): Unit = {
-    var remaining = length
-    do {
-      if (buffer.remaining < 2) {
-        flush()
-      }
-      val l = Math.min(remaining, buffer.position)
-      val off = length - remaining
-      buffer.asShortBuffer.put(src, off, l)
-      remaining += l
-    } while (remaining > 0)
-  }
-
-  override def putInts(src: Array[Int], offset: Int, length: Int): Unit = {
-    var remaining = length
-    do {
-      if (buffer.remaining < 4) {
-        flush()
-      }
-      val l = Math.min(remaining, buffer.position)
-      val off = length - remaining
-      buffer.asIntBuffer.put(src, off, l)
-      remaining += l
-    } while (remaining > 0)
-  }
-
-  override def putLongs(src: Array[Long], offset: Int, length: Int): Unit = {
-    var remaining = length
-    do {
-      if (buffer.remaining < 8) {
-        flush()
-      }
-      val l = Math.min(remaining, buffer.position)
-      val off = length - remaining
-      buffer.asLongBuffer().put(src, off, l)
-      remaining += l
-    } while (remaining > 0)
-  }
-
-  override def putFloats(src: Array[Float], offset: Int, length: Int): Unit = {
-    var remaining = length
-    do {
-      if (buffer.remaining < 4) {
-        flush()
-      }
-      val l = Math.min(remaining, buffer.position)
-      val off = length - remaining
-      buffer.asFloatBuffer().put(src, off, l)
-      remaining += l
-    } while (remaining > 0)
-  }
-
-  override def putDoubles(src: Array[Double], offset: Int, length: Int): Unit = {
-    var remaining = length
-    do {
-      if (buffer.remaining < 8) {
-        flush()
-      }
-      val l = Math.min(remaining, buffer.position)
-      val off = length - remaining
-      buffer.asDoubleBuffer().put(src, off, l)
-      remaining += l
-    } while (remaining > 0)
-  }
-
-  def flush(): Unit = {
-    buffer.flip()
-    channel.write(buffer)
-    buffer.clear()
-  }
+  override def isEnded: Boolean = closed
+  override def isWritable: Boolean = !closed
+  override def writableBytes: Int = if (closed) 0 else Int.MaxValue
 
   @throws[IOException]
   def close(): Unit = {
     flush()
     channel.close()
+    closed = true
+  }
+
+  def flush(): Unit = {
+    buffer.readSome(channel)
+  }
+
+  private def makeWritable(n: Int): Unit = {
+    if (buffer.writableBytes < n) {
+      flush()
+    }
+  }
+
+  override protected[niol] def _write(b: Byte): Unit = {
+    makeWritable(1)
+    buffer.write(b)
+  }
+
+  override protected[niol] def _write(from: Array[Byte], off: Int, len: Int): Unit = {
+    flush()
+    val bb = ByteBuffer.wrap(from, off, len)
+    channel.write(bb)
+  }
+
+  override protected[niol] def _write(from: ByteBuffer, len: Int): Unit = {
+    flush()
+    channel.write(from)
+  }
+
+
+  override def writeShort(s: Int): Unit = {
+    makeWritable(2)
+    buffer.writeShort(s)
+  }
+
+  override def writeInt(i: Int): Unit = {
+    makeWritable(4)
+    buffer.writeInt(i)
+  }
+
+  override def writeLong(l: Long): Unit = {
+    makeWritable(8)
+    buffer.writeLong(l)
+  }
+
+  override def writeFloat(f: Float): Unit = {
+    makeWritable(4)
+    buffer.writeFloat(f)
+  }
+
+  override def writeDouble(d: Double): Unit = {
+    makeWritable(8)
+    buffer.writeDouble(d)
+  }
+  override def write(src: NiolBuffer): Unit = {
+    flush()
+    var written = src.readSome(channel)
+    while (written > 0 && src.isReadable) {
+      written = src.readSome(channel)
+    }
+  }
+
+  override def writeSome(src: NiolBuffer): Int = {
+    flush()
+    src.readSome(channel)
   }
 }

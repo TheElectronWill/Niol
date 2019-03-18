@@ -1,500 +1,334 @@
 package com.electronwill.niol.buffer
 
+import java.io.{InputStream, OutputStream}
 import java.nio.ByteBuffer
 import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
-import com.electronwill.niol.buffer.provider.HeapNioAllocator
+import com.electronwill.niol.TMP_BUFFER_SIZE
+import com.electronwill.niol.buffer.storage.BytesStorage
+import com.electronwill.niol.utils.{isPowerOfTwo, positively}
 
 /**
- * @author TheElectronWill
+ * A fixed-length circular buffer (aka "ring buffer").
+ *
+ * @param storage stores the bytes
  */
-final class CircularBuffer(private[niol] val buff: RandomAccessBuffer) extends NiolBuffer {
-  require(buff.capacity > 0)
-  buff.markUsed()
+abstract class CircularBuffer protected(
+    protected[this] val storage: BytesStorage,
+    protected[this] var readpos: Int,
+    protected[this] var writepos: Int,
+    protected[this] var lastOpWrite: Boolean)
+  extends NiolBuffer {
 
-  /**
-   * Used when readPos == writePos to differentiate between the situation where everything has
-   * been read (allRead = true, readAvail = 0) and the situation where everything has been written
-   * (allRead = false, writeAvail = 0).
-   */
-  private[this] var allRead = true
+  // ----- Buffer status -----
+  override def capacity: Int = storage.capacity
+  override def readableBytes: Int = if (isFull) capacity else countCircular(readpos, writepos)
+  override def writableBytes: Int = if (isEmpty) capacity else countCircular(writepos, readpos)
 
-  // buffer state
-  override def capacity: Int = buff.capacity
+  override def isEmpty = (readpos == writepos && !lastOpWrite)
+  override def isFull = (readpos == writepos && lastOpWrite)
 
-  private[buffer] def writePos: Int = buff.writePos
+  /** Counts the space between two positions: (begin + end) mod capacity */
+  protected def countCircular(begin: Int, end: Int): Int
 
-  private def writePos(pos: Int): Unit = buff.writePos(pos)
+  /** Computes (a + b) mod capacity, for (a+b) >= 0 */
+  protected def addCircular(a: Int, b: Int): Int
 
-  private[buffer] def writeLimit: Int = buff.writeLimit
-
-  private def writeLimit(limit: Int): Unit = buff.writeLimit(limit)
-
-  override def skipWrite(n: Int): Unit = {
-    if (writePos + n >= capacity) {
-      writeLimit(readPos)
-      readLimit(capacity)
-      writePos(n - capacity + 1)
-    } else {
-      writePos(readPos + n)
-    }
+  // ----- Reads -----
+  override protected[niol] def _read(): Byte = {
+    val p = readpos
+    readpos = addCircular(p, 1)
+    lastOpWrite = false
+    storage.get1(p)
   }
 
-  private[buffer] def readPos: Int = buff.readPos
-
-  private def readPos(pos: Int): Unit = buff.readPos(pos)
-
-  private[buffer] def readLimit: Int = buff.readLimit
-
-  private def readLimit(limit: Int): Unit = buff.readLimit(limit)
-
-  override def skipRead(n: Int): Unit = {
-    val newPos = readPos + n
-    if (newPos >= capacity) {
-      readLimit(writePos)
-      writeLimit(capacity)
-      readPos(newPos - capacity)
+  override protected[niol] def _read(to: Array[Byte], off: Int, len: Int): Unit = {
+    val p = readpos
+    val w = writepos
+    if (p < w) {
+      // [0...p...w...cap-1]
+      storage.get(p, to, off, len) // [p...i], i<w
     } else {
-      readPos(newPos)
-    }
-  }
-
-  override def writeAvail: Int = {
-    if (readPos == writePos) {
-      if (allRead) capacity else 0
-    } else if (readPos > writePos) {
-      readPos - writePos
-    } else {
-      capacity - writePos + readPos
-    }
-  }
-
-  override def readAvail: Int = {
-    if (readPos == writePos) {
-      if (allRead) 0 else capacity
-    } else if (writePos > readPos) {
-      writePos - readPos
-    } else {
-      capacity - readPos + writePos
-    }
-  }
-
-  // buffer operations
-  override def copyRead: NiolBuffer = {
-    val copy = HeapNioAllocator.get(readAvail)
-    if (readPos >= writePos) {
-      sub(readPos, capacity) >>: copy
-      sub(0, writePos) >>: copy
-    } else {
-      sub(readPos, writePos) >>: copy
-    }
-    copy.readLimit(copy.writePos) // Allows the data to be immediately read
-    copy
-  }
-
-  override def subRead: NiolBuffer = {
-    if (readPos >= writePos) {
-      sub(readPos, capacity) + sub(0, writePos)
-    } else {
-      sub(readPos, writePos)
-    }
-  }
-
-  override def subRead(maxLength: Int): NiolBuffer = {
-    if (readPos >= writePos) {
-      val partA = capacity - readPos
-      if (partA >= maxLength) {
-        sub(readPos, readPos + maxLength)
+      // [0...w...p...cap-1]
+      val right = capacity - p
+      if (right >= len) {
+        storage.get(p, to, off, len) // [p...p+len-1]
       } else {
-        var partB = writePos
-        if (partA + partB > maxLength) {
-          partB = maxLength - partA
+        storage.get(p, to, off, right) // [p...cap-1]
+        storage.get(0, to, off + right, len - right) // [0...i], i<w
+      }
+    }
+    readpos = addCircular(p, len)
+    lastOpWrite = false
+  }
+
+  override protected[niol] def _read(to: ByteBuffer, len: Int): Unit = {
+    val p = readpos
+    val w = writepos
+    if (p < w) {
+      // [0...p...w...cap-1]
+      storage.get(p, to, len) // [p...p+len-1], p+len-1<w
+    } else {
+      // [0...w...p...cap-1]
+      val right = capacity - p
+      if (right >= len) {
+        storage.get(p, to, len) // [p...p+len-1]
+      } else {
+        storage.get(p, to, right) // [p...cap-1]
+        storage.get(0, to, len - right) // [0...i], i<w
+      }
+    }
+    readpos = addCircular(p, len)
+    lastOpWrite = false
+  }
+  override protected[niol] def _read(to: NiolBuffer, len: Int): Unit = {
+    val p = readpos
+    val w = writepos
+    val bb = storage.byteBuffer
+    bb.position(p)
+    if (p < w) {
+      // [0...p...w...cap-1]
+      to._write(bb, len) // [p...p+len-1], p+len-1<w
+    } else {
+      // [0...w...p...cap-1]
+      val right = capacity - p
+      if (right >= len) {
+        to._write(bb, len) // [p...p+len-1]
+      } else {
+        to._write(bb, right) // [p...cap-1]
+        bb.position(0)
+        to._write(bb, len - right) // [0...i], i<w
+      }
+    }
+    readpos = addCircular(p, len)
+    lastOpWrite = false
+  }
+
+  // ----- Partial reads ------
+  override def readSome(dst: GatheringByteChannel): Int = {
+    val len = readableBytes
+    val r = readpos
+    val w = writepos
+    val read =
+      if (r < w) {
+        // [0...r...w...cap-1]
+        storage.get(r, dst, len) // [r...i], i<w
+      } else {
+        // [0...w...r...cap-1]
+        val right = capacity - r
+        if (right >= len) {
+          storage.get(r, dst, len) // [r...r+len-1]
+        } else {
+          val rRight = storage.get(r, dst, right) // [r...cap-1]
+          val rLeft  = storage.get(0, dst, len - right) // [0...i], i<w
+          rRight + rLeft
         }
-        sub(readPos, capacity) + sub(0, partB)
       }
-    } else {
-      val end = Math.min(writePos, readPos + maxLength)
-      sub(readPos, end)
+    if (read > 0) {
+      readpos = addCircular(r, read)
+      lastOpWrite = false
     }
+    read
   }
 
-  override def subWrite: NiolBuffer = {
-    if (readPos >= writePos) {
-      sub(writePos, readPos)
-    } else if (readPos == 0) {
-      sub(writePos, capacity)
-    } else {
-      sub(writePos, capacity) + sub(0, readPos)
-    }
+  override def readSome(dst: OutputStream): Int = {
+    val len = math.min(readableBytes, TMP_BUFFER_SIZE)
+    val buff = new Array[Byte](len)
+    _read(buff, 0, len)
+    dst.write(buff)
+    len
   }
 
-  override def subWrite(maxLength: Int): NiolBuffer = {
-    if (readPos >= writePos) {
-      sub(writePos, Math.min(readPos, writePos + maxLength))
-    } else if (readPos == 0) {
-      sub(writePos, Math.min(capacity, writePos + maxLength))
+  override def readSome(dst: NiolBuffer): Int = {
+    val len = math.min(readableBytes, dst.writableBytes)
+    _read(dst, len)
+    len
+  }
+
+  // ----- Writes -----
+  override protected[niol] def _write(b: Byte): Unit = {
+    val p = writepos
+    writepos = addCircular(p, 1)
+    lastOpWrite = true
+    storage.put1(p, b)
+  }
+
+  override protected[niol] def _write(from: Array[Byte], off: Int, len: Int): Unit = {
+    val w = writepos
+    val r = readpos
+    if (w < r) {
+      storage.put(w, from, off, len)
+      writepos = addCircular(w, len)
+    } else if (w == r) {
+      assert(isEmpty)
+      storage.put(0, from, off, len)
+      readpos = 0
+      writepos = len
     } else {
-      val partA = capacity - writePos
-      if (partA >= maxLength) {
-        sub(writePos, capacity)
+      val l = math.min(len, capacity - w)
+      storage.put(w, from, off, l)
+      storage.put(0, from, off + l, len - l)
+      writepos = addCircular(w, len)
+    }
+    lastOpWrite = true
+  }
+
+  override protected[niol] def _write(from: ByteBuffer, len: Int): Unit = {
+    val w = writepos
+    val r = readpos
+    if (w < r) {
+      // [0...w...r...cap-1]
+      storage.put(w, from, len)
+      writepos = addCircular(w, len)
+    } else if (w == r) {
+      assert(isEmpty)
+      storage.put(0, from, len)
+      readpos = 0
+      writepos = len
+    } else {
+      // [0...r...w...cap-1]
+      val l = math.min(len, capacity - w)
+      storage.put(w, from, l)
+      storage.put(0, from, len - l)
+      writepos = addCircular(w, len)
+    }
+    lastOpWrite = true
+  }
+
+  override def writeSome(src: ByteBuffer): Int = {
+    val len = math.min(src.remaining, writableBytes)
+    _write(src, len)
+    len
+  }
+
+  override def writeSome(src: ScatteringByteChannel): Int = {
+    if (isFull) return 0
+    val maxLen = writableBytes
+    var w = writepos
+    val r = readpos
+    val written =
+      if (w < r) {
+        storage.put(w, src, maxLen)
+      } else if (w == r) {
+        // empty buffer => we can restart to index 0
+        assert(isEmpty)
+        readpos = 0
+        w = 0
+        storage.put(0, src, maxLen)
       } else {
-        var partB = readPos
-        if (partA + partB > maxLength) {
-          partB = maxLength - partA
+        val l = math.min(maxLen, capacity - w)
+        val wRight = storage.put(w, src, l)
+        if (wRight > 0) {
+          val wLeft = storage.put(0, src, maxLen - l)
+          wRight + positively(wLeft)
+        } else {
+          wRight
         }
-        sub(writePos, capacity) + sub(0, partB)
       }
+    if (written > 0) {
+      writepos = addCircular(w, written)
+      lastOpWrite = true
     }
+    written
   }
 
-  private def copy(begin: Int, end: Int): NiolBuffer = buff.copy(begin, end)
-
-  private def sub(begin: Int, end: Int): NiolBuffer = {
-    val sub = buff.sub(begin, end)
-    markUsed()
-    sub
-  }
-
-  override def duplicate: NiolBuffer = {
-    val d = new CircularBuffer(buff.duplicate)
-    markUsed()
-    d
-  }
-
-  override def clear(): Unit = buff.clear()
-
-  override def compact(): Unit = {}
-
-  override def discard(): Unit = {
-    if (useCount.decrementAndGet() == 0) {
-      buff.discard()
-    }
-  }
-
-  override protected[niol] def freeMemory(): Unit = buff.freeMemory()
-
-  // get methods
-  /** Called when readPos = capacity, to make the buffer circular */
-  private def circleReadPos(): Unit = {
-    readPos(0)
-    readLimit(writePos)
-    writeLimit(capacity)
-    if (writePos == 0) {
-      allRead = true
-    }
-  }
-
-  /** Called when writePos = capacity, to make the buffer circular */
-  private def circleWritePos(): Unit = {
-    writePos(0)
-    writeLimit(readPos)
-    readLimit(capacity)
-    if (readPos == 0) {
-      allRead = false
-    }
-  }
-
-  /** Called after a write operation to update the readLimit if needed */
-  private def updateReadLimit(): Unit = {
-    if (writePos > readPos) {
-      readLimit(writePos)
-    } else if (writePos == readPos) {
-      allRead = false
-    }
-    // else readLimit = capacity, already set normally
-  }
-
-  /** Called after a read operation to update the writeLimit if needed */
-  private def updateWriteLimit(): Unit = {
-    if (readPos > writePos) {
-      writeLimit(readPos)
-    } else if (readPos == writePos) {
-      allRead = true
-    }
-    // else writeLimit = capacity, already set normally
-  }
-
-  override def getByte(): Byte = {
-    val b = buff.getByte()
-    if (readPos == capacity) {
-      circleReadPos()
-    } else {
-      updateWriteLimit()
-    }
-    b
-  }
-
-  override def getShort(): Short = {
-    val newPos = readPos + 2
-    if (newPos <= capacity) {
-      val v = buff.getShort()
-      if (newPos == capacity) {
-        circleReadPos()
+  override def writeSome(src: InputStream): Int = {
+    if (isFull) return 0
+    val maxLen = writableBytes
+    var w = writepos
+    val r = readpos
+    val written =
+      if (storage.byteBuffer.hasArray) {
+        // ByteBuffer is backed by an array => write to it directly
+        val arr = storage.byteBuffer.array
+        if (w < r) {
+          src.read(arr, w, maxLen)
+        } else if (w == r) {
+          // empty buffer => we can restart to index 0
+          assert(isEmpty)
+          readpos = 0
+          w = 0
+          src.read(arr, 0, maxLen)
+        } else {
+          val l = math.min(maxLen, capacity - w)
+          val wRight = src.read(arr, w, l)
+          if (wRight > 0) {
+            val wLeft = src.read(arr, 0, maxLen - l)
+            wRight + positively(wLeft)
+          } else {
+            wRight
+          }
+        }
       } else {
-        updateWriteLimit()
+        // ByteBuffer isn't backed by an array => use a temporary buffer
+        val arr = new Array[Byte](math.min(maxLen, TMP_BUFFER_SIZE))
+        src.read(arr)
       }
-      v
+    if (written > 0) {
+      writepos = addCircular(w, written)
+      lastOpWrite = true
+    }
+    written
+  }
+
+  override def write(src: NiolBuffer): Unit = src.read(this)
+
+  override def writeSome(src: NiolBuffer): Int = src.readSome(this)
+
+
+  // ----- Buffer methods -----
+  override def slice(length: Int): NiolBuffer = {
+    checkReadable(length)
+    val end = addCircular(readpos, length)
+    CircularBuffer(storage, readpos, end, isFull)
+  }
+
+  override def writableSlice(length: Int): NiolBuffer = {
+    checkWritable(length)
+    val end = addCircular(writepos, length)
+    CircularBuffer(storage, end, writepos, isEmpty)
+  }
+
+  override def duplicate: NiolBuffer = CircularBuffer(storage, readpos, writepos, lastOpWrite)
+
+  override def clear(): Unit = {
+    readpos = 0
+    writepos = 0
+    lastOpWrite = false
+  }
+
+  override def advance(n: Int): Unit = {
+    val r = readableBytes
+    if (n > r) throw new IndexOutOfBoundsException(s"Cannot advance by $n bytes: only $r readable")
+    readpos = addCircular(readpos, n)
+    lastOpWrite = false
+  }
+
+  override def toString: String = s"${super.toString} and (r=$readpos, w=$writepos)"
+}
+
+object CircularBuffer {
+  import java.nio.ByteBuffer
+
+  private[buffer] def apply(s: BytesStorage, r: Int, w: Int, l: Boolean): CircularBuffer = {
+    if (isPowerOfTwo(s.capacity)) {
+      new CircularBufferOptiMod2(s, r, w, l)
     } else {
-      (getByte() << 8 | getByte()).toShort
+      new CircularBufferGeneralMod(s, r, w, l)
     }
   }
 
-  override def getChar(): Char = getShort().toChar
-
-  override def getInt(): Int = {
-    val newPos = readPos + 4
-    if (newPos <= capacity) {
-      val v = buff.getInt()
-      if (newPos == capacity) {
-        circleReadPos()
-      } else {
-        updateWriteLimit()
-      }
-      v
-    } else {
-      getByte() << 24 | getByte() << 16 | getByte() << 8 | getByte()
-    }
+  def apply(storage: BytesStorage): CircularBuffer = {
+    apply(storage, 0, 0, false)
   }
 
-  override def getLong(): Long = {
-    val newPos = readPos + 8
-    if (newPos <= capacity) {
-      val v = buff.getLong()
-      if (newPos == capacity) {
-        circleReadPos()
-      } else {
-        updateWriteLimit()
-      }
-      v
-    } else {
-      val bytes = getBytes(8)
-      bytes(0) << 56 | bytes(1) << 48 | bytes(2) << 40 | bytes(3) << 32 |
-        bytes(4) << 24 | bytes(5) << 16 | bytes(6) << 8 | bytes(7)
-    }
+  def wrap(bb: ByteBuffer): CircularBuffer = {
+    val sto = BytesStorage.wrap(bb)
+    apply(sto, bb.position(), bb.limit(), true)
   }
 
-  override def getFloat(): Float = java.lang.Float.intBitsToFloat(getInt())
-
-  override def getDouble(): Double = java.lang.Double.longBitsToDouble(getLong())
-
-  override def getBytes(dest: Array[Byte], offset: Int, length: Int): Unit = {
-    if (writePos > readPos || readPos + length <= capacity) {
-      buff.getBytes(dest, offset, length)
-      if (readPos == capacity) {
-        circleReadPos()
-      }
-    } else {
-      val lengthA = capacity - readPos
-      val lengthB = length - lengthA
-      buff.getBytes(dest, offset, lengthA)
-      circleReadPos()
-      buff.getBytes(dest, offset + lengthA, lengthB)
-    }
-    updateWriteLimit()
-  }
-
-  override def getBytes(dest: ByteBuffer): Unit = {
-    if (writePos > readPos || readPos + dest.remaining() <= capacity) {
-      buff.getBytes(dest)
-      if (readPos == capacity) {
-        circleReadPos()
-      }
-    } else {
-      buff.getBytes(dest)
-      circleReadPos()
-      buff.getBytes(dest)
-    }
-    updateWriteLimit()
-  }
-
-  override def getBytes(dest: NiolBuffer): Unit = {
-    dest.putBytes(buff)
-    if (readPos == capacity) {
-      circleReadPos()
-      dest.putBytes(buff)
-    } else {
-      updateWriteLimit()
-    }
-  }
-
-  override def getBytes(dest: GatheringByteChannel): Int = {
-    var count = 0
-    if (writePos > readPos) {
-      count = buff.getBytes(dest)
-      if (readPos == capacity) {
-        circleReadPos()
-      }
-    } else {
-      count = buff.getBytes(dest)
-      circleReadPos()
-      count += buff.getBytes(dest)
-    }
-    updateWriteLimit()
-    count
-  }
-
-  override def getShorts(dest: Array[Short], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 2)
-    ByteBuffer.wrap(bytes).asShortBuffer().get(dest, offset, length)
-  }
-
-  override def getInts(dest: Array[Int], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 4)
-    ByteBuffer.wrap(bytes).asIntBuffer().get(dest, offset, length)
-  }
-
-  override def getLongs(dest: Array[Long], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 8)
-    ByteBuffer.wrap(bytes).asLongBuffer().get(dest, offset, length)
-  }
-
-  override def getFloats(dest: Array[Float], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 4)
-    ByteBuffer.wrap(bytes).asFloatBuffer().get(dest, offset, length)
-  }
-
-  override def getDoubles(dest: Array[Double], offset: Int, length: Int): Unit = {
-    val bytes = getBytes(length * 8)
-    ByteBuffer.wrap(bytes).asDoubleBuffer().get(dest, offset, length)
-  }
-
-  // put methods
-  override def putByte(b: Byte): Unit = {
-    buff.putByte(b)
-    if (writePos == capacity) {
-      circleWritePos()
-    } else {
-      updateReadLimit()
-    }
-  }
-
-  override def putShort(s: Short): Unit = {
-    val newPos = writePos + 2
-    if (newPos <= capacity) {
-      buff.putShort(s)
-      if (newPos == capacity) {
-        circleReadPos()
-      } else {
-        updateReadLimit()
-      }
-    } else {
-      putByte(s >> 8)
-      putByte(s)
-    }
-  }
-
-  override def putInt(i: Int): Unit = {
-    val newPos = writePos + 4
-    if (newPos <= capacity) {
-      buff.putInt(i)
-      if (newPos == capacity) {
-        circleReadPos()
-      } else {
-        updateReadLimit()
-      }
-    } else {
-      putByte(i >> 24)
-      putByte(i >> 16)
-      putByte(i >> 8)
-      putByte(i)
-    }
-  }
-
-  override def putLong(l: Long): Unit = {
-    val newPos = writePos + 8
-    if (newPos <= capacity) {
-      buff.putLong(l)
-      if (newPos == capacity) {
-        circleReadPos()
-      } else {
-        updateReadLimit()
-      }
-    } else {
-      putByte(l >> 56)
-      putByte(l >> 48)
-      putByte(l >> 40)
-      putByte(l >> 32)
-      putByte(l >> 24)
-      putByte(l >> 24)
-      putByte(l >> 16)
-      putByte(l >> 8)
-      putByte(l)
-    }
-  }
-
-  override def putFloat(f: Float): Unit = putInt(java.lang.Float.floatToIntBits(f))
-
-  override def putDouble(d: Double): Unit = putLong(java.lang.Double.doubleToLongBits(d))
-
-  override def putBytes(src: Array[Byte], offset: Int, length: Int): Unit = {
-    if (writePos < readPos || writePos + length <= capacity) {
-      buff.putBytes(src, offset, length)
-      if (writePos == capacity) {
-        circleReadPos()
-      }
-    } else {
-      val lengthA = capacity - writePos
-      val lengthB = length - lengthA // must be less than readPos
-      buff.putBytes(src, offset, lengthA)
-      circleWritePos()
-      buff.putBytes(src, offset + lengthA, lengthB)
-    }
-    updateReadLimit()
-  }
-
-  override def putBytes(src: ByteBuffer): Unit = {
-    if (writePos < readPos || writePos + src.remaining() <= capacity) {
-      buff.putBytes(src)
-      if (writePos == capacity) {
-        circleReadPos()
-      }
-    } else {
-      buff.putBytes(src)
-      circleWritePos()
-      buff.putBytes(src)
-    }
-    updateReadLimit()
-  }
-
-  override def putBytes(src: ScatteringByteChannel): (Int, Boolean) = {
-    val (n, eos) = buff.putBytes(src)
-    if (writePos == capacity) {
-      circleWritePos()
-      val (n2, eos2) = buff.putBytes(src)
-      (n + n2, eos2)
-    } else {
-      updateReadLimit()
-      (n, eos)
-    }
-  }
-
-  override def putShorts(src: Array[Short], offset: Int, length: Int): Unit = {
-    val bytes = ByteBuffer.allocate(length * 2)
-    bytes.asShortBuffer().put(src, offset, length)
-    putBytes(bytes)
-  }
-
-  override def putInts(src: Array[Int], offset: Int, length: Int): Unit = {
-    val bytes = ByteBuffer.allocate(length * 4)
-    bytes.asIntBuffer().put(src, offset, length)
-    putBytes(bytes)
-  }
-
-  override def putLongs(src: Array[Long], offset: Int, length: Int): Unit = {
-    val bytes = ByteBuffer.allocate(length * 8)
-    bytes.asLongBuffer().put(src, offset, length)
-    putBytes(bytes)
-  }
-
-  override def putFloats(src: Array[Float], offset: Int, length: Int): Unit = {
-    val bytes = ByteBuffer.allocate(length * 4)
-    bytes.asFloatBuffer().put(src, offset, length)
-    putBytes(bytes)
-  }
-
-  override def putDoubles(src: Array[Double], offset: Int, length: Int): Unit = {
-    val bytes = ByteBuffer.allocate(length * 8)
-    bytes.asDoubleBuffer().put(src, offset, length)
-    putBytes(bytes)
+  def wrap(bytes: Array[Byte], readOffset: Int, readLength: Int): CircularBuffer = {
+    val sto = BytesStorage.wrap(ByteBuffer.wrap(bytes, readOffset, readLength))
+    apply(sto, readOffset, readOffset+readLength, true)
   }
 }

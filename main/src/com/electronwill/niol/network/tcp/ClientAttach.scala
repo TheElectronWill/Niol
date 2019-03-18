@@ -36,7 +36,7 @@ trait ClientAttach[A <: ClientAttach[A]] {
    *
    * @return the function, if any
    */
-  def readTransform: Option[BufferTransform]
+  def readTransform: Option[BytesTransform]
 
   /**
    * Sets the function that is applied to the received data just after its receipt.
@@ -46,21 +46,21 @@ trait ClientAttach[A <: ClientAttach[A]] {
    *
    * @param t the function
    */
-  def readTransform_=(t: BufferTransform): Unit
+  def readTransform_=(t: BytesTransform): Unit
 
   /**
    * Returns the function that transforms the outgoing data.
    *
    * @return the function, if any
    */
-  def writeTransform: Option[BufferTransform]
+  def writeTransform: Option[BytesTransform]
 
   /**
    * Sets the function that is applied to the outgoing data just before its sending.
    *
    * @param t the function
    */
-  def writeTransform_=(t: BufferTransform): Unit
+  def writeTransform_=(t: BytesTransform): Unit
 
   /**
    * Writes some data to the client. The data isn't written immediately but at some time in the
