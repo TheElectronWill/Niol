@@ -1,22 +1,6 @@
 package com.electronwill.niol
-import scala.reflect.ClassTag
 
-package object utils {
-  private[utils] def grow[T: ClassTag](array: Array[T], newLength: Int): Array[T] = {
-    val newArray = new Array[T](newLength)
-    System.arraycopy(array, 0, newArray, 0, array.length)
-    newArray
-  }
-  private[utils] def shrink[T: ClassTag](array: Array[T], newLength: Int): Array[T] = {
-    val newArray = new Array[T](newLength)
-    System.arraycopy(array, 0, newArray, 0, newLength)
-    newArray
-  }
-  private[utils] def growAmortize[T: ClassTag](array: Array[T], minLength: Int): Array[T] = {
-    val l = array.length
-    grow(array, Math.max(minLength, l + l >> 1))
-  }
-
+object Utils {
   /**
    * Checks if a positive integer is a power of 2.
    *
@@ -32,7 +16,7 @@ package object utils {
    * @return true if it's a positive power of two
    */
   def isPositivePowerOfTwo(n: Int): Boolean = (n > 0) && isPowerOfTwo(n)
-
+  
   /** Returns the smallest power of two p that satisfies p >= n */
   def nearestPowerOfTwo(n: Int): Int = {
     val h = Integer.highestOneBit(n)

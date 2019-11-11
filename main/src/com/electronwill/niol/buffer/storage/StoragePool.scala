@@ -1,9 +1,10 @@
 package com.electronwill.niol.buffer.storage
+
 import java.lang.ref.ReferenceQueue
 import java.nio.ByteBuffer
 import java.nio.ByteBuffer.{allocate, allocateDirect}
 
-import com.electronwill.niol.utils.RecyclingIndex
+import com.electronwill.collection.RecyclingIndex
 
 /**
  * A pool of [[BytesStorage]]s.

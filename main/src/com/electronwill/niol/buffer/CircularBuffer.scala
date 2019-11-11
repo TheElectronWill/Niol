@@ -6,7 +6,7 @@ import java.nio.channels.{GatheringByteChannel, ScatteringByteChannel}
 
 import com.electronwill.niol.TMP_BUFFER_SIZE
 import com.electronwill.niol.buffer.storage.BytesStorage
-import com.electronwill.niol.utils.{isPowerOfTwo, positively}
+import com.electronwill.niol.Utils.{isPowerOfTwo, positively}
 
 /**
  * A fixed-length circular buffer (aka "ring buffer").

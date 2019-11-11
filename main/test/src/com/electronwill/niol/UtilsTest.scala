@@ -1,7 +1,8 @@
-package com.electronwill.niol.utils
+package com.electronwill.niol
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions._
+import Utils._
 
 class MiscTest {
   @Test
