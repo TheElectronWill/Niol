@@ -120,27 +120,27 @@ trait NiolInput {
   /** Reads a big-endian 8-bytes integer */
   def readLong(): Long = {
     val b = readBytes(8)
-    (b(0) & 0xFFl) << 56 |
-    (b(1) & 0xFFl) << 48 |
-    (b(2) & 0xFFl) << 40 |
-    (b(3) & 0xFFl) << 32 |
-    (b(4) & 0xFFl) << 24 |
-    (b(5) & 0xFFl) << 16 |
-    (b(6) & 0xFFl) << 8  |
-    (b(7) & 0xFFl)
+    (b(0) & 0xFFL) << 56 |
+    (b(1) & 0xFFL) << 48 |
+    (b(2) & 0xFFL) << 40 |
+    (b(3) & 0xFFL) << 32 |
+    (b(4) & 0xFFL) << 24 |
+    (b(5) & 0xFFL) << 16 |
+    (b(6) & 0xFFL) << 8  |
+    (b(7) & 0xFFL)
   }
 
   /** Reads a little-endian 8-bytes integer */
   def readLongLE(): Long = {
     val b = readBytes(8)
-    (b(0) & 0xFFl) |
-    (b(1) & 0xFFl) << 8 |
-    (b(2) & 0xFFl) << 16 |
-    (b(3) & 0xFFl) << 24 |
-    (b(4) & 0xFFl) << 32 |
-    (b(5) & 0xFFl) << 40 |
-    (b(6) & 0xFFl) << 48 |
-    (b(7) & 0xFFl) << 56
+    (b(0) & 0xFFL) |
+    (b(1) & 0xFFL) << 8 |
+    (b(2) & 0xFFL) << 16 |
+    (b(3) & 0xFFL) << 24 |
+    (b(4) & 0xFFL) << 32 |
+    (b(5) & 0xFFL) << 40 |
+    (b(6) & 0xFFL) << 48 |
+    (b(7) & 0xFFL) << 56
   }
 
   /** Reads a big-endian 4-bytes float */

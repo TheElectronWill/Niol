@@ -95,10 +95,10 @@ abstract class NiolBuffer extends NiolInput with NiolOutput {
 
   // ----- Protected operations for reading -----
   /** Implements read without necessarily checking for available space. */
-  protected[niol] def _read(to: Array[Byte], off: Int, len: Int)
+  protected[niol] def _read(to: Array[Byte], off: Int, len: Int): Unit
 
   /** Implements read without necessarily checking for available space. */
-  protected[niol] def _read(to: ByteBuffer, len: Int)
+  protected[niol] def _read(to: ByteBuffer, len: Int): Unit
 
   /** Implements read without necessarily checking for available space. */
   protected[niol] def _read(to: NiolBuffer, len: Int): Unit
