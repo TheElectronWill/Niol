@@ -77,7 +77,7 @@ trait ClientAttach[A <: ClientAttach[A]] {
    * @param buffer            the data to write
    * @param completionHandler the handler to execute after the operation
    */
-  def write(buffer: NiolBuffer, completionHandler: Runnable): Unit
+  def write(buffer: NiolBuffer, completionHandler: () => Unit): Unit
 
   /**
    * Handles the packet's data.

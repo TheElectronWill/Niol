@@ -18,7 +18,7 @@ class MainModule(val crossScalaVersion: String) extends CrossScalaModule with Pu
   def publishVersion = "2.0.1"
   def scalacOptions = Seq("-deprecation", "-feature")
 
-  def ivyDeps = Agg("com.electronwill:more-collection:1.0.0") 
+  def ivyDeps = Agg(ivy"com.electronwill::more-collections:1.0.0") 
   
   def pomSettings = PomSettings(
     description = "Lightweight network library for Scala",

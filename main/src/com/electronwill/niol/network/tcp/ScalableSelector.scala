@@ -42,8 +42,8 @@ import scala.collection.mutable
  * @author TheElectronWill
  */
 final class ScalableSelector(
-    private[this] val startHandler: Runnable,
-    private[this] val stopHandler: Runnable,
+    private[this] val startHandler: () => Unit,
+    private[this] val stopHandler: () => Unit,
     private[this] val errorHandler: Exception => Boolean)
   extends Runnable {
 
@@ -53,6 +53,12 @@ final class ScalableSelector(
    *  - The default errorHandler prints the stack trace and returns false (stops the selector).
    */
   def this() = this(()=>(), ()=>(), e => {e.printStackTrace(); false})
+  
+  /**
+   * Creates a new ScalableSelector with Runnable handlers (for Java compatibility).
+   */
+  def this(onStart: Runnable, onStop: Runnable, onError: Exception=>Boolean) =
+    this(() => onStart.run(), () => onStop.run(), e => onError(e))
 
   /** The Java NIO selector */
   private[this] val selector = Selector.open()
@@ -108,7 +114,7 @@ final class ScalableSelector(
       throw new IllegalStateException("This selector is already running! Don't call run() by hand.")
     }
     running = true
-    startHandler.run()
+    startHandler() // runs the handler
     while (running) {
       try {
         selector.select() // Blocking selection
@@ -149,7 +155,7 @@ final class ScalableSelector(
       }
     }
     selector.close()
-    stopHandler.run()
+    stopHandler() // runs the handler
   }
 
   /**

@@ -29,7 +29,7 @@ abstract class HAttach[A <: HAttach[A]] (
   /**
    * The queue that contains the data waiting for being written.
    */
-  private[this] val writeQueue = new util.ArrayDeque[(NiolBuffer, Runnable)]
+  private[this] val writeQueue = new util.ArrayDeque[(NiolBuffer, ()=>Unit)]
   private[this] var (readStorage, packetBufferBase, packetBufferProvider) = createReadBuffers(rTransform != null)
   private[this] var additionalStorage: BytesStorage = _
   private[this] var packetBuffer: NiolBuffer = packetBufferBase
@@ -172,7 +172,7 @@ abstract class HAttach[A <: HAttach[A]] (
           writeQueue.poll()
           val completionHandler = queued._2
           if (completionHandler ne null) {
-            completionHandler.run()
+            completionHandler() // runs the handler
           }
           queued = writeQueue.peek() // fetches the next element
         } else {
@@ -203,7 +203,7 @@ abstract class HAttach[A <: HAttach[A]] (
    * @param buffer            the data to write, not prefixed by a header
    * @param completionHandler the handler to execute after the operation
    */
-  final def write(buffer: NiolBuffer, completionHandler: Runnable): Unit = {
+  final def write(buffer: NiolBuffer, completionHandler: () => Unit): Unit = {
     val withHeader = makeHeader(buffer) + buffer
     writeRaw(withHeader, completionHandler)
   }
@@ -227,9 +227,9 @@ abstract class HAttach[A <: HAttach[A]] (
    *
    * @param buffer            the data to write, prefixed by a header
    * @param completionHandler the handler to execute after the operation
-   * @see [[write(NiolBuffer, Runnable)]]
+   * @see [[write(NiolBuffer, ()=>Unit)]]
    */
-  final def writeRaw(buffer: NiolBuffer, completionHandler: Runnable): Unit = {
+  final def writeRaw(buffer: NiolBuffer, completionHandler: () => Unit): Unit = {
     val finalBuffer =
       if (wTransform == null) {
         // No transformation => use the buffer as is
