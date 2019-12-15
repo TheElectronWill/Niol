@@ -3,12 +3,9 @@ import mill.scalalib._
 import mill.scalalib.publish._
 import coursier.maven.MavenRepository
 
-trait JUnitTests extends TestModule {// JUnit 5 tests
-  def ivyDeps = Agg(ivy"net.aichler:jupiter-interface:0.8.3")
-  def testFrameworks = Seq("net.aichler.jupiter.api.JupiterFramework")
-  def repositories = super.repositories ++ Seq(
-    MavenRepository("https://jcenter.bintray.com")
-  )
+trait ScalaTest extends TestModule {
+  def ivyDeps = Agg(ivy"org.scalatest::scalatest:3.1.0")
+  def testFrameworks = Seq("org.scalatest.tools.Framework")
 }
 
 object main extends Cross[MainModule]("2.12.10", "2.13.1")
@@ -31,5 +28,5 @@ class MainModule(val crossScalaVersion: String) extends CrossScalaModule with Pu
     )
   )
   
-  object test extends Tests with JUnitTests {}
+  object test extends Tests with ScalaTest {}
 }

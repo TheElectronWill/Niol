@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import com.electronwill.niol.buffer.storage.{BytesStorage, StagedPools}
 import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer}
 import com.electronwill.niol.network.tcp.{ServerChannelInfos => SCI, _}
-import org.junit.jupiter.api.Assertions._
+import org.scalatest.matchers.should.Matchers._
 
 /**
  * @author TheElectronWill
@@ -79,7 +79,7 @@ object EchoServer {
           val readTxt = new String(array, StandardCharsets.UTF_8)
           println(s"[C] Read $read")
           println(s"[C] Received message: ${readTxt.substring(0, math.min(readTxt.length, 150))}")
-          assertTrue(possibleMessages.contains(readTxt))
+          assert(possibleMessages.contains(readTxt))
           //Thread.sleep(2000)
           i += 1
           if (i % 20 == 0) {
@@ -112,7 +112,7 @@ class EchoAttach(sci: SCI[EchoAttach], chan: SocketChannel, key: SelectionKey)
   override protected def makeHeader(data: NiolBuffer) = {
     val buff = CircularBuffer(BytesStorage.allocateHeap(2))
     buff.writeShort(data.readableBytes)
-    assertEquals(2, buff.readableBytes)
+    assert(2 == buff.readableBytes)
     buff
   }
 

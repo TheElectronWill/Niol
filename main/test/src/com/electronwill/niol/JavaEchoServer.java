@@ -18,9 +18,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 /**
  * @author TheElectronWill
  */
@@ -99,7 +96,7 @@ class JavaEchoServer {
           String readTxt = new String(array, StandardCharsets.UTF_8);
           System.out.println("[C] Read " + read);
           System.out.println("[C] Received message: " + readTxt.substring(0, Math.min(readTxt.length(), 150)));
-          assertTrue(possibleMessages.contains(readTxt));
+          assert(possibleMessages.contains(readTxt));
           //Thread.sleep(2000)
           i += 1;
           if (i % 20 == 0) {
@@ -143,7 +140,7 @@ class JavaEchoServer {
     public NiolBuffer makeHeader(NiolBuffer data) {
       NiolBuffer buff = CircularBuffer.apply(BytesStorage.allocateHeap(2));
       buff.writeShort(data.readableBytes());
-      assertEquals(2, buff.readableBytes());
+      assert(buff.readableBytes() == 2);
       return buff;
     }
 

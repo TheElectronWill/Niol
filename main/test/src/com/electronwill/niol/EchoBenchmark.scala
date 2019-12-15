@@ -9,7 +9,6 @@ import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 import com.electronwill.niol.buffer.storage.{BytesStorage, StagedPools}
 import com.electronwill.niol.buffer.{CircularBuffer, NiolBuffer}
 import com.electronwill.niol.network.tcp.{ServerChannelInfos => SCI, _}
-import org.junit.jupiter.api.Assertions._
 
 /**
  * @author TheElectronWill
@@ -104,7 +103,7 @@ object EchoBenchmark {
     override protected def makeHeader(data: NiolBuffer) = {
       val buff = CircularBuffer(BytesStorage.allocateHeap(2))
       buff.writeShort(data.readableBytes)
-      assertEquals(2, buff.readableBytes)
+      assert(buff.readableBytes == 2)
       buff
     }
 
