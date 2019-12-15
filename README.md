@@ -2,10 +2,11 @@
 
 # Niol
 
-[![Maven Central](https://img.shields.io/maven-central/v/com.electronwill/niol_2.12.svg)](https://search.maven.org/#search%7Cga%7C1%7Ccom.electronwill.niol)
-[![](https://img.shields.io/github/commits-since/TheElectronWill/Niol/1.5.svg)](https://github.com/TheElectronWill/Night-Config/compare/1.5...master)
+[![Build Status](https://img.shields.io/travis/com/TheElectronWill/niol?logo=travis)](https://travis-ci.com/TheElectronWill/niol)
+[![Maven Central](https://img.shields.io/maven-central/v/com.electronwill/niol_2.13?logo=apache)](https://search.maven.org/search?q=g:com.electronwill%20AND%20a:niol*)
+![Scala Versions](https://img.shields.io/badge/scala%20versions-2.12%20%7C%202.13-%23C22D40?logo=scala)
 
-Niol is a NIO Library written in Scala and designed to make server programming easier.
+Niol is a NIO Library written in Scala and designed to make network programming easier.
 
 ## Runnable examples
 
